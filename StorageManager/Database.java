@@ -37,7 +37,7 @@ public class Database{
 
 
     public static void main(String[] args) throws IOException {
-        Database test = new Database("test", 1000);
+        new Database("test", 1000);
         System.out.println(Arrays.toString(exist_database("test")));
     }
 }
