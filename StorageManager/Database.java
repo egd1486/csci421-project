@@ -5,7 +5,7 @@ import java.util.Arrays;
 
 public class Database{
 
-    //Each Database will have a number of pages and the name of the database
+    //Each Database will have a number of pages and the name of the database e
     public static String database_name;
     public static int database_buffer_size;
 
