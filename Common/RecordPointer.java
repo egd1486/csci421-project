@@ -1,7 +1,7 @@
 package Common;
 
 class RecordPointer {
-    // used to reference records (indexes, buffer manager, query executor, caalog)
+    // used to reference records (indexes, buffer manager, query executor, catalog)
 
     private int pageNumber;
     private int slotNumber; //in slot array
