@@ -42,6 +42,8 @@ public class JottQL{
             String command = scanner.nextLine();
             // Do something with command here
             if(command.toLowerCase().equals("quit")){
+                 // Write the catalog to hardware
+                // Purge the page buffer
                 break;
             }
         }
