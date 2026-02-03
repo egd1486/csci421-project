@@ -2,7 +2,7 @@ package Common;
 
 import java.util.ArrayList;
 
-class Page {
+public class Page {
     private int pageSize;
     private int numOfRecords;
     private int endOfFreeSpace;
@@ -13,6 +13,8 @@ class Page {
         this.pageSize = pageSize;
 
     }
+
+    // ! how to represent records in page
 
     // retrieve record
     public Record retrieveRecord(int slotNumber) {
