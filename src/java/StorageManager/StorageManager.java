@@ -1,5 +1,7 @@
 package StorageManager;
 
+import Common.*;
+
 class StorageManager {
     private String filepath; //?
     private int pageSize; //?
