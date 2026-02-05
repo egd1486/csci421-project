@@ -1,3 +1,5 @@
+package StorageManager;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -7,7 +9,7 @@ import java.util.Arrays;
 /* Jason */
 public class Database{
 
-    //Each Database will have a number of pages and the name of the database e
+    //Each StorageManager.Database will have a number of pages and the name of the database e
     public static String database_name;
     public static int database_buffer_size;
 
@@ -22,6 +24,8 @@ public class Database{
         database_access.close();
 
     }
+
+
 
     public static String[] exist_database(String name){
         database_name = name;

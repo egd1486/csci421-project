@@ -1,5 +1,6 @@
 package Common;
 
+import java.lang.Record;
 import java.util.ArrayList;
 
 public class Page {
@@ -17,8 +18,8 @@ public class Page {
     // ! how to represent records in page
 
     // retrieve record
-    public Record retrieveRecord(int slotNumber) {
-        return new Record();
+    public java.lang.Record retrieveRecord(int slotNumber) {
+        return new java.lang.Record();
     }
 
     public void insertRecord(Record record) {
