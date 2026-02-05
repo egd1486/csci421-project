@@ -36,10 +36,12 @@ class StorageManager {
         // return page? page number?
     }
 
+    //read binary data
     public Page readPage(int pageNumber) {
         return new Page(pageNumber);
     }
 
+    //write binary data
     public void writePage(int pageNumber, byte[] data) {
 
     }
