@@ -94,7 +94,7 @@ public class Page {
         Record oldRecord = retrieveRecord(slotNumber);
         // get new record data and serialize
         byte[] byteRecord = record.serialize(null);
-        int newRecordLength = byteRecord.getRecordLength();
+        int newRecordLength = byteRecord.length;
        
         // different sizes? also calc offset based on case
             // old size == new size, overwrite bytes
@@ -106,7 +106,8 @@ public class Page {
             // ! 1)delete old, insert new, 2)reognize to make room, 3)throw error if not enough free space ???
         
         //update the slot - modify slot entry with new offset if changed and new length
-        Slot newSlot = new Slot(newRecordLength, newRecordOffset)
+        //Slot newSlot = new Slot(newRecordLength, newRecordOffset);
+        Slot newSlot = new Slot(newRecordLength, 0);
         entries.set(slotNumber, newSlot);
     }
 
@@ -162,10 +163,12 @@ public class Page {
         //loop  numOfRecords of times 
             //read offset bytes and convert to int
             //read length bytes and convert to int 
-            Slot readSlot = new Slot(readRecordLength, readRecordOffset);
+            //Slot readSlot = new Slot(readRecordLength, readRecordOffset);
+            Slot readSlot = new Slot(0, 0);
             readEntries.add(readSlot);
         //store full page data
-        Page newPage = new Page(pageSize, readNumOfRecords, readEndOfFreeSpace, readEntries, pageBytes);
+        //Page newPage = new Page(pageSize, readNumOfRecords, readEndOfFreeSpace, readEntries, pageBytes);
+        Page newPage = new Page(pageSize, 0, 0, readEntries, pageBytes);
         return newPage;
     }
   

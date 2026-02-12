@@ -8,7 +8,7 @@ class Record {
 
    
    public byte[] serialize(Table schema) {
-      return new byte[];
+      return new byte[0];
    }
 
    public Record deserialize(byte[] bytes, Table schema) {
