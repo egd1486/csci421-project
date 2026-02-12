@@ -1,10 +1,13 @@
 package StorageManager;
 
 import Common.*;
+import java.io.File;
+import java.io.IOException;
 
 class StorageManager {
-    private String filepath; //?
+    private String filepath; //? directory path
     private int pageSize; //?
+    //private Database database;
 
 
     // ! how to represent pages in file
@@ -16,6 +19,7 @@ class StorageManager {
     //random file access
 
     public boolean doDatabaseFileExist() {
+        //return Database.exist_database(filepath + "\\database.txt");  // Currently a String[] for testing
         return false;
     }
 
@@ -30,6 +34,14 @@ class StorageManager {
     public void createDatabaseFile() {
         // if it doesn't already exist
         // create page 0 with meta data? 
+        File database = new File(filepath + "\\database.txt");
+        try{
+            database.createNewFile();
+        }
+        catch(IOException e){
+            // Handle error
+            System.err.println(e);
+        }
     }
 
     public void createPage() {
