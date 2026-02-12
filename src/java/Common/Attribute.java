@@ -16,4 +16,21 @@ public class Attribute { //for one column
         this.notNull = notNull;
         this.unique = unique;
     }
+
+    public Integer GetByteSize() {
+        switch (this.type) {
+            case INT:
+                return Integer.BYTES;
+            case CHAR:
+                return this.typeLength;
+            case DOUBLE:
+                return Double.BYTES;
+            case VARCHAR:
+                return this.typeLength;
+            case BOOLEAN:
+                return 1;
+            default:
+                return 0;
+        }
+    }
 }
