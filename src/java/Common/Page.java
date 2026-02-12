@@ -10,8 +10,8 @@ public class Page {
     private ArrayList<Slot> entries; //<Size of record, Location>
     private byte[] pageData;
 
-    private static final int HEADER_SIZE = 8; //numOfRecords (int = 4 bytes) + endOfFreeSpace (int = 4 bytes) 
-    private static final int SLOT_ENTRY_SIZE = 8; //offset size (int = 4 bytes) + length size (int = 4 bytes) 
+    private static final int HEADER_SIZE = Integer.BYTES  * 2; //numOfRecords (int = 4 bytes) + endOfFreeSpace (int = 4 bytes) 
+    private static final int SLOT_ENTRY_SIZE = Integer.BYTES * 2; //offset size (int = 4 bytes) + length size (int = 4 bytes) 
 
     public Page(int pageSize) {
         this.pageSize = pageSize;
@@ -133,43 +133,6 @@ public class Page {
     // for inserting slot for a record
     public int calculateRecordOffset(int recordLength) {
         return endOfFreeSpace - recordLength;
-    }
-
-    //page java to binary 
-    public byte[] writeToPage() {
-        //create byte array
-        byte[] binaryPage = new byte[pageSize];
-        //write header to bytes
-        // convert numOfRecords, endOfFreeSpace, 
-            //use ByteBuffer ?
-        // write slot directory to bytes
-            //loop through entries
-            //for each slot 
-                //convert offset, length
-                //write to appropriate posiiton in binaryPage array
-                //pos = header_size + slotindex * slot_entry_size)
-        //copy record data (already in pageData as bytes)
-        return binaryPage;
-    }
-
-    //page binary to java
-    public Page readToPage(byte[] pageBytes, int pageSize) {
-        //extract header info
-            //num of records
-            //end of free space
-            //use ByteBuffer?
-        //extract slot directory
-        ArrayList<Slot> readEntries = new ArrayList<Slot>();
-        //loop  numOfRecords of times 
-            //read offset bytes and convert to int
-            //read length bytes and convert to int 
-            //Slot readSlot = new Slot(readRecordLength, readRecordOffset);
-            Slot readSlot = new Slot(0, 0);
-            readEntries.add(readSlot);
-        //store full page data
-        //Page newPage = new Page(pageSize, readNumOfRecords, readEndOfFreeSpace, readEntries, pageBytes);
-        Page newPage = new Page(pageSize, 0, 0, readEntries, pageBytes);
-        return newPage;
     }
   
 }
