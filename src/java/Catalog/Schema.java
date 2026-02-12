@@ -19,7 +19,11 @@ public class Schema {
         // Otherwise, handle it.
         else this.Primary = Attributes.size();
 
-        //TODO Check if attribute name is in use
+        // Iterate over attributes to see if name is in use.
+        for (Attribute A : Attributes) 
+        if (A.name.equals(Name)) 
+        throw new Exception("Schema already has an attribute named " + Name);
+        
 
         Attribute A = new Attribute(Name, T, Size, Primary, Nullable, Unique);
         Attributes.add(A);
