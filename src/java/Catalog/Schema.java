@@ -5,8 +5,8 @@ import java.util.ArrayList;
 
 public class Schema {
     public String Name;
-    private Integer Primary;
-    private ArrayList<Attribute> Attributes;
+    public Integer Primary;
+    public ArrayList<Attribute> Attributes;
 
     public Schema(String Name) {
         this.Name = Name;
@@ -29,16 +29,12 @@ public class Schema {
         Attributes.add(A);
     }
 
-    public ArrayList<Attribute> GetAttributes() {
-        return this.Attributes;
-    }
-
     public void RemoveAttribute(String Name) throws Exception {
         for (Attribute A : Attributes) 
-        if (A.name.equals(Name)) {
-            this.Attributes.remove(A);
-            return;
-        }
+        // If the name is found, remove it.
+        if (A.name.equals(Name) && this.Attributes.remove(A))
+        // Returns when condition is met.
+        return;
 
         throw new Exception("Schema does not have an attribute named " + Name);
     }
@@ -50,7 +46,6 @@ public class Schema {
         
         return Size;
     }
-
 
     public Boolean Validate() {
         return this.Primary != null;
