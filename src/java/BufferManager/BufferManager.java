@@ -26,8 +26,8 @@ public class BufferManager {
     public static int BufferSize;
 
     private final Frame[] buffer;
-    private Map<Integer, Frame> mapId = new HashMap<>();
-    private StorageManager storageManager; // What database we editing
+    private final Map<Integer, Frame> mapId = new HashMap<>();
+    private final StorageManager storageManager; // What database we editing
 
     public BufferManager(int set_buffer_size, StorageManager storageManager) {
         this.storageManager = storageManager;
@@ -45,7 +45,7 @@ public class BufferManager {
             int index = storageManager.getPageSize() * pageId;
             byte[] data = new byte[storageManager.getPageSize()];
             db.seek(index);
-            db.readFully(data); //what we reading :)
+            db.readFully(data); //what we're reading :)
 
             return new Page(pageId, data);
         } catch (IOException e){

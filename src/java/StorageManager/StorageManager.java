@@ -4,6 +4,7 @@ import Common.Page;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 
 public class StorageManager {
     private String filepath; //? directory path
@@ -20,36 +21,40 @@ public class StorageManager {
 
     //random file access
 
-    public boolean doDatabaseFileExist() {
-        //return Database.exist_database(filepath + "\\database.txt");  // Currently a String[] for testing
-        return false;
-    }
+    //FreePage Functionality: When catalog creates a table get a page index
 
-    public int getPageSize() {
-        return pageSize;
-    }
-    public void setPageSize(int pageSize) {}
-
-    public void openDatabaseFile() {
-
-    }
-
-    public void closeDatabaseFile() {
-
-    }
-
-    public void createDatabaseFile() {
-        // if it doesn't already exist
-        // create page 0 with meta data? 
-        File database = new File(filepath + "\\database.txt");
-        try{
-            database.createNewFile();
+    /**
+     * Does Database file exist
+     * @param database_filename The name of the databse we finding
+     * @return database exist?
+     */
+    public boolean doDatabaseFileExist(String database_filename) {
+        File database_file = new File(database_filename);
+        if(database_file.exists()){
+            return true;
         }
-        catch(IOException e){
-            // Handle error
-            System.err.println(e);
+        else{
+            return false;
         }
     }
+
+    /**
+     * Creates Database File
+     * @param database_name The name of the database
+     * @param byte_size the size of teh database
+     */
+    public void createDatabaseFile(String database_name, int byte_size) {
+        try(RandomAccessFile database_access = new RandomAccessFile(database_name,"rw")){
+            byte[] database = new byte[byte_size];
+            database_access.write(database);
+        }catch(IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Idk the use case of this yet - Jason Ha
+     */
 
     public void createPage() {
         // what params does it need
@@ -92,7 +97,22 @@ public class StorageManager {
         return -1; //page number
     }
 
+
+    public void openDatabaseFile() {
+
+    }
+
+    public void closeDatabaseFile() {
+
+    }
+
     public String getFilename() {
         return filename;
+    }
+    public int getPageSize() {
+        return pageSize;
+    }
+    public void setPageSize(int pageSize) {
+        this.pageSize = pageSize;
     }
 }
