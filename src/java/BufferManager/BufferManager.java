@@ -7,7 +7,7 @@ import java.util.Map;
 
 import Common.Page;
 import StorageManager.StorageManager;
-
+// Author: Jason Ha
 public class BufferManager {
 
     /*
