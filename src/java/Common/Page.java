@@ -9,6 +9,7 @@ public class Page {
     private int endOfFreeSpace;
     private ArrayList<Slot> entries; //<Size of record, Location>
     private byte[] pageData;
+    private int pageId;
 
     private static final int HEADER_SIZE = Integer.BYTES  * 2; //numOfRecords (int = 4 bytes) + endOfFreeSpace (int = 4 bytes) 
     private static final int SLOT_ENTRY_SIZE = Integer.BYTES * 2; //offset size (int = 4 bytes) + length size (int = 4 bytes) 
@@ -21,12 +22,18 @@ public class Page {
         this.pageData = new byte[pageSize];
     }
 
-    public Page(int pageSize, int numOfRecords, int endOfFreeSpace, ArrayList<Slot> readEntries, byte[] pageBytes ) {
+    public Page(int pageId, byte[] pageData) {
+        this.pageId = pageId;
+        this.pageData = pageData;
+    }
+
+    public Page(int pageSize, int numOfRecords, int endOfFreeSpace, ArrayList<Slot> readEntries, byte[] pageBytes,int pageId ) {
         this.pageSize = pageSize;
         this.numOfRecords = numOfRecords;
         this.endOfFreeSpace = endOfFreeSpace; 
         this.entries = readEntries;
         this.pageData = pageBytes;
+        this.pageId = pageId;
     }
 
     // ! how to represent records in page ?
@@ -129,10 +136,18 @@ public class Page {
         int endOfSlotDirectory = HEADER_SIZE + (numOfRecords * SLOT_ENTRY_SIZE); 
         return endOfSlotDirectory;
     }
+
+    public int getPageId() {
+        return pageId;
+    }
+
+    public byte[] getPageData() {
+        return pageData;
+    }
     
     // for inserting slot for a record
     public int calculateRecordOffset(int recordLength) {
         return endOfFreeSpace - recordLength;
     }
-  
+
 }

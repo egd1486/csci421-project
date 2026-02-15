@@ -1,12 +1,14 @@
 package StorageManager;
 
-import Common.*;
+import Common.Page;
+
 import java.io.File;
 import java.io.IOException;
 
-class StorageManager {
+public class StorageManager {
     private String filepath; //? directory path
-    private int pageSize; //?
+    private int pageSize;
+    private String filename;
     //private Database database;
 
 
@@ -22,6 +24,11 @@ class StorageManager {
         //return Database.exist_database(filepath + "\\database.txt");  // Currently a String[] for testing
         return false;
     }
+
+    public int getPageSize() {
+        return pageSize;
+    }
+    public void setPageSize(int pageSize) {}
 
     public void openDatabaseFile() {
 
@@ -83,5 +90,9 @@ class StorageManager {
     public int getNextFreePage() {
         // where next free page?
         return -1; //page number
+    }
+
+    public String getFilename() {
+        return filename;
     }
 }

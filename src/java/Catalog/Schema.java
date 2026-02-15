@@ -1,12 +1,13 @@
 package Catalog;
 
 import Common.*;
+
 import java.util.ArrayList;
 
 public class Schema {
     public String Name;
     public Integer Primary;
-    public ArrayList<Attribute> Attributes;
+    public ArrayList<Common.Attribute> Attributes;
 
     public Schema(String Name) {
         this.Name = Name;
