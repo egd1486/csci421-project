@@ -5,8 +5,8 @@ import java.util.ArrayList;
 
 public class Schema {
     public String Name;
-    private Integer Primary;
-    private ArrayList<Attribute> Attributes;
+    public Integer Primary;
+    public ArrayList<Attribute> Attributes;
 
     public Schema(String Name) {
         this.Name = Name;
@@ -19,15 +19,35 @@ public class Schema {
         // Otherwise, handle it.
         else this.Primary = Attributes.size();
 
-        //TODO Check if attribute name is in use
+        // Iterate over attributes to see if name is in use.
+        for (Attribute A : Attributes) 
+        if (A.name.equals(Name)) 
+        throw new Exception("Schema already has an attribute named " + Name);
+        
 
         Attribute A = new Attribute(Name, T, Size, Primary, Nullable, Unique);
         Attributes.add(A);
     }
 
+    public void RemoveAttribute(String Name) throws Exception {
+        for (Attribute A : Attributes) 
+        // If the name is found, remove it.
+        if (A.name.equals(Name) && this.Attributes.remove(A))
+        // Returns when condition is met.
+        return;
+
+        throw new Exception("Schema does not have an attribute named " + Name);
+    }
+
+    public Integer GetRowSize() {
+        Integer Size = 0;
+
+        for (Attribute A : Attributes) Size += A.GetByteSize();
+        
+        return Size;
+    }
+
     public Boolean Validate() {
-
-
-        return true;
+        return this.Primary != null;
     }
 }

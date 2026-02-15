@@ -1,12 +1,20 @@
 package Common;
 
 public class Slot {
-    private int recordSize; //length
-    private int recordLocation; //offset in page
+    private int recordLength; //size
+    private int recordOffset; //location in page
 
-    public Slot(int recordSize, int recordLocation) {
-        this.recordSize = recordSize;
-        this.recordLocation = recordLocation;
+    public Slot(int recordLength, int recordOffset) {
+        this.recordLength = recordLength;
+        this.recordOffset = recordOffset;
+    }
+
+    public int getRecordLength() {
+        return recordLength;
+    }
+
+    public int getRecordOffset() {
+        return recordOffset;
     }
 
 
