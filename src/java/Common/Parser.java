@@ -1,9 +1,6 @@
 package Common;
 import Catalog.Catalog;
 import Catalog.Schema;
-import StorageManager.StorageManager;
-
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 
 public class Parser {
@@ -277,12 +274,9 @@ public class Parser {
         // (Page object needs pointer/pageID of next page? or page pointers stored somewhere else?)
         // display their records until no more pages
         // Question: How to get page location of tableName? Where do we plan to store this info?
-        Page page = StorageManager.getPage(schema.PageId);
-        int numOfRecords = page.getNumOfRecords();
-        for(int i = 0; i < numOfRecords; i++){
-            Record record = page.retrieveRecord(i);
-            // TODO: display record data somehow
-        }
+
+        ArrayList<Object> Data = schema.Select();
+        // TODO: display record data somehow
     }
 
     // Inserts a record into a table
@@ -292,6 +286,8 @@ public class Parser {
             System.out.println("Table: " + tableName + " does not exist");
             return;
         }
+
+
 
         // Validate that values are of correct data type for table schema
         // Create record using data
@@ -322,16 +318,6 @@ public class Parser {
         }
         try{
             // Tries to add an attribute to the schema
-            // If a default value is given, parse it according to type
-            if (hasDefault)
-            switch (type) {
-                case INT: defaultVal = Integer.parseInt(defaultVal.toString()); break;
-                case CHAR: defaultVal = String.format("%-"+typeSize.toString()+"s",defaultVal); break;
-                case DOUBLE: defaultVal = Double.parseDouble(defaultVal.toString()); break;
-                case BOOLEAN: defaultVal = Boolean.parseBoolean(defaultVal.toString()); break;
-                default: break;
-            }
-
             schema.AddAttribute(attrName, type, typeSize, nullable, false, false, defaultVal);
         } catch(Exception e){
             System.out.println("Error: " + e.getMessage());

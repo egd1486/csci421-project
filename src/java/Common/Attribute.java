@@ -3,20 +3,20 @@ package Common;
 public class Attribute { //for one column
     public String name;
     public Type type; 
-    public int typeLength; 
+    public Integer typeLength; 
     public boolean primaryKey; //is publicKey
     public boolean notNull; //is not null
     public boolean unique; //is unique
     public Object defaultVal;
 
-    public Attribute(String name, Type type, int typeLength, boolean primaryKey, boolean notNull, boolean unique, Object defaultVal) {
+    public Attribute(String name, Type type, Integer typeLength, boolean primaryKey, boolean notNull, boolean unique, Object defaultVal) throws Exception{
         this.name = name;
         this.type = type;
         this.typeLength = typeLength;
         this.primaryKey = primaryKey;
         this.notNull = notNull;
         this.unique = unique;
-        this.defaultVal = defaultVal;
+        this.defaultVal = this.Parse(defaultVal);
     }
 
     public Integer GetByteSize() {
@@ -34,5 +34,25 @@ public class Attribute { //for one column
             default:
                 return 0;
         }
+    }
+
+    // Parses string representation to actual type. 
+    // (Typically used for parsing a new table's default value)
+    public Object Parse(Object O) throws Exception{
+        if (O == null) return null;
+
+        try {
+            switch (this.type) {
+                case INT: O = Integer.parseInt(O.toString()); break;
+                case CHAR: O = String.format("%-"+this.typeLength.toString()+"s",O); break;
+                case DOUBLE: O = Double.parseDouble(O.toString()); break;
+                case BOOLEAN: O = Boolean.parseBoolean(O.toString()); break;
+                default: break;
+            }
+        } catch (Exception e) {
+            throw new Exception("Invalid default value");
+        }
+
+        return O;
     }
 }

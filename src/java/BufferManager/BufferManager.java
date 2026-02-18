@@ -1,7 +1,6 @@
 package BufferManager;
 
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -25,10 +24,10 @@ public class BufferManager {
 
     public static int BufferSize;
 
-    private final Page[] buffer;
-    private final Map<Integer, Page> mapId = new HashMap<>();
+    private static Page[] buffer;
+    private static Map<Integer, Page> mapId = new HashMap<>();
 
-    public BufferManager(int set_buffer_size) {
+    public static void initialize(int set_buffer_size) {
         buffer = new Page[set_buffer_size];
         BufferSize = set_buffer_size;
     }
@@ -37,7 +36,7 @@ public class BufferManager {
      * LRU remove the page who have the highest time and return the page to modify
      * @return page with the highest time to evict
      */
-    public int lru() throws IOException {
+    public static int lru() throws IOException {
         long highest_time = -1;
         int removal_page = -1;
         for(int i = 0; i < buffer.length; i++){
@@ -62,7 +61,7 @@ public class BufferManager {
      * update map and return page
      * @return page
      */
-    public Page getPage(int pageId) throws IOException {
+    public static Page getPage(int pageId) throws IOException {
 
         //If a map contains the page id then we return page
         if(mapId.containsKey(pageId)){
@@ -90,7 +89,7 @@ public class BufferManager {
      * Flush all the dirty pages down into memory
      * @throws IOException
      */
-    public void flush_all() throws IOException {
+    public static void flush_all() throws IOException {
         for(Page check_page : buffer){
             if(check_page != null){
               if(check_page.check_dirty()){

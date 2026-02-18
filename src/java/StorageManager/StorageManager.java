@@ -5,42 +5,40 @@ import Common.Page;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.sql.Wrapper;
-import java.util.ArrayList;
-import java.util.Random;
 import java.util.Stack;
 
 public class StorageManager {
     private static int pageSize;
     private static String filename;
-    private static int maximum_pages; // How many pages can fit in the database
     private static int current_page; // What page is created
     private static Stack<Integer> freepages;
 
-    /**
-     * Does Database file exist
-     * @param database_filename The name of the databse we finding
-     * @return database exist?
-     */
-    public static boolean doDatabaseFileExist(String database_filename) {
-        File database_file = new File(database_filename);
-        if(database_file.exists()){
-            return true;
-        }
-        else{
-            return false;
-        }
-    }
 
     /**
-     * Creates Database File
+     * Creates Database File, or Reads existing one.
      * @param database_name The name of the database
      * @param byte_size the size of teh database
      */
-    public static void createDatabaseFile(String database_name, int byte_size, int page_size) {
+    public static void initializeDatabaseFile(String database_name, int page_size) {
+        // First check if the file exists
+        File database_file = new File(database_name);
+        System.out.println("Accessing database location...");
+
+        if (database_file.exists()) {
+            System.out.println("Database found. Restarting database...");
+            // TODO: Read existing database constants
+
+            System.out.println("Ignoring provided page size. Using prior size of ____...");
+
+            // TODO: Read schema values, and initalize into Catalog.
+
+            return;
+        }
+        System.out.println("No database found. Creating new database...");
+
+        // Otherwise, create the database from scratch.
         try(RandomAccessFile database_access = new RandomAccessFile(database_name,"rw")){
-            byte[] database = new byte[byte_size];
-            maximum_pages = byte_size / page_size;
+            byte[] database = new byte[page_size];
             filename = database_name;
             pageSize = page_size;
             database_access.write(database);
@@ -51,16 +49,12 @@ public class StorageManager {
 
     /**
      * Create page first checks if they're available free pages 
-     * If there's no free pages we first check if the current_page exceed maximum page if so its full return -1
-     * @return id or -1 if its full
+     * If there's no free pages we return a new page
+     * @return id
      */
     public static int create_page(){
         if(!(freepages.isEmpty())){
             return freepages.pop();
-        }
-
-        if(current_page > maximum_pages){
-            return -1; // Database is full
         }
         return current_page++;
     }
@@ -99,22 +93,19 @@ public class StorageManager {
      */
     public static void writePage(int pageNumber, byte[] data) throws IOException {
        try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
-            file.seek(pageNumber * pageSize);
-            for(byte each_byte : data){
-                file.write(each_byte);
-            }
+            file.write(data, pageNumber * pageSize, pageSize);
        }
     }
 
     // === Getter Functions ===
 
-    public String getFilename() {
+    public static String getFilename() {
         return filename;
     }
-    public int getPageSize() {
+    public static int getPageSize() {
         return pageSize;
     }
-    public void setPageSize(int pageSize) {
-        this.pageSize = pageSize;
+    public static void setPageSize(int newSize) {
+        pageSize = newSize;
     }
 }

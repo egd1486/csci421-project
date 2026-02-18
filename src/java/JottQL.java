@@ -5,7 +5,6 @@ import java.nio.file.Paths;
 import Common.Parser;
 import StorageManager.StorageManager;
 import BufferManager.BufferManager;
-import Catalog.Catalog;
 
 public class JottQL{
 
@@ -30,25 +29,11 @@ public class JottQL{
             return;
         }
 
-        // Checking if DB exists at specified location
-        Path path = Paths.get(dbLocation);
-        System.out.println("Accessing database location...");
-        StorageManager storageManager;
-        if(Files.exists(path)){
-            // Restart existing database
-            System.out.println("Database found. Restarting database...");
-            System.out.println("Ignoring provided page size. Using prior size of ____...");
-            // How to get previous page size?
-            storageManager = new StorageManager(dbLocation, pageSize);
-        }
-        else{
-            System.out.println("No database found. Creating new database...");
-            storageManager = new StorageManager(dbLocation, pageSize);
-            //storageManager.createDatabaseFile();
-        }
+        // Initialize database through Storage Manager,
+        StorageManager.initializeDatabaseFile(dbLocation, pageSize);
 
-        BufferManager bufferManager = new BufferManager(bufferSize,storageManager);
-        Parser parser =  new Parser(bufferManager, storageManager);
+        // Initialize Buffer Manager with bufferSize
+        BufferManager.initialize(bufferSize);
 
         // Entering infinite loop and prompting for JottQL commands
         Scanner scanner = new Scanner(System.in);
@@ -66,7 +51,7 @@ public class JottQL{
             }
             String command = builder.toString().trim();
             System.out.println("Command: " + command);
-            parser.parse(command);
+            Parser.parse(command);
         }
     }
 }

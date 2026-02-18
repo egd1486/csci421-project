@@ -59,4 +59,16 @@ public class Schema {
     }
 
     private static boolean isAlphaNumeric(String S) {return S.matches("[a-zA-Z0-9]+");}
+
+    public static ArrayList<Object> Select() {
+        ArrayList<Object> Entries = new ArrayList<>();
+
+        // TODO: Read all rows from the table's pages, and return it.
+
+        return Entries;
+    }
+
+    public static void Insert(ArrayList<Object> rows) throws Exception {
+        // TODO: Insert all rows into the table's pages, splitting when necessary.
+    }
 }
