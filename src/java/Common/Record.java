@@ -2,7 +2,7 @@ package Common;
 
 import java.util.ArrayList;
 
-class Record {
+public class Record {
    private ArrayList<Object> data;
 
    //need schema 

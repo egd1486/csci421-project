@@ -1,6 +1,9 @@
 package StorageManager;
 
 import Common.Page;
+import Common.Record;
+import Common.Slot;
+import java.util.ArrayList;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -62,15 +65,22 @@ public class StorageManager {
         byte[] pageData = new byte[pageSize];
         try (RandomAccessFile file = new RandomAccessFile(filepath + "/database.txt","r"))
         {
-            file.seek(pageNumber*pageSize);
+            file.seek(pageNumber*this.pageSize);
             file.readFully(pageData);
         }
         catch (IOException e)
         {
             System.err.println(e);
         }
+        int recordCount = 0;
+        ArrayList<Slot> slots = new ArrayList<Slot>();
+        ArrayList<Record> records = new ArrayList<Record>();
+        int usedSpace=0;
+        //
+
+
         //return new Page(pageNumber, pageData);
-        return new Page(pageSize);
+        return new Page(this.pageSize, recordCount, slots, records, pageNumber, usedSpace);
     }
 
     //write binary data
