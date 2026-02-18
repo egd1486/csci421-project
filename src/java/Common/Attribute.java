@@ -7,14 +7,16 @@ public class Attribute { //for one column
     public boolean primaryKey; //is publicKey
     public boolean notNull; //is not null
     public boolean unique; //is unique
+    public Object defaultVal;
 
-    public Attribute(String name, Type type, int typeLength, boolean primaryKey, boolean notNull, boolean unique) {
+    public Attribute(String name, Type type, int typeLength, boolean primaryKey, boolean notNull, boolean unique, Object defaultVal) {
         this.name = name;
         this.type = type;
         this.typeLength = typeLength;
         this.primaryKey = primaryKey;
         this.notNull = notNull;
         this.unique = unique;
+        this.defaultVal = defaultVal;
     }
 
     public Integer GetByteSize() {
