@@ -3,6 +3,7 @@ package StorageManager;
 import Common.Page;
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 
 public class StorageManager {
     private String filepath; //? directory path
@@ -62,13 +63,14 @@ public class StorageManager {
         try (RandomAccessFile file = new RandomAccessFile(filepath + "/database.txt","r"))
         {
             file.seek(pageNumber*pageSize);
-            file.readFully(bytes);
+            file.readFully(pageData);
         }
-        catch (IOException e)]
+        catch (IOException e)
         {
-            System.out.err(e);
+            System.err.println(e);
         }
-        return new Page(pageNumber, pageData);
+        //return new Page(pageNumber, pageData);
+        return new Page(pageSize);
     }
 
     //write binary data
@@ -81,9 +83,9 @@ public class StorageManager {
                 file.write(data[i]);
             }
         }
-        catch (IOException e)]
+        catch (IOException e)
         {
-            System.out.err(e);
+            System.err.println(e);
         }
     }
 
