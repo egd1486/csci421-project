@@ -1,7 +1,6 @@
 package StorageManager;
 
 import Common.Page;
-
 import java.io.File;
 import java.io.IOException;
 
@@ -56,14 +55,36 @@ public class StorageManager {
         // return page? page number?
     }
 
+    //! Important for readPage and writePage: Is pageNumber 0 indexed? If no pageNumber-1 in seek.
     //read binary data
     public Page readPage(int pageNumber) {
-        return new Page(pageNumber);
+        byte[] pageData = new byte[pageSize];
+        try (RandomAccessFile file = new RandomAccessFile(filepath + "/database.txt","r"))
+        {
+            file.seek(pageNumber*pageSize);
+            file.readFully(bytes);
+        }
+        catch (IOException e)]
+        {
+            System.out.err(e);
+        }
+        return new Page(pageNumber, pageData);
     }
 
     //write binary data
     public void writePage(int pageNumber, byte[] data) {
-
+        try (RandomAccessFile file = new RandomAccessFile(filepath + "/database.txt","rw"))
+        {
+            file.seek(pageNumber*pageSize);
+            for (int i = 0; i < data.length; i++)
+            {
+                file.write(data[i]);
+            }
+        }
+        catch (IOException e)]
+        {
+            System.out.err(e);
+        }
     }
 
     public void markFreePage(int pageNumber) {
@@ -84,6 +105,11 @@ public class StorageManager {
     }
 
     public boolean hasFreePages() {
+        // Free pages not implemented so this won't work yet. Smth like
+        /*
+        return freePages.length > 0;
+        */
+        
         return false;
     }
 
