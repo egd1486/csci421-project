@@ -1,5 +1,4 @@
 package Common;
-import BufferManager.BufferManager;
 import Catalog.Catalog;
 import Catalog.Schema;
 import StorageManager.StorageManager;
@@ -8,32 +7,24 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 
 public class Parser {
-    private final BufferManager bufferManager;
-    private final StorageManager storageManager;
-
-    public Parser(BufferManager bufferManager, StorageManager storageManager) {
-        this.bufferManager = bufferManager;
-        this.storageManager = storageManager;
-    }
-
-    public void parse(String command){
+    public static void parse(String command){
         if(command == null || command.isEmpty()){
             System.out.println("Invalid command");
+            return;
         }
 
-        // Getting rid of leading/trailing white space and semicolon
-        command = command.trim();
-        command = command.substring(0, command.length()-1);
+        // Getting rid of leading/trailing white space and ending semicolon
+        command = command.trim().substring(0, command.length()-1);
         String[] keywords = command.split(" ");
-        try{
+
+        try {
             if(command.startsWith("CREATE TABLE")){
                 int start = command.indexOf("(");
                 int end = command.length() - 1;
                 // Keywords = CREATE TABLE <tableName>
                 keywords = command.substring(0, start).trim().split(" ");
-                if(keywords.length != 3){
-                    throw new Exception("Invalid command");
-                }
+
+                if(keywords.length != 3) throw new Exception("Invalid command");
 
                 // Values to pass to createTable
                 String tableName = keywords[2];
@@ -241,12 +232,7 @@ public class Parser {
     }
 
     // Creates a database schema in the catalog
-    public void createTable(String tableName, String[] attr, Type[] type, int[] typeSize, String[] constraints){
-        // Checking if table already exists
-        if(Catalog.GetSchema(tableName) != null){
-            System.out.println("Table: " + tableName + " already exists");
-            return;
-        }
+    public static void createTable(String tableName, String[] attr, Type[] type, int[] typeSize, String[] constraints){
         try{
             // Creating new table schema
             Schema schema = Catalog.AddSchema(tableName);
@@ -270,7 +256,7 @@ public class Parser {
                         }
                     }
                 }
-                schema.AddAttribute(attr[i], type[i], typeSize[i], nullable, primary, unique);
+                schema.AddAttribute(attr[i], type[i], typeSize[i], nullable, primary, unique, null);
             }
         } catch(Exception e){
             System.out.println("Error: " + e.getMessage());
@@ -278,7 +264,7 @@ public class Parser {
     }
 
     // Selects and displays all data from a table
-    public void select(String tableName){
+    public static void select(String tableName){
         Schema schema = Catalog.GetSchema(tableName);
         if(schema == null){
             System.out.println("Table: " + tableName + " does not exist");
@@ -291,7 +277,7 @@ public class Parser {
         // (Page object needs pointer/pageID of next page? or page pointers stored somewhere else?)
         // display their records until no more pages
         // Question: How to get page location of tableName? Where do we plan to store this info?
-        Page page = bufferManager.getPage(schema.pageId);
+        Page page = StorageManager.getPage(schema.PageId);
         int numOfRecords = page.getNumOfRecords();
         for(int i = 0; i < numOfRecords; i++){
             Record record = page.retrieveRecord(i);
@@ -300,7 +286,7 @@ public class Parser {
     }
 
     // Inserts a record into a table
-    public void insert(String tableName, ArrayList<String> values){
+    public static void insert(String tableName, ArrayList<String> values){
         Schema schema = Catalog.GetSchema(tableName);
         if(schema == null){
             System.out.println("Table: " + tableName + " does not exist");
@@ -318,28 +304,16 @@ public class Parser {
     }
 
     // Removes table and all of its data from database, removes schema from catalog
-    public void dropTable(String tableName){
-        Schema schema =  Catalog.GetSchema(tableName);
-        if(schema == null){
-            System.out.println("Table: " + tableName + " does not exist");
-            return;
-        }
+    public static void dropTable(String tableName){
+        try {Catalog.RemoveSchema(tableName);}
 
-        // Should remove table data from database once functionality is done?
-        Page page = bufferManager.getPage(schema.pageId);
-        int nextPageId = page.getNextPageId();
-        storageManager.markFreePage(pageId);
-        while(nextPageId != -1){
-            page = bufferManager.getPage(nextPageId);
-            nextPageId = page.getNextPageId();
-            storageManager.markFreePage(page.getPageId());
+        catch (Exception e){
+            System.out.println("Error: " + e.getMessage());
         }
-
-        Catalog.RemoveSchema(tableName);
     }
 
     // Adds an attribute to a table
-    public void alterAdd(String tableName, String attrName, Type type, int typeSize, Boolean nullable, Boolean hasDefault, String defaultVal){
+    public static void alterAdd(String tableName, String attrName, Type type, Integer typeSize, Boolean nullable, Boolean hasDefault, Object defaultVal){
         // Get schema from catalog, add new attribute with specifications given
         Schema schema = Catalog.GetSchema(tableName);
         if(schema == null){
@@ -348,21 +322,31 @@ public class Parser {
         }
         try{
             // Tries to add an attribute to the schema
-            // TODO: Should prob make sure defaultVal matches type?
-            schema.AddAttribute(attrName, type, typeSize, nullable, hasDefault, defaultVal);
+            // If a default value is given, parse it according to type
+            if (hasDefault)
+            switch (type) {
+                case INT: defaultVal = Integer.parseInt(defaultVal.toString()); break;
+                case CHAR: defaultVal = String.format("%-"+typeSize.toString()+"s",defaultVal); break;
+                case DOUBLE: defaultVal = Double.parseDouble(defaultVal.toString()); break;
+                case BOOLEAN: defaultVal = Boolean.parseBoolean(defaultVal.toString()); break;
+                default: break;
+            }
+
+            schema.AddAttribute(attrName, type, typeSize, nullable, false, false, defaultVal);
         } catch(Exception e){
             System.out.println("Error: " + e.getMessage());
         }
     }
 
     // Removes an attribute from a table
-    public void alterDrop(String tableName, String attrName){
+    public static void alterDrop(String tableName, String attrName){
         // Get schema from catalog, delete attribute from it
         Schema schema = Catalog.GetSchema(tableName);
         if(schema == null){
             System.out.println("Table: " + tableName + " does not exist");
             return;
         }
+
         try{
             schema.RemoveAttribute(tableName);
         } catch(Exception e){
