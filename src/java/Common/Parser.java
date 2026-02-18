@@ -1,44 +1,372 @@
 package Common;
+import BufferManager.BufferManager;
+import Catalog.Catalog;
+import Catalog.Schema;
+import StorageManager.StorageManager;
+
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 
 public class Parser {
+    private final BufferManager bufferManager;
+    private final StorageManager storageManager;
+
+    public Parser(BufferManager bufferManager, StorageManager storageManager) {
+        this.bufferManager = bufferManager;
+        this.storageManager = storageManager;
+    }
+
+    public void parse(String command){
+        if(command == null || command.isEmpty()){
+            System.out.println("Invalid command");
+        }
+
+        // Getting rid of leading/trailing white space and semicolon
+        command = command.trim();
+        command = command.substring(0, command.length()-1);
+        String[] keywords = command.split(" ");
+        try{
+            if(command.startsWith("CREATE TABLE")){
+                int start = command.indexOf("(");
+                int end = command.length() - 1;
+                // Keywords = CREATE TABLE <tableName>
+                keywords = command.substring(0, start).trim().split(" ");
+                if(keywords.length != 3){
+                    throw new Exception("Invalid command");
+                }
+
+                // Values to pass to createTable
+                String tableName = keywords[2];
+                String[] attributes = command.substring(start+1, end).trim().split(",");
+                String[] attr = new String[attributes.length];
+                Type[] type = new Type[attributes.length];
+                int[] typeSize = new int[attributes.length];
+                String[] constraints = new String[attributes.length];
+                int index = 0;
+
+                // Iterating over given attributes and parsing into usable data
+                for(String a : attributes){
+                    String[] attrData = a.trim().split(" ");
+                    attr[index] = attrData[0];
+                    if(!attrData[1].equals(attrData[1].toUpperCase())){
+                        throw new Exception("Invalid attribute");
+                    }
+                    switch(attrData[1]){
+                        case "INTEGER":
+                            type[index] = Type.INT;
+                            typeSize[index] = Integer.BYTES;
+                            break;
+                        case "DOUBLE":
+                            type[index] = Type.DOUBLE;
+                            typeSize[index] = Double.BYTES;
+                            break;
+                        case "BOOLEAN":
+                            type[index] = Type.BOOLEAN;
+                            typeSize[index] = 1;
+                            break;
+                    }
+                    int left = attrData[1].indexOf("(");
+                    int right = attrData[1].indexOf(")");
+                    if(attrData[1].startsWith("CHAR")){
+                        type[index] = Type.CHAR;
+                        typeSize[index] = Integer.parseInt(attrData[1].substring(left+1, right));
+                    }
+                    else if(attrData[1].startsWith("VARCHAR")){
+                        type[index] = Type.VARCHAR;
+                        typeSize[index] = Integer.parseInt(attrData[1].substring(left+1, right));
+                    }
+                    StringBuilder c = new StringBuilder();
+                    for(int i = 2; i < attrData.length; i++){
+                        c.append(attrData[i]).append(" ");
+                    }
+                    constraints[index] = c.toString();
+                    index++;
+                }
+
+                createTable(tableName, attr, type, typeSize, constraints);
+            }
+            else if(command.startsWith("SELECT * FROM")){
+                // Only need to handle select all for first phase
+                if(keywords.length == 4){
+                    select(keywords[3]);
+                }
+            }
+            else if(command.startsWith("INSERT")){
+                int start = command.indexOf("(");
+                int end = command.length();
+                // Keywords = INSERT <tableName> VALUES
+                keywords = command.substring(0, start).trim().split(" ");
+                if(keywords.length != 3){
+                    throw new Exception("Invalid command");
+                }
+                if(!keywords[2].equals("VALUES")){
+                    throw new Exception("Invalid command");
+                }
+
+                // Values to pass to insert
+                String tableName = keywords[1];
+                String values = command.substring(start, end).trim();
+                // Remove opening and closing parenthesis
+                if(values.startsWith("(") && values.endsWith(")")){
+                    values = values.substring(1, values.length()-1);
+                }
+                else{
+                    throw new Exception("Invalid command");
+                }
+                ArrayList<String> valuesList = new ArrayList<>();
+                boolean inQuotes = false;
+                StringBuilder valuesBuilder = new StringBuilder();
+                // Iterating through input values
+                for(int i = 0; i < values.length(); i++){
+                    // Checks every character and adds it to the current value
+                    // Only splits when comma is found outside of quotes
+                    char c = values.charAt(i);
+                    if(c == '"'){
+                        inQuotes = !inQuotes;
+                        valuesBuilder.append(c);
+                    }
+                    else if(c == ',' && !inQuotes){
+                        String value = valuesBuilder.toString().trim();
+                        if(!value.isEmpty()){
+                            valuesList.add(value);
+                        }
+                        valuesBuilder.setLength(0);
+                    }
+                    else{
+                        valuesBuilder.append(c);
+                    }
+                }
+                // Adding last value to list
+                String lastValue = valuesBuilder.toString().trim();
+                if(!lastValue.isEmpty()){
+                    valuesList.add(lastValue);
+                }
+
+                insert(tableName, valuesList);
+            }
+            else if(command.startsWith("DROP TABLE")){
+                if(keywords.length == 3){
+                    dropTable(keywords[2]);
+                }
+            }
+            else if(command.startsWith("ALTER TABLE")){
+                keywords = command.split(" ");
+                if (keywords.length < 5 || !keywords[0].equals("ALTER") || !keywords[1].equals("TABLE")) {
+                    throw new Exception("Invalid command");
+                }
+
+                // Values to pass to createTable
+                String tableName = keywords[2];
+                String action = keywords[3];
+                String attrName = keywords[4];
+
+                // Checking if syntax is correct / calling drop command
+                if(!action.equals("ADD") && !action.equals("DROP")){
+                    throw new Exception("Invalid command");
+                }
+                if(action.equals("DROP")){
+                    alterDrop(tableName, attrName);
+                    return;
+                }
+                if(keywords.length < 6 || keywords.length > 9){
+                    throw new Exception("Invalid command");
+
+                }
+
+                // Getting type and type size for ADD command
+                Type type = null;
+                int typeSize = -1;
+                String typeString = keywords[5];
+                if(typeString.startsWith("CHAR(") || typeString.startsWith("VARCHAR(")){
+                    int left = typeString.indexOf("(");
+                    int right = typeString.indexOf(")");
+                    if(typeString.startsWith("CHAR")){
+                        type = Type.CHAR;
+                    }
+                    else{
+                        type = Type.VARCHAR;
+                    }
+                    typeSize = Integer.parseInt(typeString.substring(left+1, right));
+                }
+                else{
+                    switch(typeString){
+                        case "INTEGER":
+                            type = Type.INT;
+                            typeSize = Integer.BYTES;
+                            break;
+                        case "DOUBLE":
+                            type = Type.DOUBLE;
+                            typeSize = Double.BYTES;
+                            break;
+                        case "BOOLEAN":
+                            type = Type.BOOLEAN;
+                            typeSize = 1;
+                            break;
+                        default:
+                            throw new Exception("Invalid command");
+                    }
+                }
+
+                // Getting conditionals if needed
+                // Calling Add command once all data obtained
+                if(keywords.length == 6){
+                    alterAdd(tableName, attrName, type, typeSize, true, false, null);
+                }
+                else if(keywords.length == 8){
+                    String hasDefault = keywords[6];
+                    String defaultVal =  keywords[7];
+                    if(hasDefault.equals("DEFAULT")){
+                        alterAdd(tableName, attrName, type, typeSize, true, true, defaultVal);
+                    }
+                }
+                else if(keywords.length == 9){
+                    String condition1 = keywords[6];
+                    String condition2 = keywords[7];
+                    String defaultVal = keywords[8];
+                    if(!condition1.equals("NOTNULL") || !condition2.equals("DEFAULT")){
+                        throw new Exception("Invalid command");
+                    }
+                    alterAdd(tableName, attrName, type, typeSize, false, true, defaultVal);
+                }
+                else{
+                    throw new Exception("Invalid command");
+                }
+            }
+            else{
+                throw new Exception("Invalid command");
+            }
+        } catch(Exception e){
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
     // Creates a database schema in the catalog
-    public void createTable(String tableName, String attr, String type, String[] constraints){
-        // check if table exists in catalog
-        // if so, display error
-        // if not, use catalog to create schema and add it to catalog
+    public void createTable(String tableName, String[] attr, Type[] type, int[] typeSize, String[] constraints){
+        // Checking if table already exists
+        if(Catalog.GetSchema(tableName) != null){
+            System.out.println("Table: " + tableName + " already exists");
+            return;
+        }
+        try{
+            // Creating new table schema
+            Schema schema = Catalog.AddSchema(tableName);
+            // Populating table schema with attributes
+            for(int i = 0; i < attr.length; i++){
+                boolean nullable = false;
+                boolean primary = false;
+                boolean unique = false;
+                if(constraints != null && constraints[i] != null){
+                    for(String c : constraints[i].split(" ")){
+                        switch(c){
+                            case "NULLABLE":
+                                nullable = true;
+                                break;
+                            case "PRIMARY":
+                                primary = true;
+                                break;
+                            case "UNIQUE":
+                                unique = true;
+                                break;
+                        }
+                    }
+                }
+                schema.AddAttribute(attr[i], type[i], typeSize[i], nullable, primary, unique);
+            }
+        } catch(Exception e){
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     // Selects and displays all data from a table
     public void select(String tableName){
-        // use catalog to get location of data in database
-        // when page/pages containing table data are found,
-        // read all the data one page at a time
-        // display all data in nice format
+        Schema schema = Catalog.GetSchema(tableName);
+        if(schema == null){
+            System.out.println("Table: " + tableName + " does not exist");
+            return;
+        }
 
-        // is buffer manager used instead of finding/reading data manually?
+        // Must get page that table is stored in
+        // iterate through records in page and display them
+        // if there are more pages, continue getting subsequent pages
+        // (Page object needs pointer/pageID of next page? or page pointers stored somewhere else?)
+        // display their records until no more pages
+        // Question: How to get page location of tableName? Where do we plan to store this info?
+        Page page = bufferManager.getPage(schema.pageId);
+        int numOfRecords = page.getNumOfRecords();
+        for(int i = 0; i < numOfRecords; i++){
+            Record record = page.retrieveRecord(i);
+            // TODO: display record data somehow
+        }
     }
 
     // Inserts a record into a table
-    public void insert(String tableName, String[] values){
-        // check catalog to see if table exists
-        // if it doesn't exist, print error message
-        // otherwise, use buffer manager to get data and add record to it
+    public void insert(String tableName, ArrayList<String> values){
+        Schema schema = Catalog.GetSchema(tableName);
+        if(schema == null){
+            System.out.println("Table: " + tableName + " does not exist");
+            return;
+        }
+
+        // Validate that values are of correct data type for table schema
+        // Create record using data
+        // Get page from buffer manager, insert record into page
+        // Repeat for all given rows
+        // Question: how are values given if table has more than one attribute? Space separated?
+        for(String row : values){
+            return;
+        }
     }
 
     // Removes table and all of its data from database, removes schema from catalog
-    public void drop(String tableName){
-        // call buffer manager to get data from database
-        // delete all data
-        // call catalog to delete schema from catalog
+    public void dropTable(String tableName){
+        Schema schema =  Catalog.GetSchema(tableName);
+        if(schema == null){
+            System.out.println("Table: " + tableName + " does not exist");
+            return;
+        }
+
+        // Should remove table data from database once functionality is done?
+        Page page = bufferManager.getPage(schema.pageId);
+        int nextPageId = page.getNextPageId();
+        storageManager.markFreePage(pageId);
+        while(nextPageId != -1){
+            page = bufferManager.getPage(nextPageId);
+            nextPageId = page.getNextPageId();
+            storageManager.markFreePage(page.getPageId());
+        }
+
+        Catalog.RemoveSchema(tableName);
     }
 
     // Adds an attribute to a table
-    public void alterAdd(String tableName, String attrName, Type type, Boolean notNull, String value){
-        // get schema from catalog, add new attribute with specifications given
+    public void alterAdd(String tableName, String attrName, Type type, int typeSize, Boolean nullable, Boolean hasDefault, String defaultVal){
+        // Get schema from catalog, add new attribute with specifications given
+        Schema schema = Catalog.GetSchema(tableName);
+        if(schema == null){
+            System.out.println("Table: " + tableName + " does not exist");
+            return;
+        }
+        try{
+            // Tries to add an attribute to the schema
+            // TODO: Should prob make sure defaultVal matches type?
+            schema.AddAttribute(attrName, type, typeSize, nullable, hasDefault, defaultVal);
+        } catch(Exception e){
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     // Removes an attribute from a table
     public void alterDrop(String tableName, String attrName){
-        // get schema from catalog, delete attribute from it
+        // Get schema from catalog, delete attribute from it
+        Schema schema = Catalog.GetSchema(tableName);
+        if(schema == null){
+            System.out.println("Table: " + tableName + " does not exist");
+            return;
+        }
+        try{
+            schema.RemoveAttribute(tableName);
+        } catch(Exception e){
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 }

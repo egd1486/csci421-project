@@ -1,10 +1,12 @@
 package StorageManager;
 
 import Common.Page;
+import Common.Slot;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.ArrayList;
 
 public class StorageManager {
     private String filepath; //? directory path
@@ -61,14 +63,42 @@ public class StorageManager {
         // return page? page number?
     }
 
-    //read binary data
     public Page readPage(int pageNumber) {
-        return new Page(pageNumber);
+        byte[] pageData = new byte[pageSize];
+        try (RandomAccessFile file = new RandomAccessFile(filepath + "/database.txt","r"))
+        {
+            file.seek(pageNumber*this.pageSize);
+            file.readFully(pageData);
+        }
+        catch (IOException e)
+        {
+            System.err.println(e);
+        }
+        int recordCount = 0;
+        ArrayList<Slot> slots = new ArrayList<Slot>();
+        ArrayList<Record> records = new ArrayList<Record>();
+        int usedSpace=0;
+        //! Read the page
+
+
+        //return new Page(pageNumber, pageData);
+        return new Page(this.pageSize, recordCount, slots, records, pageNumber, usedSpace);
     }
 
     //write binary data
     public void writePage(int pageNumber, byte[] data) {
-
+        try (RandomAccessFile file = new RandomAccessFile(filepath + "/database.txt","rw"))
+        {
+            file.seek(pageNumber*pageSize);
+            for (int i = 0; i < data.length; i++)
+            {
+                file.write(data[i]);
+            }
+        }
+        catch (IOException e)
+        {
+            System.err.println(e);
+        }
     }
 
     public void markFreePage(int pageNumber) {
