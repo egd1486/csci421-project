@@ -1,201 +1,145 @@
 package Common;
 
-// import java.lang.Record;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
+
+/**
+ * Page:
+ * Contains a list of binary data which are objects
+ * pageId - Unique Identifier
+ * next_page_id - A Linkage between pages
+ * bytes[] - Page data
+ * 
+ * Bytes Contain a header for like numslots and freespaceptr
+ * 
+ * 
+ * How does the Data would look like: Slotted Page
+ * BASICALLLLLLLY its bytes = [Header | Pointers | Free Space | Records] TADAH SLOTTED PAGE APPROACH
+ */
 public class Page {
-    private int pageSize; //given by user
-    private int numOfRecords;
-    // private int endOfFreeSpace; 
-    // private int recordIdx; //where next record goes
-    private ArrayList<Slot> slots; //<Size of record, Location>
-    private ArrayList<Record> records;
-    // private byte[] pageData;
     private int pageId;
+    private byte[] bytes;
+    private int next_page_id;
+    private boolean is_dirty;
+    private long time;
 
-    private int usedSpace; 
-
-    private static final int HEADER_SIZE = Integer.BYTES  * 2; //numOfRecords (int = 4 bytes) + endOfFreeSpace (int = 4 bytes) 
+    private static final int HEADER_SIZE = Integer.BYTES  * 2; //numOfRecords (int = 4 bytes) + freeptr (int = 4 bytes) 
     private static final int SLOT_ENTRY_SIZE = Integer.BYTES * 2; //offset size (int = 4 bytes) + length size (int = 4 bytes) 
 
-    //Create a new empty page
-    public Page(int pageSize) {
-        this.pageSize = pageSize;
-        this.numOfRecords = 0;
-        // this.endOfFreeSpace = pageSize; // no records at first so it would start at end of pageSize
-        // this.recordIdx = 0;
-        this.slots = new ArrayList<Slot>();
-        this.records = new ArrayList<Record>();
-        this.usedSpace = HEADER_SIZE; //cuz all pages have headers
+    public Page(int pageID, int pageSize){
+        this.pageId = pageID;
+        this.bytes = new byte[pageSize];
+        is_dirty = false;
+        time = System.currentTimeMillis();
+       
+        write_int(0, 0);
+        write_int(4, pageSize);
+
     }
 
-    //reconstruct a page from deserialized data - used by storage manager
-    public Page(int pageSize, int numOfRecords, ArrayList<Slot> readSlots,
-                            ArrayList<Record> readRecords, int pageId, int usedSpace) {
-        this.pageSize = pageSize;
-        this.numOfRecords = numOfRecords;
-        // this.endOfFreeSpace = endOfFreeSpace; 
-        // this.recordIdx = recordIdx;
-        this.slots = readSlots;
-        this.pageId = pageId;
-        this.usedSpace = usedSpace;
-        this.records = readRecords;
+    /**
+     * These helper functions are here to help me write numbers in byte array since im really lazy to hardcode it
+     */
+
+    private void write_int(int where, int number){
+        ByteBuffer.wrap(bytes, where, Integer.BYTES).putInt(number);
     }
 
-    public void setPageId(int pageId) {
-        this.pageId = pageId;
+    private int read_int(int where){
+        return ByteBuffer.wrap(bytes, where, Integer.BYTES).getInt();
     }
 
-    public Record retrieveRecord(int slotNumber) {
-        //validate slot number - in range? slot existing?
-        int slotSize = slots.size();
-        if ((slotNumber >= slotSize) || (slotNumber < 0)) { //slot num in range
-            //throw error gracefully
-        } 
-        Slot slotInfo = slots.get(slotNumber); //get the slot at slot number
-        int recordIdx = slotInfo.getRecordIdx(); //get current record index from slot
-        if (recordIdx == -1) {  //dead slot?
-            //throw error gracefully
+    /**
+     * Insert a row of data into the page byte array
+     * @param row Data we're entering 
+     */
+    public int insert(Byte[] row){
+        int numslots = read_int(0); //Getting Number of Slots
+        int free_ptr = read_int(4); //Getting the Free Pointer
+
+        int calculate_slot_index = HEADER_SIZE + (numslots * SLOT_ENTRY_SIZE); // We calculate this because we already have the HEADER at the beginning and we need Slot entry size for (Offset, Length) at the end of each row data
+        int check_space = free_ptr - calculate_slot_index; // We check if can even fit the data
+
+        if((row.length + SLOT_ENTRY_SIZE) > check_space){ 
+            //TODO: Split Page work on it later
+            return -1; 
         }
-        Record record = records.get(recordIdx);
-        if (record == null) { //record exist?
-            //throw error gracefully
+
+        //Write stuff in offset
+        int offset = free_ptr - row.length; //We find 
+        int nextpos = offset;
+        for(byte bit : row){
+            bytes[nextpos++] = bit;
         }
-        return record;
+
+        //Now to store (offset,length) :(
+        int next_slot_index = HEADER_SIZE + numslots * SLOT_ENTRY_SIZE; 
+        write_int(next_slot_index, offset); //Offset
+        write_int(next_slot_index + 4, row.length); //Length
+
+        write_int(0, numslots + 1); //Next slot 
+        write_int(4, offset); //what offset we got left
+        
+        return numslots; //Return ID of the slot
     }
 
-    public int insertRecord(Record newRecord) {
-        int recordLength = newRecord.getRecordLength();
-        if (checkEnoughFreeSpace(recordLength)) {
-            records.add(newRecord);
-            int recordIdx = records.size()-1;
-            Slot newSlot = new Slot(recordLength, recordIdx);
-            slots.add(newSlot);
-            numOfRecords++;
-            int slotNumber = slots.size() -1;
-            usedSpace += SLOT_ENTRY_SIZE + recordLength;
-            return slotNumber; 
-        } else {
-            // create new page? throw error?
-            return -1;
+    /**
+     * Slot-Data returns the data by the slot_ID from the page bytes array
+     * @param slotid where we looking at chat?
+     * @return the data we looking at chat
+     */
+    public byte[] read_slot_data(int slotid){
+        
+        int slot_pos = HEADER_SIZE + (slotid * SLOT_ENTRY_SIZE); 
+        int offset = read_int(slot_pos); //we get offset
+        int length = read_int(slot_pos+4); //We get length
+
+        byte[] data_return = new byte[length];
+        for(int i = offset; i < length; i++){
+            bytes[i] = data_return[offset - i];
         }
-        //cases: page full
+        return data_return;
     }
 
-    public boolean deleteRecord(int slotNumber) {
-        //validate slotnumber
-        int slotSize = slots.size();
-        if ((slotNumber >= slotSize) || (slotNumber < 0)) {
-            //throw error gracefully
-            return false;
-        } 
-        Slot currSlot = slots.get(slotNumber);
-        int recordIdx = currSlot.getRecordIdx();
-        if (recordIdx == -1) {  //dead slot already?
-            //throw error gracefully
-            return false;
-        }
-        Record record = records.get(recordIdx);
-        if (record == null) {
-            //throw error gracefully
-        }
+    // === Setter Functions ===
 
-        //mark slot as deleted 
-        currSlot.setRecordIdx(-1);
-        //update used space
-        int recordLength = record.getRecordLength();
-        usedSpace -= recordLength; //slot space stays as it is 
-        //set  the record to null in array list 
-        records.set(recordIdx, null);
-        numOfRecords--;
-        return true;
+    public void set_nextpageid(int num){
+        next_page_id = num;
     }
 
-    // update record
-    public boolean updateRecord(int slotNumber, Record newRecord) {
-        //validate slot number
-        int slotSize = slots.size();
-        if ((slotNumber >= slotSize) || (slotNumber < 0)) { 
-            //throw error gracefully
-            return false;
-        } 
-        Slot slotInfo = slots.get(slotNumber);
-        int recordIdx = slotInfo.getRecordIdx();
-        if (recordIdx == -1) {  //dead slot?
-            //throw error gracefully
-            return false;
-        }
-        Record currRecord = records.get(recordIdx);
-        if (currRecord == null) {
-            //throw error gracefully
-            return false;
-        }
-
-        //compare sizes and replace record
-        int newRecordLength = newRecord.getRecordLength();
-        int currRecordLength = currRecord.getRecordLength();
-        // old size == new size, overwrite old record
-        if (currRecordLength == newRecordLength) {
-            records.set(recordIdx, newRecord);
-        } else if (currRecordLength > newRecordLength) {
-            // old size > new size, overwrite record, update slot length
-                //! how to deal with hole - leave it or compress it 
-                //!gonna leave it
-            records.set(recordIdx, newRecord);
-            //update slot length 
-            slotInfo.setRecordLength(newRecordLength);
-        } else if (currRecordLength < newRecordLength) {
-            // old size < new size, 
-                // ! 1)delete old, insert new, 2)delete and shift to make room, 3)throw error if not enough free space ???
-                //!goes to delete old and insert new 
-            if (checkEnoughFreeSpace(newRecordLength - currRecordLength)) {
-                records.set(recordIdx, null);
-                records.add(newRecord);
-                slotInfo.setRecordIdx(records.size()-1); //last inserted record
-                //update slot length
-                slotInfo.setRecordLength(newRecordLength);
-            } else {
-                //not enough free space
-                return false;
-            }
-        }
-        //slot stays the same
-        usedSpace -= currRecordLength;
-        usedSpace += newRecordLength;
-        return true;
+    public void set_pagedata(byte[] data){
+        this.bytes = data;
     }
 
-    //enough free space to insert?
-    //need enough space for record data and new slot entry 
-    public boolean checkEnoughFreeSpace(int recordLength) {
-        int slotsSize = (slots.size() + 1) * SLOT_ENTRY_SIZE; // +1 for new slot
-        int recordsSize = 0;
-        for (Record r : records) { //get all record sizes
-            if (r != null) {
-                recordsSize += r.getRecordLength();
-            }
-        }
-        recordsSize += recordLength; //add new record size
-        int totalSize = HEADER_SIZE + slotsSize + recordsSize;
-        return totalSize <= pageSize;
+    public void set_isdirty(boolean type){
+        is_dirty = type;
     }
 
-    // public int calculateEndOfSlotDirectory() {
-    //     int endOfSlotDirectory = HEADER_SIZE + (numOfRecords * SLOT_ENTRY_SIZE); 
-    //     return endOfSlotDirectory;
-    // }
+    // === Getter Functions ===
 
-    // public int getPageId() {
-    //     return pageId;
-    // }
+    public long set_time(){
+        return time;
+    }
 
-    // public byte[] getPageData() {
-    //     return pageData;
-    // }
-    
-    // for inserting slot for a record
-    // public int calculateRecordOffset(int recordLength) {
-    //     return endOfFreeSpace - recordLength;
-    // }
+    public int get_next_pageid(){
+        return next_page_id;
+    }
+
+    public byte[] get_data(){
+        return bytes;
+    }
+
+    public int get_pageid(){
+        return pageId;
+    }
+
+    public long get_page_life(){
+        return time;
+    }
+
+    public boolean check_dirty(){
+        return is_dirty;
+    }
 
 }

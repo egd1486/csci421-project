@@ -25,114 +25,79 @@ public class BufferManager {
 
     public static int BufferSize;
 
-    private final Frame[] buffer;
-    private final Map<Integer, Frame> mapId = new HashMap<>();
-    private final StorageManager storageManager; // What database we editing
+    private final Page[] buffer;
+    private final Map<Integer, Page> mapId = new HashMap<>();
 
-    public BufferManager(int set_buffer_size, StorageManager storageManager) {
-        this.storageManager = storageManager;
-        buffer = new Frame[set_buffer_size];
+    public BufferManager(int set_buffer_size) {
+        buffer = new Page[set_buffer_size];
         BufferSize = set_buffer_size;
     }
 
     /**
-     * Load page from disk
-     * @param pageId who we readin
-     * @return what we readin
+     * LRU remove the page who have the highest time and return the page to modify
+     * @return page with the highest time to evict
      */
-    public Page loadPagefromDisk(int pageId){
-        try(RandomAccessFile db = new RandomAccessFile(storageManager.getFilename(), "r")){
-            int index = storageManager.getPageSize() * pageId;
-            byte[] data = new byte[storageManager.getPageSize()];
-            db.seek(index);
-            db.readFully(data); //what we're reading :)
-
-            return new Page(pageId, data);
-        } catch (IOException e){
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    /**
-     * we're writing page to disk
-     * @param page we gotta write this shyte to the disk
-     *
-     */
-    public void writePage(Page page){
-        try(RandomAccessFile db = new RandomAccessFile(storageManager.getFilename(), "rw")) {
-            int index = storageManager.getPageSize() * page.getPageId(); //Without this we're always writing the beginning
-            db.seek(index);
-            db.write(page.getPageData());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * LRU remove the frame who have the smallest counter and return the frame to modify
-     * @return page with the smallest counter to evict
-     */
-    public Frame lru(){
-        int least_recent = -1;
-        for(Frame frame : buffer){
-            if(frame.counter < least_recent || least_recent == -1){
-                least_recent = frame.counter;
+    public int lru() throws IOException {
+        long highest_time = -1;
+        int removal_page = -1;
+        for(int i = 0; i < buffer.length; i++){
+            if(buffer[i].get_page_life() > highest_time){
+                highest_time = buffer[i].get_page_life();
+                removal_page = i;
             }
         }
-        Frame page_to_remove = buffer[least_recent];
-        if(page_to_remove.is_dirty){
-            writePage(page_to_remove.page);
+        Page page_to_remove = buffer[removal_page];
+
+        if(page_to_remove.check_dirty()){
+            StorageManager.writePage(page_to_remove.get_pageid(), page_to_remove.get_data());
         }
-        mapId.remove(page_to_remove.pageId);
-        return page_to_remove;
+        mapId.remove(page_to_remove.get_pageid());
+        return removal_page;
     }
 
     /**
      * GetPage checks if page is already in buffer
-     * if not find empty frame or evict LRU frame
-     * if evicted frame is dirty write back to disk and load new page into frame
+     * if not find empty page or evict LRU page
+     * if evicted page is dirty write back to disk
      * update map and return page
      * @return page
      */
-    public Page getPage(int pageId){
+    public Page getPage(int pageId) throws IOException {
 
         //If a map contains the page id then we return page
         if(mapId.containsKey(pageId)){
-            Frame frame = mapId.get(pageId);
-            frame.counter = frame.counter + 1;
-            return frame.page;
+            Page page = mapId.get(pageId);
+            return page;
         }
 
-        //Else map doesn't contain id we find a freeframe considering at some point in random index a frame can be free
+        //Else map doesn't contain id we find a free page considering at some point in random index a frame can be free
         //due to removal of the page so linear scan O(N) check every index if we have empty page
-        Frame frame = null;
-        for(Frame check_frame : buffer){
-            if(check_frame.page == null){
-                frame = check_frame;
-                break;
+        for(Page check_page : buffer){
+            if(check_page == null){
+                return check_page;
             }
         }
 
-        //If the frame is full we do LRU method
-        //LRU: Everytime we use a frame we increment by 1 the smallest number is LRU
-        //This isn't optimal for a long use case because at some point we will go pass the size of a long
-        //LRU another method could use:
+        //LRU method:
         //Use System.time comparing the old time (least recently use) vs current time who ever have the largest is LRU
-        if(frame == null){
-            frame = lru();
+        Page page_from_disk = StorageManager.readPage(pageId);
+        buffer[lru()] = page_from_disk;
+        mapId.put(pageId, page_from_disk);
+        return page_from_disk;
+    }
+
+    /**
+     * Flush all the dirty pages down into memory
+     * @throws IOException
+     */
+    public void flush_all() throws IOException {
+        for(Page check_page : buffer){
+            if(check_page != null){
+              if(check_page.check_dirty()){
+                  StorageManager.writePage(check_page.get_pageid(), check_page.get_data());
+              }
+            }
         }
-
-//        Now if the frame is dirty as hell we put it back to the disk and load new page into frame
-//        TODO Create a Page Object and load page from disk
-        Page page = loadPagefromDisk(pageId);
-        frame.pageId = pageId;
-        frame.page = page;
-        frame.is_dirty = false;
-        frame.counter = frame.counter + 1;
-        mapId.put(pageId, frame);
-        return page;
-
     }
 
 

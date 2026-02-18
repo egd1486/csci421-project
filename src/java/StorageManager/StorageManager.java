@@ -1,36 +1,28 @@
 package StorageManager;
 
 import Common.Page;
-import Common.Slot;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.sql.Wrapper;
 import java.util.ArrayList;
+import java.util.Random;
+import java.util.Stack;
 
 public class StorageManager {
-    private String filepath; //? directory path
-    private int pageSize;
-    private String filename;
-    //private Database database;
-
-
-    // ! how to represent pages in file
-    // ! how do we delete/insert pages
-    // ! keep track of free/used pages 
-
-    // ! how to keep track of total pages in the file?
-
-    //random file access
-
-    //FreePage Functionality: When catalog creates a table get a page index
+    private static int pageSize;
+    private static String filename;
+    private static int maximum_pages; // How many pages can fit in the database
+    private static int current_page; // What page is created
+    private static Stack<Integer> freepages;
 
     /**
      * Does Database file exist
      * @param database_filename The name of the databse we finding
      * @return database exist?
      */
-    public boolean doDatabaseFileExist(String database_filename) {
+    public static boolean doDatabaseFileExist(String database_filename) {
         File database_file = new File(database_filename);
         if(database_file.exists()){
             return true;
@@ -45,9 +37,12 @@ public class StorageManager {
      * @param database_name The name of the database
      * @param byte_size the size of teh database
      */
-    public void createDatabaseFile(String database_name, int byte_size) {
+    public static void createDatabaseFile(String database_name, int byte_size, int page_size) {
         try(RandomAccessFile database_access = new RandomAccessFile(database_name,"rw")){
             byte[] database = new byte[byte_size];
+            maximum_pages = byte_size / page_size;
+            filename = database_name;
+            pageSize = page_size;
             database_access.write(database);
         }catch(IOException e) {
             e.printStackTrace();
@@ -55,86 +50,63 @@ public class StorageManager {
     }
 
     /**
-     * Idk the use case of this yet - Jason Ha
+     * Create page first checks if they're available free pages 
+     * If there's no free pages we first check if the current_page exceed maximum page if so its full return -1
+     * @return id or -1 if its full
      */
+    public static int create_page(){
+        if(!(freepages.isEmpty())){
+            return freepages.pop();
+        }
 
-    public void createPage() {
-        // what params does it need
-        // return page? page number?
+        if(current_page > maximum_pages){
+            return -1; // Database is full
+        }
+        return current_page++;
     }
 
-    public Page readPage(int pageNumber) {
-        byte[] pageData = new byte[pageSize];
-        try (RandomAccessFile file = new RandomAccessFile(filepath + "/database.txt","r"))
-        {
-            file.seek(pageNumber*this.pageSize);
-            file.readFully(pageData);
-        }
-        catch (IOException e)
-        {
-            System.err.println(e);
-        }
-        int recordCount = 0;
-        ArrayList<Slot> slots = new ArrayList<Slot>();
-        ArrayList<Record> records = new ArrayList<Record>();
-        int usedSpace=0;
-        //! Read the page
-
-
-        //return new Page(pageNumber, pageData);
-        return new Page(this.pageSize, recordCount, slots, records, pageNumber, usedSpace);
+    /**
+     * Whenever we delete a page from memory instead of just removing and creating a hole in database we can just mark a pageid as free
+     * This way we can just replace it so we don't shift down <3
+     * @param pageId
+     */
+    public static void markfreepage(int pageId){
+        freepages.add(pageId);
     }
 
-    //write binary data
-    public void writePage(int pageNumber, byte[] data) {
-        try (RandomAccessFile file = new RandomAccessFile(filepath + "/database.txt","rw"))
-        {
-            file.seek(pageNumber*pageSize);
-            for (int i = 0; i < data.length; i++)
-            {
-                file.write(data[i]);
+
+    /**
+     * readPage reads the page data from a specific page number
+     * @param pageNumber what we readin chat
+     * @return A page that have the set of binary data we looking at
+     */
+    public static Page readPage(int pageNumber) throws IOException {
+        byte[] PageData = new byte[pageSize];
+        try(RandomAccessFile file = new RandomAccessFile(filename, "r")){
+            file.seek(pageNumber * pageSize);
+            file.readFully(PageData);
+        }
+        Page new_page = new Page(pageNumber, pageNumber);
+        new_page.set_pagedata(PageData);
+        return new Page(pageNumber, pageSize);
+    }
+
+    /**
+     * WritePage writes the page into disk
+     * @param pageNumber what page
+     * @param objects list of objects 
+     * @throws IOException self-explantory
+     */
+    public static void writePage(int pageNumber, byte[] data) throws IOException {
+       try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
+            file.seek(pageNumber * pageSize);
+            for(byte each_byte : data){
+                file.write(each_byte);
             }
-        }
-        catch (IOException e)
-        {
-            System.err.println(e);
-        }
+       }
     }
 
-    public void markFreePage(int pageNumber) {
-        // when "deleting page" mark as free
-    }
-
-    public void markUsedPage(int pageNumber) {
-        //mark as used
-    }
-
-    public int getNumPages() {
-        return -1;
-    }
-
-    public int calculatePageOffset(int pageNumber) {
-        // pageSize * pageNumber = where does page start
-        return -1;
-    }
-
-    public boolean hasFreePages() {
-        return false;
-    }
-
-    public int getNextFreePage() {
-        // where next free page?
-        return -1; //page number
-    }
-
-
-    public void openDatabaseFile() {
-
-    }
-
-    public void closeDatabaseFile() {
-
-    }
+    // === Getter Functions ===
 
     public String getFilename() {
         return filename;
