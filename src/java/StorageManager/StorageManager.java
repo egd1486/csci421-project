@@ -3,10 +3,10 @@ package StorageManager;
 import Common.Page;
 import Common.Record;
 import Common.Slot;
-import java.util.ArrayList;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.ArrayList;
 
 public class StorageManager {
     private String filepath; //? directory path
@@ -76,7 +76,7 @@ public class StorageManager {
         ArrayList<Slot> slots = new ArrayList<Slot>();
         ArrayList<Record> records = new ArrayList<Record>();
         int usedSpace=0;
-        //
+        //! Read the page
 
 
         //return new Page(pageNumber, pageData);
