@@ -24,7 +24,7 @@ public class Page {
     private boolean is_dirty;
     private long time;
 
-    private static final int HEADER_SIZE = Integer.BYTES  * 2; //numOfRecords (int = 4 bytes) + freeptr (int = 4 bytes) 
+    private static final int HEADER_SIZE = Integer.BYTES  * 2; //numslots (int = 4 bytes) + freeptr (int = 4 bytes) 
     private static final int SLOT_ENTRY_SIZE = Integer.BYTES * 2; //offset size (int = 4 bytes) + length size (int = 4 bytes) 
 
     public Page(int pageID, int pageSize){
@@ -33,8 +33,8 @@ public class Page {
         is_dirty = false;
         time = System.currentTimeMillis();
        
-        write_int(0, 0);
-        write_int(4, pageSize);
+        write_int(0, 0); //numslots
+        write_int(4, pageSize); //freePtr
 
     }
 
@@ -96,8 +96,8 @@ public class Page {
         int length = read_int(slot_pos+4); //We get length
 
         byte[] data_return = new byte[length];
-        for(int i = offset; i < length; i++){
-            bytes[i] = data_return[offset - i];
+        for(int i = 0; i < length; i++){
+            data_return[i] = bytes[offset + i];
         }
         return data_return;
     }
@@ -118,7 +118,11 @@ public class Page {
 
     // === Getter Functions ===
 
-    public long set_time(){
+    public void set_time(long newTime){
+        this.time = newTime;
+    }
+
+    public long get_time(){
         return time;
     }
 
