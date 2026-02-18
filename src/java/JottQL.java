@@ -44,11 +44,11 @@ public class JottQL{
         else{
             System.out.println("No database found. Creating new database...");
             storageManager = new StorageManager(dbLocation, pageSize);
-            storageManager.createDatabaseFile();
+            //storageManager.createDatabaseFile();
         }
 
         BufferManager bufferManager = new BufferManager(bufferSize,storageManager);
-        Parser parser =  new Parser(bufferManager);
+        Parser parser =  new Parser(bufferManager, storageManager);
 
         // Entering infinite loop and prompting for JottQL commands
         Scanner scanner = new Scanner(System.in);
