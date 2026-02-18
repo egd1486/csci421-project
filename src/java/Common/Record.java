@@ -5,21 +5,9 @@ import java.util.ArrayList;
 class Record {
    private ArrayList<Object> data;
 
-
-   
-   public byte[] serialize(Table schema) {
-      return new byte[0];
-   }
-
-   public Record deserialize(byte[] bytes, Table schema) {
-      return new Record();
-   }
-
-   //in bytes
+   //need schema 
    public int getRecordLength() {
-      //serialize then get length
       return -1;
    }
-   
    
 }
