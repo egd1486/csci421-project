@@ -29,6 +29,7 @@ public class Page {
 
     public Page(int pageID){
         this.pageId = pageID;
+        this.bytes = new byte[pageSize];
         is_dirty = false;
         time = System.currentTimeMillis();
     }
@@ -81,7 +82,7 @@ public class Page {
         //Compute the size of what we currently have
         for(List<Object> row : data){
             for(Object object : row){
-                
+
             }
         }
     }

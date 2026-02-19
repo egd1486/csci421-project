@@ -142,6 +142,7 @@ public class StorageManager {
             filename = database_name;
             pageSize = page_size;
             database_access.write(database);
+            freepages = new Stack<Integer>();
         }catch(IOException e) {
             e.printStackTrace();
         }
