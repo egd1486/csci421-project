@@ -5,19 +5,119 @@ import Common.Page;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Stack;
+import java.nio.ByteBuffer;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+
+import static Common.Page.HEADER_SIZE;
 
 public class StorageManager {
     private static int pageSize;
     private static String filename;
-    private static int current_page; // What page is created
+    private static int page_counter; // What page is created
     private static Stack<Integer> freepages;
 
+
+
+
+    private byte[] write_int(int where, int number, byte[] data){
+        ByteBuffer.wrap(data, where, Integer.BYTES).putInt(number);
+        return data;
+    }
+
+    private int read_int(int where, byte[] data){
+        return ByteBuffer.wrap(data, where, Integer.BYTES).getInt();
+    }
+
+    /**
+     * Insert a row of data into the page byte array
+     * @param row Data we're entering
+     */
+    public boolean insert_data(byte[] row){
+        int numslots = read_int(0); //Getting Number of Slots
+        int free_ptr = read_int(4); //Getting the Free Pointer
+
+        int calculate_slot_index = HEADER_SIZE + (numslots * SLOT_ENTRY_SIZE); // We calculate this because we already have the HEADER at the beginning and we need Slot entry size for (Offset, Length) at the end of each row data
+        int check_space = free_ptr - calculate_slot_index; // We check if can even fit the data
+
+        if((row.length + SLOT_ENTRY_SIZE) > check_space){
+            //TODO: Split Page work on it later
+            return -1;
+        }
+
+        //Write stuff in offset
+        int offset = free_ptr - row.length; //We find
+        int nextpos = offset;
+        for(byte bit : row){
+            bytes[nextpos++] = bit;
+        }
+
+        //Now to store (offset,length) :(
+        int next_slot_index = HEADER_SIZE + numslots * SLOT_ENTRY_SIZE;
+        write_int(next_slot_index, offset); //Offset
+        write_int(next_slot_index + 4, row.length); //Length
+
+        write_int(0, numslots + 1); //Next slot
+        write_int(4, offset); //what offset we got left
+
+        return numslots; //Return ID of the slot
+    }
+
+    /**
+     * Encoder we get the data from page, and we make it to binary format
+     * How does the Data would look like: Slotted Page
+     * BASICALLLLLLLY its bytes = [Header | Pointers | Free Space | Records] TADAH SLOTTED PAGE APPROACH
+     * @param page
+     * @return
+     */
+    public boolean serializePage(Page page) throws IOException{
+
+        byte[] whole_data = new byte[pageSize];
+
+        for(List<Object> row : page.get_data()){
+            ByteArrayOutputStream byte_array = new ByteArrayOutputStream();
+            DataOutputStream dos = new DataOutputStream(byte_array);
+            for(Object obj : row){
+                switch (obj) {
+                   case null -> dos.writeByte(0);
+                   case Integer i -> {
+                       dos.writeByte(1);
+                       dos.writeInt(i);
+                   }
+                   case Boolean b -> {
+                       dos.writeByte(2);
+                       dos.writeBoolean(b);
+                   }
+                   case String s -> {
+                       dos.writeByte(3);
+                       byte[] bytes = s.getBytes();
+                       dos.writeInt(bytes.length);
+                       dos.write(bytes);
+                   }
+                   case Character c -> {
+                       dos.writeByte(4);
+                       dos.writeChar(c);
+                   }
+                   case Double v -> {
+                       dos.writeByte(5);
+                       dos.writeDouble(v);
+                   }
+                   default -> {
+                       System.out.println("Invalid data object: " + obj + " Serialize Function Line 72");
+                   }
+                }
+                byte[] data = byte_array.toByteArray();
+           }
+        }
+    }
 
     /**
      * Creates Database File, or Reads existing one.
      * @param database_name The name of the database
-     * @param byte_size the size of teh database
+     * @param page_size the size of teh database
      */
     public static void initializeDatabaseFile(String database_name, int page_size) {
         // First check if the file exists
@@ -56,7 +156,7 @@ public class StorageManager {
         if(!(freepages.isEmpty())){
             return freepages.pop();
         }
-        return current_page++;
+        return page_counter++;
     }
 
     /**
@@ -68,7 +168,6 @@ public class StorageManager {
         freepages.add(pageId);
     }
 
-
     /**
      * readPage reads the page data from a specific page number
      * @param pageNumber what we readin chat
@@ -77,13 +176,22 @@ public class StorageManager {
     public static Page readPage(int pageNumber) throws IOException {
         byte[] PageData = new byte[pageSize];
         try(RandomAccessFile file = new RandomAccessFile(filename, "r")){
-            file.seek(pageNumber * pageSize);
+            file.seek((long) pageNumber * pageSize);
             file.readFully(PageData);
         }
-        Page new_page = new Page(pageNumber, pageNumber);
-        new_page.set_pagedata(PageData);
+        Page new_page = new Page(pageNumber);
+
+
+
+
+
+        new_page.set_data(PageData);
         return new Page(pageNumber, pageSize);
     }
+
+
+
+
 
     /**
      * WritePage writes the page into disk
@@ -91,9 +199,10 @@ public class StorageManager {
      * @param objects list of objects 
      * @throws IOException self-explantory
      */
-    public static void writePage(int pageNumber, byte[] data) throws IOException {
+    public static void writePage(int pageNumber, ArrayList<List<Object>> data) throws IOException {
        try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
-            file.write(data, pageNumber * pageSize, pageSize);
+           //Serialize it into bytes and then write it
+          //file.write(data, pageNumber * pageSize, pageSize);
        }
     }
 

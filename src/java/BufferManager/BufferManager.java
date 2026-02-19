@@ -65,15 +65,16 @@ public class BufferManager {
 
         //If a map contains the page id then we return page
         if(mapId.containsKey(pageId)){
-            Page page = mapId.get(pageId);
-            return page;
+            return mapId.get(pageId);
         }
 
         //Else map doesn't contain id we find a free page considering at some point in random index a frame can be free
         //due to removal of the page so linear scan O(N) check every index if we have empty page
         for(Page check_page : buffer){
             if(check_page == null){
-                return check_page;
+                Page adding_new_page = new Page(pageId);
+                mapId.put(pageId, adding_new_page);
+                return adding_new_page;
             }
         }
 
