@@ -19,7 +19,8 @@ import java.util.ArrayList;
  */
 public class Page {
     private int pageId;
-    private byte[] bytes;
+    // private byte[] bytes;
+    // private ArrayList<ArrayList<Object>> records;
     private int next_page_id;
     private boolean is_dirty;
     private long time;

@@ -25,7 +25,7 @@ public class StorageManager {
 
         if (database_file.exists()) {
             System.out.println("Database found. Restarting database...");
-            // TODO: Read existing database constants
+            // TODO: Read existing database constants - read last pageSize and schema stored ?
 
             System.out.println("Ignoring provided page size. Using prior size of ____...");
 
@@ -40,6 +40,7 @@ public class StorageManager {
             byte[] database = new byte[page_size];
             filename = database_name;
             pageSize = page_size;
+            freepages = new Stack<Integer>();
             database_access.write(database);
         }catch(IOException e) {
             e.printStackTrace();
