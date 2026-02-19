@@ -1,7 +1,6 @@
 package StorageManager;
 
 import Common.Page;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -80,9 +79,9 @@ public class StorageManager {
             file.seek(pageNumber * pageSize);
             file.readFully(PageData);
         }
-        Page new_page = new Page(pageNumber, pageNumber);
+        Page new_page = new Page(pageNumber, pageSize);
         new_page.set_pagedata(PageData);
-        return new Page(pageNumber, pageSize);
+        return new_page;
     }
 
     /**
