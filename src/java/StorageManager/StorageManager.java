@@ -38,6 +38,8 @@ public class StorageManager {
         slotted_buffer.putInt(0, page.get_next_pageid());
         slotted_buffer.putInt(Integer.BYTES, numslots);
         slotted_buffer.putInt(Integer.BYTES * 2, free_ptr);
+
+        Type[] type = schema.GetTypes();
         for(List<Object> row : page.get_data()){
 
             ByteArrayOutputStream byte_array = new ByteArrayOutputStream();
@@ -45,27 +47,35 @@ public class StorageManager {
             BitSet bitmap = new BitSet(row.size());
 
             for(int index = 0; index < row.size(); index++){
-               switch(row.get(index)){
+               switch(type[index]){
                    case null -> bitmap.set(index);
 
-                   case Integer i -> {
-                       dos.writeInt(i);
+                   case INT -> {
+                       dos.writeInt((int) row.get(index));
                    }
 
-                   case Boolean b -> {
-                       dos.writeBoolean(b);
+                   case BOOLEAN -> {
+                       dos.writeBoolean((boolean) row.get(index));
                    }
 
-                   case Double d -> {
-                       dos.writeDouble(d);
+                   case DOUBLE -> {
+                       dos.writeDouble((double) row.get(index));
                    }
 
-                   case Character c -> {
-                       dos.writeChar(c);
+                   case CHAR -> {
+                       String string = (String) row.get(index);
+                       int length = schema.Attributes.get(index).typeLength;
+                       for(int i = 0; i < length; i++){
+                           dos.writeChar(string.charAt(i));
+                       }
                    }
 
-                   case String s -> {
-                       byte[] str = s.getBytes();
+                   case VARCHAR -> {
+                       byte[] str = ((String) row.get(index)).getBytes();
+                       free_ptr -= str.length;
+                       int str_offSet =  free_ptr;
+                       System.arraycopy(str, 0, slotted_page, str_offSet, str.length);
+
                        dos.writeInt(str.length);
                        dos.write(str);
                    }
@@ -88,7 +98,7 @@ public class StorageManager {
             slotted_buffer.putInt(slot_index + Integer.BYTES, row_data.length);
 
             slotted_buffer.putInt(Integer.BYTES, numslots);
-            slotted_buffer.putInt(Integer.BYTES * 2, free_ptr);
+            slotted_buffer.putInt(Integer.BYTES * 2, new_free_ptr);
         }
         return slotted_page;
     }
