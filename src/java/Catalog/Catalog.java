@@ -8,7 +8,7 @@ import StorageManager.StorageManager;
 
 public class Catalog {
     public static ArrayList<Schema> Schemas = new ArrayList<Schema>();
-    public static Schema AttributeTable;
+    public final static Schema AttributeTable;
 
     // Create the static Schema for reading the Catalog from the database.
     static {
@@ -26,7 +26,8 @@ public class Catalog {
             AttributeTable.AddAttribute("Unique", Type.BOOLEAN, 0, false, false, false, null);
             AttributeTable.AddAttribute("Primary", Type.BOOLEAN, 0, false, false, false, null);
             AttributeTable.AddAttribute("DefaultValue", Type.VARCHAR, 50, false, false, false, null);
-        } catch (Exception e) {}
+            
+        } catch (Exception e) {throw new ExceptionInInitializerError(e);}
     }
 
     public static Schema AddSchema(String Name) throws Exception {
