@@ -19,6 +19,7 @@ public class StorageManager {
     private static int page_counter; // What page is created
     private static Stack<Integer> freepages;
 
+    private static final int BOOLEAN_BYTES = 1; //hard coded since Boolean.BYTES dne
 
 
 
@@ -126,10 +127,10 @@ public class StorageManager {
         catch(Exception e){
             System.err.println(e);
         }
-        Page new_page = new Page(pageNumber);
+        // Page new_page = new Page(pageNumber);
         int numEntries = ByteBuffer.wrap(Arrays.copyOfRange(data, 0, Integer.BYTES)).getInt();
         int free_ptr= ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES, 2*Integer.BYTES)).getInt()+1;
-        int size;
+        int size; //char and varchar
         for (int index = 1; index <= numEntries; index++){
             int offset = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*2*index, Integer.BYTES*(2*index+1))).getInt();
             int length = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*(2*index+1), Integer.BYTES*(2*index+2))).getInt();
@@ -150,20 +151,19 @@ public class StorageManager {
                         offset += Integer.BYTES;
                         break;
                     case BOOLEAN:
-                        row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Boolean.BYTES+offset)).getInt());
-                        //! size of a Boolean? 
-                        offset += Boolean.BYTES;
+                        row.add(data[offset] == 1); //to get true or false
+                        offset += BOOLEAN_BYTES;
                         break;
-                    case CHAR:
-                        row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Character.BYTES+offset)).getInt());
+                    case CHAR: //!add size to copyOfRange so you get full char array?
+                        row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Character.BYTES+offset)).getChar());
                         size = 0; //! get length of attr from schema
                         offset+= size * Character.BYTES;
                         break;
                     case DOUBLE:
-                        row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Double.BYTES+offset)).getInt());
+                        row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Double.BYTES+offset)).getDouble());
                         offset += Double.BYTES;
                         break;
-                    case VARCHAR:
+                    case VARCHAR: //! offset = offset----location and location------size
                         int location = ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES+offset)).getInt();
                         size = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES+offset, 2*Integer.BYTES+offset)).getInt();
                         row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, location, size+location)).getInt(), size);
