@@ -105,14 +105,14 @@ public class BufferManager {
         //check if have empty slot in buffer to place new empty page
         for(Page check_page : buffer){
             if(check_page == null){
-                Page newEmptyPage = new Page(newPageId);
+                Page newEmptyPage = new Page(newPageId, schema);
                 mapId.put(newPageId, newEmptyPage);
                 return newEmptyPage;
             }
         }
 
         //no empty slot in buffer so evict one
-        Page newEmptyPage = new Page(newPageId);
+        Page newEmptyPage = new Page(newPageId, schema);
         buffer[lru()] = newEmptyPage;
         mapId.put(newPageId, newEmptyPage);
         return newEmptyPage;
