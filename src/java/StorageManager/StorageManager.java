@@ -12,15 +12,14 @@ import java.nio.ByteBuffer;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 
-import static Common.Page.HEADER_SIZE;
-
 public class StorageManager {
     private static int pageSize;
     private static String filename;
     private static int page_counter; // What page is created
     private static Stack<Integer> freepages;
 
-
+    private static final int HEADER_SIZE = Integer.BYTES  * 2; //numslots (int = 4 bytes) + freeptr (int = 4 bytes)
+    private static final int SLOT_ENTRY_SIZE = Integer.BYTES * 2; //offset size (int = 4 bytes) + length size (int = 4 bytes)
 
 
     private byte[] write_int(int where, int number, byte[] data){
@@ -73,10 +72,13 @@ public class StorageManager {
      * @param page
      * @return
      */
-    public boolean serializePage(Page page) throws IOException{
+    public boolean encoder(Page page) throws IOException{
 
-        byte[] whole_data = new byte[pageSize];
-
+        byte[] slotted_page = new byte[pageSize];
+        int numSlots = 0;
+        int free_ptr = pageSize-1;
+        int HEADER_SIZE = Integer.BYTES * 2 * (1 + numEntries);
+        slotted_page[0] =
         for(List<Object> row : page.get_data()){
             ByteArrayOutputStream byte_array = new ByteArrayOutputStream();
             DataOutputStream dos = new DataOutputStream(byte_array);

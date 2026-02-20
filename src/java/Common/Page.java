@@ -29,7 +29,7 @@ public class Page {
 
     public Page(int pageID){
         this.pageId = pageID;
-        this.bytes = new byte[pageSize];
+        data = new ArrayList<>();
         is_dirty = false;
         time = System.currentTimeMillis();
     }
