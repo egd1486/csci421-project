@@ -3,11 +3,31 @@ package Catalog;
 import java.util.ArrayList;
 
 import BufferManager.BufferManager;
-import Common.Page;
+import Common.*;
 import StorageManager.StorageManager;
 
 public class Catalog {
     public static ArrayList<Schema> Schemas = new ArrayList<Schema>();
+    public static Schema AttributeTable;
+
+    // Create the static Schema for reading the Catalog from the database.
+    static {
+        // This won't fail, but wrap it in a try catch so Java stops yelling at us.
+        try {
+            AttributeTable = new Schema("AttributeTable");
+            AttributeTable.PageId = 0;
+
+            AttributeTable.AddAttribute("Schema_Name", Type.VARCHAR, 50, false, false, false, null);
+            AttributeTable.AddAttribute("Start_Page", Type.INT, 50, false, false, false, null);
+            AttributeTable.AddAttribute("Attribute_Name", Type.VARCHAR, 50, false, true, false, null);
+            AttributeTable.AddAttribute("Type", Type.INT, 50, false, false, false, null);
+            AttributeTable.AddAttribute("Length", Type.INT, 50, false, false, false, null);
+            AttributeTable.AddAttribute("NotNull", Type.BOOLEAN, 50, false, false, false, null);
+            AttributeTable.AddAttribute("Unique", Type.BOOLEAN, 0, false, false, false, null);
+            AttributeTable.AddAttribute("Primary", Type.BOOLEAN, 0, false, false, false, null);
+            AttributeTable.AddAttribute("DefaultValue", Type.VARCHAR, 50, false, false, false, null);
+        } catch (Exception e) {}
+    }
 
     public static Schema AddSchema(String Name) throws Exception {
         // Check if Schema name is already in use
