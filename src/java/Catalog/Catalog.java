@@ -103,7 +103,9 @@ public class Catalog {
             }
             currPageId = currPage.get_next_pageid();
         }
-        newSchema.Insert(newData);
+        for(List<Object> row : newData){
+            newSchema.Insert(row);
+        }
         newSchema.setName(schemaName);
         RemoveSchema(oldSchema.Name);
     }
@@ -145,7 +147,9 @@ public class Catalog {
             }
             currPageId = currPage.get_next_pageid();
         }
-        newSchema.Insert(newData);
+        for(List<Object> row : newData){
+            newSchema.Insert(row);
+        }
         newSchema.setName(schemaName);
         RemoveSchema(oldSchema.Name);
     }

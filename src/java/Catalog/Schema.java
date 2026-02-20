@@ -151,7 +151,7 @@ public class Schema {
         }
     }
 
-    public void Insert(ArrayList<Object> Row) throws Exception {
+    public void Insert(List<Object> Row) throws Exception {
         Page P = BufferManager.getPage(this.PageId, this);
         int Next;
         // If there are no slots remaining, grab the next page until you find a spot.
