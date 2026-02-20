@@ -38,10 +38,11 @@ public class BufferManager {
      * @return page with the highest time to evict
      */
     public static int lru() throws IOException {
-        long highest_time = -1;
+        long highest_time = Long.MAX_VALUE;
         int removal_page = -1;
         for(int i = 0; i < buffer.length; i++){
-            if(buffer[i].get_page_life() > highest_time){
+            if (buffer[i] == null) continue;
+            if(buffer[i].get_page_life() < highest_time){
                 highest_time = buffer[i].get_page_life();
                 removal_page = i;
             }
@@ -65,33 +66,39 @@ public class BufferManager {
     public static Page getPage(int pageId, Schema schema) throws IOException {
 
         //If a map contains the page id then we return page
-        if(mapId.containsKey(pageId)){
-            return mapId.get(pageId);
+        Page return_page = mapId.get(pageId);
+        if(return_page != null){
+            return_page.set_newtime();
+            return return_page;
         }
 
+        // Get the page from disk
+        Page page_from_disk = StorageManager.readPage(pageId, schema);
+
         //Else map doesn't contain id we find a free page considering at some point in random index a frame can be free
-        //due to removal of the page so linear scan O(N) check every index if we have empty page
-        for(Page check_page : buffer){
-            if(check_page == null){
-                Page adding_new_page = new Page(pageId, schema);
-                mapId.put(pageId, adding_new_page);
-                return adding_new_page;
+        // due to removal of the page so linear scan O(N) check every index if we have empty page
+        for(int i = 0; i < buffer.length; i++){
+            if(buffer[i] == null){
+                buffer[i] = page_from_disk;
+                page_from_disk.set_newtime();
+                mapId.put(pageId, page_from_disk);
+                return page_from_disk;
             }
         }
 
         //LRU method:
         //Use System.time comparing the old time (least recently use) vs current time who ever have the largest is LRU
-        Page page_from_disk = StorageManager.readPage(pageId);
         buffer[lru()] = page_from_disk;
+        page_from_disk.set_newtime();
         mapId.put(pageId, page_from_disk);
         return page_from_disk;
     }
 
     /**
-    * GetEmptyPage - get an empty page
-    * check buffer for empty space, if none evict
-    * @return empty page
-    */
+     * GetEmptyPage - get an empty page
+     * check buffer for empty space, if none evict
+     * @return empty page
+     */
     public static Page getEmptyPage(Schema schema) throws IOException {
         int newPageId = StorageManager.create_page();
         //check if have empty slot in buffer to place new empty page
@@ -117,9 +124,9 @@ public class BufferManager {
     public static void flush_all() throws IOException {
         for(Page check_page : buffer){
             if(check_page != null){
-              if(check_page.check_dirty()){
-                  StorageManager.writePage(check_page.get_pageid(), check_page.get_data());
-              }
+                if(check_page.check_dirty()){
+                    StorageManager.writePage(check_page.get_pageid(), check_page.get_data());
+                }
             }
         }
     }

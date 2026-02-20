@@ -15,7 +15,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 
 public class StorageManager {
-    private static int pageSize;
+    public static int pageSize;
     private static String filename;
     private static int page_counter; // What page is created
     private static Stack<Integer> freepages;
@@ -69,7 +69,7 @@ public class StorageManager {
                        dos.writeInt(str.length);
                        dos.write(str);
                    }
-                   default -> System.out.println("what the hell is this: " + row.get(i));
+                   default -> System.out.println("what the hell is this: " + row.get(index));
                }
             }
             byte[] row_data = byte_array.toByteArray();
@@ -208,7 +208,7 @@ public class StorageManager {
     }
 
     /**
-     * Create page first checks if they're available free pages 
+     * Create page first checks if they're available free pages
      * If there's no free pages we return a new page
      * @return id
      */
@@ -243,7 +243,7 @@ public class StorageManager {
 
         new_page.set_data(PageData);
 
-        return new_page
+        return new_page;
     }
 
 
@@ -253,7 +253,7 @@ public class StorageManager {
     /**
      * WritePage writes the page into disk
      * @param pageNumber what page
-     * @param objects list of objects 
+     * @param objects list of objects
      * @throws IOException self-explantory
      */
     public static void writePage(int pageNumber, ArrayList<List<Object>> data) throws IOException {

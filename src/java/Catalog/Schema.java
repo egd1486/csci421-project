@@ -61,10 +61,6 @@ public class Schema {
         throw new Exception("Schema does not have an attribute named " + Name);
     }
 
-    public void setName(String name){
-        this.Name = name;
-    }
-
     private static boolean isAlphaNumeric(String S) {return S.matches("[a-zA-Z0-9]+");}
 
     // Returns the maximum size of the row data in bytes.
@@ -73,16 +69,7 @@ public class Schema {
 
         for (Attribute A : Attributes) Size += A.GetByteSize();
         
-        return Size;
-    }
-
-    // Return the maximum size of a row's read data in the header.
-    public Integer GetMaxHeaderSize() {
-        Integer Size = 0;
-
-
-
-        return Size;
+        return Size + ((int) this.Attributes.size() / 8);
     }
 
     public Type[] GetTypes() {
@@ -160,7 +147,22 @@ public class Schema {
         }
     }
 
-    public void Insert(ArrayList<List<Object>> rows) throws Exception {
-        // TODO: Insert all rows into the table's pages, splitting when necessary.
+    public void Insert(ArrayList<Object> Row) throws Exception {
+        Page P = BufferManager.getPage(this.PageId, this);
+        int Next;
+        // If there are no slots remaining, grab the next page until you find a spot.
+        while (P.get_slots_remaining() == 0)
+        // If there is a next page, grab it
+        if ((Next = P.get_next_pageid()) > -1)        
+        P = BufferManager.getPage(P.get_next_pageid(), this);
+        // Otherwise grab a brand new page and make it the next page.
+        else {
+            Page newPage = BufferManager.getEmptyPage(this);
+            P.set_nextpageid(newPage.get_pageid());
+            P = newPage;
+        }
+
+        // Now that we have a page with room, insert into it.
+        P.get_data().add(Row);
     }
 }

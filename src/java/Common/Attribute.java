@@ -24,11 +24,11 @@ public class Attribute { //for one column
             case INT:
                 return Integer.BYTES;
             case CHAR:
-                return this.typeLength;
+                return this.typeLength + Integer.BYTES;
             case DOUBLE:
                 return Double.BYTES;
             case VARCHAR:
-                return this.typeLength;
+                return this.typeLength + Integer.BYTES;
             case BOOLEAN:
                 return 1;
             default:
