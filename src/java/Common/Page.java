@@ -114,4 +114,8 @@ public class Page {
         return is_dirty;
     }
 
+    public int get_data_length(){
+        return data.size();
+    }
+
 }

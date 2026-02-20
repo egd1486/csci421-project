@@ -5,14 +5,11 @@ import Common.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
-import java.util.Arrays;
 
 public class StorageManager {
     private static int pageSize;
@@ -22,98 +19,88 @@ public class StorageManager {
 
     private static final int BOOLEAN_BYTES = 1; //hard coded since Boolean.BYTES dne
 
+    public static byte[] encoder(Page page) throws IOException {
+
+        byte[] slotted_page = new byte[pageSize];
+        ByteBuffer slotted_buffer = ByteBuffer.wrap(slotted_page);
 
 
-    private byte[] write_int(int where, int number, byte[] data){
-        ByteBuffer.wrap(data, where, Integer.BYTES).putInt(number);
-        return data;
-    }
+        int numslots = 0;
+        int free_ptr = pageSize-1;
+        int numEntries = page.get_data_length();
 
-    private int read_int(int where, byte[] data){
-        return ByteBuffer.wrap(data, where, Integer.BYTES).getInt();
-    }
-
-    /**
-     * Insert a row of data into the page byte array
-     * @param row Data we're entering
-     */
-    public boolean insert_data(byte[] row){
-        int numslots = read_int(0); //Getting Number of Slots
-        int free_ptr = read_int(4); //Getting the Free Pointer
-
-        int calculate_slot_index = HEADER_SIZE + (numslots * SLOT_ENTRY_SIZE); // We calculate this because we already have the HEADER at the beginning and we need Slot entry size for (Offset, Length) at the end of each row data
-        int check_space = free_ptr - calculate_slot_index; // We check if can even fit the data
-
-        if((row.length + SLOT_ENTRY_SIZE) > check_space){
-            //TODO: Split Page work on it later
-            return -1;
-        }
-
-        //Write stuff in offset
-        int offset = free_ptr - row.length; //We find
-        int nextpos = offset;
-        for(byte bit : row){
-            bytes[nextpos++] = bit;
-        }
-
-        //Now to store (offset,length) :(
-        int next_slot_index = HEADER_SIZE + numslots * SLOT_ENTRY_SIZE;
-        write_int(next_slot_index, offset); //Offset
-        write_int(next_slot_index + 4, row.length); //Length
-
-        write_int(0, numslots + 1); //Next slot
-        write_int(4, offset); //what offset we got left
-
-        return numslots; //Return ID of the slot
-    }
-
-    /**
-     * Encoder we get the data from page, and we make it to binary format
-     * How does the Data would look like: Slotted Page
-     * BASICALLLLLLLY its bytes = [Header | Pointers | Free Space | Records] TADAH SLOTTED PAGE APPROACH
-     * @param page
-     * @return
-     */
-    public boolean serializePage(Page page) throws IOException{
-
-        byte[] whole_data = new byte[pageSize];
-
+        slotted_buffer.putInt(0, numslots);
+        slotted_buffer.putInt(Integer.BYTES, free_ptr);
         for(List<Object> row : page.get_data()){
+
             ByteArrayOutputStream byte_array = new ByteArrayOutputStream();
             DataOutputStream dos = new DataOutputStream(byte_array);
-            for(Object obj : row){
-                switch (obj) {
-                   case null -> dos.writeByte(0);
+            BitSet bitmap = new BitSet(row.size());
+
+            for(int index = 0; index < row.size(); index++){
+               switch(row.get(index)){
+                   case null -> bitmap.set(index);
+
                    case Integer i -> {
-                       dos.writeByte(1);
                        dos.writeInt(i);
                    }
+
                    case Boolean b -> {
-                       dos.writeByte(2);
                        dos.writeBoolean(b);
                    }
-                   case String s -> {
-                       dos.writeByte(3);
-                       byte[] bytes = s.getBytes();
-                       dos.writeInt(bytes.length);
-                       dos.write(bytes);
+
+                   case Double d -> {
+                       dos.writeDouble(d);
                    }
+
                    case Character c -> {
-                       dos.writeByte(4);
                        dos.writeChar(c);
                    }
-                   case Double v -> {
-                       dos.writeByte(5);
-                       dos.writeDouble(v);
+
+                   case String s -> {
+                       byte[] str = s.getBytes();
+                       dos.writeInt(str.length);
+                       dos.write(str);
                    }
-                   default -> {
-                       System.out.println("Invalid data object: " + obj + " Serialize Function Line 72");
-                   }
-                }
-                byte[] data = byte_array.toByteArray();
-           }
+                   default -> System.out.println("what the hell is this: " + row.get(i));
+               }
+            }
+            byte[] row_data = byte_array.toByteArray();
+            int bitmapSize = (row.size() + 7) / 8;
+            byte[] fixedBitmap = new byte[bitmapSize];
+            System.arraycopy(bitmap.toByteArray(), 0, fixedBitmap, 0, bitmap.toByteArray().length);
+
+            numslots++;
+            int slot_index = (numslots) * Integer.BYTES * 2;
+            int new_free_ptr = free_ptr - row_data.length;
+
+            System.arraycopy(fixedBitmap, 0, slotted_page, new_free_ptr, fixedBitmap.length);
+            System.arraycopy(row_data, 0, slotted_page, new_free_ptr + fixedBitmap.length, row_data.length);
+
+            slotted_buffer.putInt(slot_index, new_free_ptr);
+            slotted_buffer.putInt(slot_index + Integer.BYTES, row_data.length);
+
+            slotted_buffer.putInt(0, numslots);
+            slotted_buffer.putInt(Integer.BYTES, free_ptr);
+        }
+        return slotted_page;
+    }
+
+
+    /**
+     * WritePage writes the page into disk
+     * @param page_adding_to_memory what page were addinginto memory
+     * @throws IOException self-explantory
+     */
+    public static void writePage(Page page_adding_to_memory) throws IOException {
+        try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
+            byte[] adding = encoder(page_adding_to_memory);
+            file.seek((long) pageSize * page_adding_to_memory.get_pageid());
+            file.write(adding);
         }
     }
+
+
     /**
      * Decode the data from a page in the memory.
      * @param pagenumber The name of the database
@@ -234,44 +221,6 @@ public class StorageManager {
      */
     public static void markfreepage(int pageId){
         freepages.add(pageId);
-    }
-
-    /**
-     * readPage reads the page data from a specific page number
-     * @param pageNumber what we readin chat
-     * @return A page that have the set of binary data we looking at
-     */
-    public static Page readPage(int pageNumber) throws IOException {
-        byte[] PageData = new byte[pageSize];
-        try(RandomAccessFile file = new RandomAccessFile(filename, "r")){
-            file.seek((long) pageNumber * pageSize);
-            file.readFully(PageData);
-        }
-        Page new_page = new Page(pageNumber);
-
-
-
-
-
-        new_page.set_data(PageData);
-        return new Page(pageNumber, pageSize);
-    }
-
-
-
-
-
-    /**
-     * WritePage writes the page into disk
-     * @param pageNumber what page
-     * @param objects list of objects 
-     * @throws IOException self-explantory
-     */
-    public static void writePage(int pageNumber, ArrayList<List<Object>> data) throws IOException {
-       try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
-           //Serialize it into bytes and then write it
-          //file.write(data, pageNumber * pageSize, pageSize);
-       }
     }
 
     // === Getter Functions ===
