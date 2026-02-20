@@ -65,7 +65,7 @@ public class StorageManager {
                        dos.writeInt(str.length);
                        dos.write(str);
                    }
-                   default -> System.out.println("what the hell is this: " + row.get(i));
+                   default -> System.out.println("what the hell is this: " + row.get(index));
                }
             }
             byte[] row_data = byte_array.toByteArray();
@@ -204,7 +204,7 @@ public class StorageManager {
     }
 
     /**
-     * Create page first checks if they're available free pages 
+     * Create page first checks if they're available free pages
      * If there's no free pages we return a new page
      * @return id
      */
@@ -252,7 +252,7 @@ public class StorageManager {
     /**
      * WritePage writes the page into disk
      * @param pageNumber what page
-     * @param objects list of objects 
+     * @param objects list of objects
      * @throws IOException self-explantory
      */
     public static void writePage(int pageNumber, ArrayList<List<Object>> data) throws IOException {

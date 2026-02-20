@@ -24,9 +24,6 @@ public class Page {
     private boolean is_dirty;
     private long time;
 
-    private static final int HEADER_SIZE = Integer.BYTES  * 2; //numslots (int = 4 bytes) + freeptr (int = 4 bytes) 
-    private static final int SLOT_ENTRY_SIZE = Integer.BYTES * 2; //offset size (int = 4 bytes) + length size (int = 4 bytes) 
-
     public Page(int pageID){
         this.pageId = pageID;
         data = new ArrayList<>();
@@ -85,6 +82,10 @@ public class Page {
 
             }
         }
+    }
+
+    public void set_newtime(){
+        this.time = System.currentTimeMillis();
     }
 
     // === Getter Functions ===
