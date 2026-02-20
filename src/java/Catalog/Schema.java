@@ -39,6 +39,8 @@ public class Schema {
         if (A.name.equals(Name)) 
         throw new Exception("Schema already has an attribute named " + Name);
         
+        // TODO : Rewrite all pages of this schema to handle a new null attribute
+
         Attribute A = new Attribute(Name, T, Size, Primary, Nullable, Unique, Default);
         Attributes.add(A);
     }
@@ -61,12 +63,28 @@ public class Schema {
 
     private static boolean isAlphaNumeric(String S) {return S.matches("[a-zA-Z0-9]+");}
 
+    // Returns the maximum size of the row data in bytes.
     public Integer GetMaxRowSize() {
         Integer Size = 0;
 
         for (Attribute A : Attributes) Size += A.GetByteSize();
         
         return Size;
+    }
+
+    // Return the maximum size of a row's read data in the header.
+    public Integer GetMaxHeaderSize() {
+        Integer Size = 0;
+
+
+
+        return Size;
+    }
+
+    public Type[] GetTypes() {
+        Type[] types = new Type[Attributes.size()];
+        for (int i = 0; i < Attributes.size(); i++) types[i] = Attributes.get(i).type;
+        return types;
     }
 
     // Gets all row data from the table specified by this schema.
@@ -80,7 +98,7 @@ public class Schema {
             // Getting all row data from this schema starting from the first
             // page and then any subsequent pages
             while(currPageId != -1){
-                Page page = BufferManager.getPage(currPageId);
+                Page page = BufferManager.getPage(currPageId, this);
                 if(page == null) break;
                 entries.addAll(page.get_data());
                 currPageId = page.get_next_pageid();
@@ -138,7 +156,7 @@ public class Schema {
         }
     }
 
-    public static void Insert(ArrayList<Object> rows) throws Exception {
+    public static void Insert(ArrayList<ArrayList<Object>> rows) throws Exception {
         // TODO: Insert all rows into the table's pages, splitting when necessary.
     }
 }

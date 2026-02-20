@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import Common.Page;
+import Catalog.Schema;
 import StorageManager.StorageManager;
 // Author: Jason Ha
 public class BufferManager {
@@ -61,7 +62,7 @@ public class BufferManager {
      * update map and return page
      * @return page
      */
-    public static Page getPage(int pageId) throws IOException {
+    public static Page getPage(int pageId, Schema schema) throws IOException {
 
         //If a map contains the page id then we return page
         if(mapId.containsKey(pageId)){
@@ -72,7 +73,7 @@ public class BufferManager {
         //due to removal of the page so linear scan O(N) check every index if we have empty page
         for(Page check_page : buffer){
             if(check_page == null){
-                Page adding_new_page = new Page(pageId);
+                Page adding_new_page = new Page(pageId, schema);
                 mapId.put(pageId, adding_new_page);
                 return adding_new_page;
             }
@@ -91,19 +92,19 @@ public class BufferManager {
     * check buffer for empty space, if none evict
     * @return empty page
     */
-    public static Page getEmptyPage() throws IOException {
+    public static Page getEmptyPage(Schema schema) throws IOException {
         int newPageId = StorageManager.create_page();
         //check if have empty slot in buffer to place new empty page
         for(Page check_page : buffer){
             if(check_page == null){
-                Page newEmptyPage = new Page(newPageId);
+                Page newEmptyPage = new Page(newPageId, schema);
                 mapId.put(newPageId, newEmptyPage);
                 return newEmptyPage;
             }
         }
 
         //no empty slot in buffer so evict one 
-        Page newEmptyPage = new Page(newPageId);
+        Page newEmptyPage = new Page(newPageId, schema);
         buffer[lru()] = newEmptyPage;
         mapId.put(newPageId, newEmptyPage);
         return newEmptyPage;

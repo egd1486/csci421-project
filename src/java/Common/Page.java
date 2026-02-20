@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import Catalog.Schema;
 
 
 /**
@@ -23,12 +24,14 @@ public class Page {
     private int next_page_id;
     private boolean is_dirty;
     private long time;
+    private Schema schema;
 
     private static final int HEADER_SIZE = Integer.BYTES  * 2; //numslots (int = 4 bytes) + freeptr (int = 4 bytes) 
     private static final int SLOT_ENTRY_SIZE = Integer.BYTES * 2; //offset size (int = 4 bytes) + length size (int = 4 bytes) 
 
-    public Page(int pageID){
+    public Page(int pageID, Schema schema){
         this.pageId = pageID;
+        this.schema = schema;
         data = new ArrayList<>();
         is_dirty = false;
         time = System.currentTimeMillis();
@@ -96,6 +99,10 @@ public class Page {
 
     public long get_time(){
         return time;
+    }
+    
+    public Schema get_schema(){
+        return schema;
     }
 
     public int get_next_pageid(){

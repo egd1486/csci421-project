@@ -6,6 +6,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.*;
+
+import Catalog.Schema;
+
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.io.ByteArrayOutputStream;
@@ -20,6 +23,7 @@ public class StorageManager {
     private static final int BOOLEAN_BYTES = 1; //hard coded since Boolean.BYTES dne
 
     public static byte[] encoder(Page page) throws IOException {
+        Schema schema = page.get_schema();
 
         byte[] slotted_page = new byte[pageSize];
         ByteBuffer slotted_buffer = ByteBuffer.wrap(slotted_page);
@@ -106,7 +110,7 @@ public class StorageManager {
      * Decode the data from a page in the memory.
      * @param pagenumber The name of the database
      */
-    public Page decode(int pageNumber){
+    public Page decode(Schema schema, int pageNumber){
         ArrayList<List<Object>> fullPage = new ArrayList<List<Object>>();
         byte[] data = new byte[pageSize];
         try(RandomAccessFile file = new RandomAccessFile(filename, "r")){
@@ -120,7 +124,7 @@ public class StorageManager {
         int numEntries = ByteBuffer.wrap(Arrays.copyOfRange(data, 0, Integer.BYTES)).getInt();
         int free_ptr= ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES, 2*Integer.BYTES)).getInt()+1;
         int size; //char and varchar
-        Type[] schema = {}; //! Need way to get list of attributes, or add as parameter
+        Type[] attributes = schema.GetTypes(); //! Need way to get list of attributes, or add as parameter
         for (int index = 1; index <= numEntries; index++){
             int offset = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*2*index, Integer.BYTES*(2*index+1))).getInt();
             int length = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*(2*index+1), Integer.BYTES*(2*index+2))).getInt();
@@ -130,11 +134,11 @@ public class StorageManager {
                 nullPtr += ByteBuffer.wrap(Arrays.copyOfRange(data, offset, offset+Integer.BYTES)).getInt();
                 offset += Integer.BYTES;
             }
-            for (int attr = 0; attr < schema.length; attr++){
+            for (int attr = 0; attr < attributes.length; attr++){
                 if (nullPtr.charAt(attr) == '1')
                     row.add(null);
                 else
-                    switch (schema[attr]){
+                    switch (attributes[attr]){
                     case INT:
                         row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES+offset)).getInt());
                         offset += Integer.BYTES;
@@ -163,7 +167,7 @@ public class StorageManager {
             }
             fullPage.add(row);
         }
-        Page decoded = new Page(pageNumber);
+        Page decoded = new Page(pageNumber, schema);
         decoded.set_data(fullPage);
         return decoded;
     }
@@ -229,20 +233,17 @@ public class StorageManager {
      * @param pageNumber what we readin chat
      * @return A page that have the set of binary data we looking at
      */
-    public static Page readPage(int pageNumber) throws IOException {
+    public static Page readPage(int pageNumber, Schema schema) throws IOException {
         byte[] PageData = new byte[pageSize];
         try(RandomAccessFile file = new RandomAccessFile(filename, "r")){
             file.seek((long) pageNumber * pageSize);
             file.readFully(PageData);
         }
-        Page new_page = new Page(pageNumber);
-
-
-
-
+        Page new_page = new Page(pageNumber, schema);
 
         new_page.set_data(PageData);
-        return new Page(pageNumber, pageSize);
+
+        return new_page
     }
 
 
