@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.util.Arrays;
@@ -155,8 +156,8 @@ public class StorageManager {
                         offset += BOOLEAN_BYTES;
                         break;
                     case CHAR: //!add size to copyOfRange so you get full char array?
-                        row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Character.BYTES+offset)).getChar());
-                        size = 0; //! get length of attr from schema
+                        size = 1; //! get length of attr from schema
+                        row.add(new String(Arrays.copyOfRange(data, offset, size*Character.BYTES+offset), StandardCharsets.UTF_8));
                         offset+= size * Character.BYTES;
                         break;
                     case DOUBLE:
@@ -166,7 +167,8 @@ public class StorageManager {
                     case VARCHAR: //! offset = offset----location and location------size
                         int location = ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES+offset)).getInt();
                         size = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES+offset, 2*Integer.BYTES+offset)).getInt();
-                        row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, location, size+location)).getInt(), size);
+                        Object[] add = {new String(Arrays.copyOfRange(data, location, size*Character.BYTES+location), StandardCharsets.UTF_8),size};
+                        row.add(add);
                         offset += 2*Integer.BYTES;
                         break;
                     }
