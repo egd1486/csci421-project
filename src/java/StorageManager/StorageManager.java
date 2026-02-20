@@ -131,6 +131,7 @@ public class StorageManager {
         int numEntries = ByteBuffer.wrap(Arrays.copyOfRange(data, 0, Integer.BYTES)).getInt();
         int free_ptr= ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES, 2*Integer.BYTES)).getInt()+1;
         int size; //char and varchar
+        Type[] schema = {}; //! Need way to get list of attributes, or add as parameter
         for (int index = 1; index <= numEntries; index++){
             int offset = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*2*index, Integer.BYTES*(2*index+1))).getInt();
             int length = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*(2*index+1), Integer.BYTES*(2*index+2))).getInt();
@@ -140,7 +141,6 @@ public class StorageManager {
                 nullPtr += ByteBuffer.wrap(Arrays.copyOfRange(data, offset, offset+Integer.BYTES)).getInt();
                 offset += Integer.BYTES;
             }
-            Type[] schema = {};
             for (int attr = 0; attr < schema.length; attr++){
                 if (nullPtr.charAt(attr) == '1')
                     row.add(null);
