@@ -63,6 +63,10 @@ public class Schema {
 
     private static boolean isAlphaNumeric(String S) {return S.matches("[a-zA-Z0-9]+");}
 
+    public void setName(String name){
+        this.Name = name;
+    }
+
     // Returns the maximum size of the row data in bytes.
     public Integer GetMaxRowSize() {
         Integer Size = 0;
