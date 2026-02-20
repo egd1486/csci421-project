@@ -15,7 +15,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 
 public class StorageManager {
-    private static int pageSize;
+    public static int pageSize;
     private static String filename;
     private static int page_counter; // What page is created
     private static Stack<Integer> freepages;

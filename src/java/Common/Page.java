@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import Catalog.Schema;
+import StorageManager.StorageManager;
 
 
 /**
@@ -22,6 +23,7 @@ public class Page {
     private int pageId;
     private ArrayList<List<Object>> data;
     private int next_page_id;
+    private int freebytes;
     private boolean is_dirty;
     private long time;
     private Schema schema;
@@ -79,6 +81,10 @@ public class Page {
         is_dirty = type;
     }
 
+    public void set_freebytes(int num){
+        freebytes = num;
+    }
+
     public void set_data(ArrayList<List<Object>> data){
         this.data = data;
 
@@ -92,6 +98,25 @@ public class Page {
 
     // === Getter Functions ===
 
+    public int get_slots_remaining() {
+        int page_metadata = 3 * Integer.BYTES; // next_page_id + num_slots + free_ptr
+
+        int header_size = 2 * Integer.BYTES; //Location + TotalSize
+
+        int max_row_size = schema.GetMaxRowSize();
+
+        int rows = data.size();
+
+        int available_space;
+        // if freebytes not provided,
+        if (freebytes == 0)
+        // calculate the available space from pageSize and other constants
+        available_space = (StorageManager.pageSize - page_metadata - (header_size*rows) - (max_row_size*rows));
+        // otherwise just use the specified freebytes.
+        else available_space = freebytes;
+
+        return (int) available_space / (max_row_size + header_size);
+    }
 
     public ArrayList<List<Object>> get_data() {
         return data;
@@ -124,5 +149,4 @@ public class Page {
     public int get_data_length(){
         return data.size();
     }
-
 }
