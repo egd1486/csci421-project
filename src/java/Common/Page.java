@@ -96,6 +96,10 @@ public class Page {
         }
     }
 
+    public void set_newtime(){
+        time = System.currentTimeMillis();
+    }
+
     // === Getter Functions ===
 
     public int get_slots_remaining() {

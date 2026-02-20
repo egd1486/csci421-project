@@ -243,7 +243,7 @@ public class StorageManager {
 
         new_page.set_data(PageData);
 
-        return new_page
+        return new_page;
     }
 
 

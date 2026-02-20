@@ -88,7 +88,6 @@ public class BufferManager {
 
         //LRU method:
         //Use System.time comparing the old time (least recently use) vs current time who ever have the largest is LRU
-        Page page_from_disk = StorageManager.readPage(pageId);
         buffer[lru()] = page_from_disk;
         page_from_disk.set_newtime();
         mapId.put(pageId, page_from_disk);
@@ -112,7 +111,7 @@ public class BufferManager {
         }
 
         //no empty slot in buffer so evict one 
-        Page newEmptyPage = new Page(newPageId);
+        Page newEmptyPage = new Page(newPageId, schema);
         buffer[lru()] = newEmptyPage;
         mapId.put(newPageId, newEmptyPage);
         return newEmptyPage;
