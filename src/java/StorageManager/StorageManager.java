@@ -1,6 +1,6 @@
 package StorageManager;
 
-import Common.Page;
+import Common.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,8 +11,7 @@ import java.util.Stack;
 import java.nio.ByteBuffer;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
-
-import static Common.Page.HEADER_SIZE;
+import java.util.Arrays;
 
 public class StorageManager {
     private static int pageSize;
@@ -113,6 +112,72 @@ public class StorageManager {
            }
         }
     }
+    /**
+     * Decode the data from a page in the memory.
+     * @param pagenumber The name of the database
+     */
+    public Page decode(int pageNumber){
+        ArrayList<List<Object>> fullPage = new ArrayList<List<Object>>();
+        byte[] data = new byte[pageSize];
+        try(RandomAccessFile file = new RandomAccessFile(filename, "r")){
+            file.seek(pageNumber * pageSize);
+            file.readFully(data);
+        }
+        catch(Exception e){
+            System.err.println(e);
+        }
+        Page new_page = new Page(pageNumber);
+        int numEntries = ByteBuffer.wrap(Arrays.copyOfRange(data, 0, Integer.BYTES)).getInt();
+        int free_ptr= ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES, 2*Integer.BYTES)).getInt()+1;
+        int size;
+        for (int index = 1; index <= numEntries; index++){
+            int offset = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*2*index, Integer.BYTES*(2*index+1))).getInt();
+            int length = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*(2*index+1), Integer.BYTES*(2*index+2))).getInt();
+            ArrayList<Object> row = new ArrayList<Object>();
+            String nullPtr = "";
+            for (int nullByte = 0; nullByte < Math.ceil(1/8); nullByte++){
+                nullPtr += ByteBuffer.wrap(Arrays.copyOfRange(data, offset, offset+Integer.BYTES)).getInt();
+                offset += Integer.BYTES;
+            }
+            Type[] schema = {};
+            for (int attr = 0; attr < schema.length; attr++){
+                if (nullPtr.charAt(attr) == '1')
+                    row.add(null);
+                else
+                    switch (schema[attr]){
+                    case INT:
+                        row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES+offset)).getInt());
+                        offset += Integer.BYTES;
+                        break;
+                    case BOOLEAN:
+                        row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Boolean.BYTES+offset)).getInt());
+                        //! size of a Boolean? 
+                        offset += Boolean.BYTES;
+                        break;
+                    case CHAR:
+                        row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Character.BYTES+offset)).getInt());
+                        size = 0; //! get length of attr from schema
+                        offset+= size * Character.BYTES;
+                        break;
+                    case DOUBLE:
+                        row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Double.BYTES+offset)).getInt());
+                        offset += Double.BYTES;
+                        break;
+                    case VARCHAR:
+                        int location = ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES+offset)).getInt();
+                        size = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES+offset, 2*Integer.BYTES+offset)).getInt();
+                        row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, location, size+location)).getInt(), size);
+                        offset += 2*Integer.BYTES;
+                        break;
+                    }
+            }
+            fullPage.add(row);
+        }
+        Page decoded = new Page(pageNumber);
+        decoded.set_data(fullPage);
+        return decoded;
+    }
+
 
     /**
      * Creates Database File, or Reads existing one.
