@@ -310,7 +310,7 @@ public class Parser {
         }
         try{
             // Tries to add an attribute to the schema
-            schema.AddAttribute(attrName, type, typeSize, nullable, false, false, defaultVal);
+            Catalog.AttributeAdd(tableName, attrName, type, typeSize, nullable, false, false, defaultVal);
         } catch(Exception e){
             System.out.println("Error: " + e.getMessage());
         }
@@ -326,7 +326,7 @@ public class Parser {
         }
 
         try{
-            schema.RemoveAttribute(tableName);
+            Catalog.AttributeDrop(tableName, attrName);
         } catch(Exception e){
             System.out.println("Error: " + e.getMessage());
         }

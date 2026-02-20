@@ -63,6 +63,10 @@ public class Schema {
 
     private static boolean isAlphaNumeric(String S) {return S.matches("[a-zA-Z0-9]+");}
 
+    public void setName(String name){
+        this.Name = name;
+    }
+
     // Returns the maximum size of the row data in bytes.
     public Integer GetMaxRowSize() {
         Integer Size = 0;
@@ -147,7 +151,7 @@ public class Schema {
         }
     }
 
-    public void Insert(ArrayList<Object> Row) throws Exception {
+    public void Insert(List<Object> Row) throws Exception {
         Page P = BufferManager.getPage(this.PageId, this);
         int Next;
         // If there are no slots remaining, grab the next page until you find a spot.
