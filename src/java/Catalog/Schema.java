@@ -1,8 +1,7 @@
 package Catalog;
 
-import Common.*;
 import BufferManager.BufferManager;
-
+import Common.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,6 +60,14 @@ public class Schema {
     }
 
     private static boolean isAlphaNumeric(String S) {return S.matches("[a-zA-Z0-9]+");}
+
+    public Integer GetMaxRowSize() {
+        Integer Size = 0;
+
+        for (Attribute A : Attributes) Size += A.GetByteSize();
+        
+        return Size;
+    }
 
     // Gets all row data from the table specified by this schema.
     // Returns a list of lists where each inner list represents a row

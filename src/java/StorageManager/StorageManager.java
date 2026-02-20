@@ -27,7 +27,6 @@ public class StorageManager {
 
         int numslots = 0;
         int free_ptr = pageSize-1;
-        int numEntries = page.get_data_length();
 
         slotted_buffer.putInt(0, numslots);
         slotted_buffer.putInt(Integer.BYTES, free_ptr);
@@ -99,8 +98,6 @@ public class StorageManager {
             file.write(adding);
         }
     }
-
-
     /**
      * Decode the data from a page in the memory.
      * @param pagenumber The name of the database
@@ -221,6 +218,44 @@ public class StorageManager {
      */
     public static void markfreepage(int pageId){
         freepages.add(pageId);
+    }
+
+    /**
+     * readPage reads the page data from a specific page number
+     * @param pageNumber what we readin chat
+     * @return A page that have the set of binary data we looking at
+     */
+    public static Page readPage(int pageNumber) throws IOException {
+        byte[] PageData = new byte[pageSize];
+        try(RandomAccessFile file = new RandomAccessFile(filename, "r")){
+            file.seek((long) pageNumber * pageSize);
+            file.readFully(PageData);
+        }
+        Page new_page = new Page(pageNumber);
+
+
+
+
+
+        new_page.set_data(PageData);
+        return new Page(pageNumber, pageSize);
+    }
+
+
+
+
+
+    /**
+     * WritePage writes the page into disk
+     * @param pageNumber what page
+     * @param objects list of objects 
+     * @throws IOException self-explantory
+     */
+    public static void writePage(int pageNumber, ArrayList<List<Object>> data) throws IOException {
+       try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
+           //Serialize it into bytes and then write it
+          //file.write(data, pageNumber * pageSize, pageSize);
+       }
     }
 
     // === Getter Functions ===

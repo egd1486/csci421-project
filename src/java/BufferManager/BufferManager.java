@@ -25,7 +25,7 @@ public class BufferManager {
     public static int BufferSize;
 
     private static Page[] buffer;
-    private static Map<Integer, Page> mapId = new HashMap<>();
+    private static Map<Integer, Page> mapId = new HashMap<>(); //pages already in buffer
 
     public static void initialize(int set_buffer_size) {
         buffer = new Page[set_buffer_size];
@@ -84,6 +84,29 @@ public class BufferManager {
         buffer[lru()] = page_from_disk;
         mapId.put(pageId, page_from_disk);
         return page_from_disk;
+    }
+
+    /**
+    * GetEmptyPage - get an empty page
+    * check buffer for empty space, if none evict
+    * @return empty page
+    */
+    public static Page getEmptyPage() throws IOException {
+        int newPageId = StorageManager.create_page();
+        //check if have empty slot in buffer to place new empty page
+        for(Page check_page : buffer){
+            if(check_page == null){
+                Page newEmptyPage = new Page(newPageId);
+                mapId.put(newPageId, newEmptyPage);
+                return newEmptyPage;
+            }
+        }
+
+        //no empty slot in buffer so evict one 
+        Page newEmptyPage = new Page(newPageId);
+        buffer[lru()] = newEmptyPage;
+        mapId.put(newPageId, newEmptyPage);
+        return newEmptyPage;
     }
 
     /**
