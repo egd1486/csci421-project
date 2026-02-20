@@ -1,8 +1,10 @@
 package Catalog;
 
 import Common.*;
+import BufferManager.BufferManager;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class Schema {
     public String Name;
@@ -60,12 +62,73 @@ public class Schema {
 
     private static boolean isAlphaNumeric(String S) {return S.matches("[a-zA-Z0-9]+");}
 
-    public static ArrayList<Object> Select() {
-        ArrayList<Object> Entries = new ArrayList<>();
+    // Gets all row data from the table specified by this schema.
+    // Returns a list of lists where each inner list represents a row
+    // containing the row's data.
+    public ArrayList<List<Object>> Select() {
+        ArrayList<List<Object>> entries = new ArrayList<>();
+        try{
+            // Getting first page where this schema's data is stored
+            int currPageId = this.PageId;
+            // Getting all row data from this schema starting from the first
+            // page and then any subsequent pages
+            while(currPageId != -1){
+                Page page = BufferManager.getPage(currPageId);
+                if(page == null) break;
+                entries.addAll(page.get_data());
+                currPageId = page.get_next_pageid();
+            }
+        } catch (Exception e){
+            System.out.println("Error: " + e);
+        }
+        return entries;
+    }
 
-        // TODO: Read all rows from the table's pages, and return it.
+    // Displays a table in an easy to read format
+    public void DisplayTable(ArrayList<List<Object>> rows){
+        // Calculating width of each column
+        int numAttributes = this.Attributes.size();
+        int[] columnWidths = new int[numAttributes];
+        for(int i = 0; i < numAttributes; i++){
+            columnWidths[i] = this.Attributes.get(i).name.length();
+        }
+        for(List<Object> row : rows){
+            for(int i = 0; i < numAttributes; i++){
+                Object value = row.get(i);
+                String valueString;
+                if(value == null) valueString = "NULL";
+                else valueString = value.toString();
+                columnWidths[i] = Math.max(columnWidths[i], valueString.length());
+            }
+        }
 
-        return Entries;
+        // Printing header (attribute names + separator)
+        System.out.print("|");
+        for(int i = 0; i < numAttributes; i++){
+            System.out.printf(" %-" + columnWidths[i] + "s |", this.Attributes.get(i).name);
+        }
+        System.out.println();
+        System.out.print("-");
+        for(int width : columnWidths){
+            for(int i = 0; i < width + 2; i++){
+                System.out.print("-");
+            }
+            System.out.print("-");
+        }
+        System.out.println();
+
+        // Printing row data
+        for(List<Object> row : rows){
+            System.out.print("|");
+            for(int i = 0; i < numAttributes; i++){
+                Object value = row.get(i);
+                String valueString;
+                if(value == null) valueString = "NULL";
+                else valueString = value.toString();
+                System.out.printf(" %-" + columnWidths[i] + "s |", valueString);
+            }
+            System.out.println();
+        }
     }
 
     public static void Insert(ArrayList<Object> rows) throws Exception {

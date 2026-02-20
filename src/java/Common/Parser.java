@@ -2,6 +2,7 @@ package Common;
 import Catalog.Catalog;
 import Catalog.Schema;
 import java.util.ArrayList;
+import java.util.List;
 
 public class Parser {
     public static void parse(String command){
@@ -268,15 +269,8 @@ public class Parser {
             return;
         }
 
-        // Must get page that table is stored in
-        // iterate through records in page and display them
-        // if there are more pages, continue getting subsequent pages
-        // (Page object needs pointer/pageID of next page? or page pointers stored somewhere else?)
-        // display their records until no more pages
-        // Question: How to get page location of tableName? Where do we plan to store this info?
-
-        ArrayList<Object> Data = schema.Select();
-        // TODO: display record data somehow
+        ArrayList<List<Object>> Data = schema.Select();
+        schema.DisplayTable(Data);
     }
 
     // Inserts a record into a table
@@ -286,8 +280,6 @@ public class Parser {
             System.out.println("Table: " + tableName + " does not exist");
             return;
         }
-
-
 
         // Validate that values are of correct data type for table schema
         // Create record using data
