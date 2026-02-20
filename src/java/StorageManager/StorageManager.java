@@ -28,8 +28,12 @@ public class StorageManager {
         int numslots = 0;
         int free_ptr = pageSize-1;
 
-        slotted_buffer.putInt(0, numslots);
-        slotted_buffer.putInt(Integer.BYTES, free_ptr);
+        int HEADER_SIZE = Integer.BYTES * 3; // next_Page_id, num_slots(entries), free_ptr
+        int SLOT_ENTRY_SIZE = Integer.BYTES * 2;
+
+        slotted_buffer.putInt(0, page.get_next_pageid());
+        slotted_buffer.putInt(Integer.BYTES, numslots);
+        slotted_buffer.putInt(Integer.BYTES * 2, free_ptr);
         for(List<Object> row : page.get_data()){
 
             ByteArrayOutputStream byte_array = new ByteArrayOutputStream();
@@ -70,7 +74,7 @@ public class StorageManager {
             System.arraycopy(bitmap.toByteArray(), 0, fixedBitmap, 0, bitmap.toByteArray().length);
 
             numslots++;
-            int slot_index = (numslots) * Integer.BYTES * 2;
+            int slot_index = HEADER_SIZE + numslots * SLOT_ENTRY_SIZE;
             int new_free_ptr = free_ptr - row_data.length;
 
             System.arraycopy(fixedBitmap, 0, slotted_page, new_free_ptr, fixedBitmap.length);
@@ -79,8 +83,8 @@ public class StorageManager {
             slotted_buffer.putInt(slot_index, new_free_ptr);
             slotted_buffer.putInt(slot_index + Integer.BYTES, row_data.length);
 
-            slotted_buffer.putInt(0, numslots);
-            slotted_buffer.putInt(Integer.BYTES, free_ptr);
+            slotted_buffer.putInt(Integer.BYTES, numslots);
+            slotted_buffer.putInt(Integer.BYTES * 2, free_ptr);
         }
         return slotted_page;
     }
