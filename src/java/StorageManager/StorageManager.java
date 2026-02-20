@@ -22,6 +22,8 @@ public class StorageManager {
 
     private static final int BOOLEAN_BYTES = 1; //hard coded since Boolean.BYTES dne
 
+    private static final int HEADER_SIZE = Integer.BYTES  * 2; //numslots (int = 4 bytes) + freeptr (int = 4 bytes) 
+    private static final int SLOT_ENTRY_SIZE = Integer.BYTES * 2; //offset size (int = 4 bytes) + length size (int = 4 bytes) 
 
 
     private byte[] write_int(int where, int number, byte[] data){
