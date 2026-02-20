@@ -1,6 +1,6 @@
 package StorageManager;
 
-import Common.Page;
+import Common.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -9,8 +9,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.util.Arrays;
 
 public class StorageManager {
     private static int pageSize;
@@ -18,8 +20,8 @@ public class StorageManager {
     private static int page_counter; // What page is created
     private static Stack<Integer> freepages;
 
-    private static final int HEADER_SIZE = Integer.BYTES  * 2; //numslots (int = 4 bytes) + freeptr (int = 4 bytes)
-    private static final int SLOT_ENTRY_SIZE = Integer.BYTES * 2; //offset size (int = 4 bytes) + length size (int = 4 bytes)
+    private static final int BOOLEAN_BYTES = 1; //hard coded since Boolean.BYTES dne
+
 
 
     private byte[] write_int(int where, int number, byte[] data){
@@ -72,13 +74,10 @@ public class StorageManager {
      * @param page
      * @return
      */
-    public boolean encoder(Page page) throws IOException{
+    public boolean serializePage(Page page) throws IOException{
 
-        byte[] slotted_page = new byte[pageSize];
-        int numSlots = 0;
-        int free_ptr = pageSize-1;
-        int HEADER_SIZE = Integer.BYTES * 2 * (1 + numEntries);
-        slotted_page[0] =
+        byte[] whole_data = new byte[pageSize];
+
         for(List<Object> row : page.get_data()){
             ByteArrayOutputStream byte_array = new ByteArrayOutputStream();
             DataOutputStream dos = new DataOutputStream(byte_array);
@@ -115,6 +114,72 @@ public class StorageManager {
            }
         }
     }
+    /**
+     * Decode the data from a page in the memory.
+     * @param pagenumber The name of the database
+     */
+    public Page decode(int pageNumber){
+        ArrayList<List<Object>> fullPage = new ArrayList<List<Object>>();
+        byte[] data = new byte[pageSize];
+        try(RandomAccessFile file = new RandomAccessFile(filename, "r")){
+            file.seek(pageNumber * pageSize);
+            file.readFully(data);
+        }
+        catch(Exception e){
+            System.err.println(e);
+        }
+        // Page new_page = new Page(pageNumber);
+        int numEntries = ByteBuffer.wrap(Arrays.copyOfRange(data, 0, Integer.BYTES)).getInt();
+        int free_ptr= ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES, 2*Integer.BYTES)).getInt()+1;
+        int size; //char and varchar
+        Type[] schema = {}; //! Need way to get list of attributes, or add as parameter
+        for (int index = 1; index <= numEntries; index++){
+            int offset = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*2*index, Integer.BYTES*(2*index+1))).getInt();
+            int length = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*(2*index+1), Integer.BYTES*(2*index+2))).getInt();
+            ArrayList<Object> row = new ArrayList<Object>();
+            String nullPtr = "";
+            for (int nullByte = 0; nullByte < Math.ceil(1/8); nullByte++){
+                nullPtr += ByteBuffer.wrap(Arrays.copyOfRange(data, offset, offset+Integer.BYTES)).getInt();
+                offset += Integer.BYTES;
+            }
+            for (int attr = 0; attr < schema.length; attr++){
+                if (nullPtr.charAt(attr) == '1')
+                    row.add(null);
+                else
+                    switch (schema[attr]){
+                    case INT:
+                        row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES+offset)).getInt());
+                        offset += Integer.BYTES;
+                        break;
+                    case BOOLEAN:
+                        row.add(data[offset] == 1); //to get true or false
+                        offset += BOOLEAN_BYTES;
+                        break;
+                    case CHAR: //!add size to copyOfRange so you get full char array?
+                        size = 1; //! get length of attr from schema
+                        row.add(new String(Arrays.copyOfRange(data, offset, size*Character.BYTES+offset), StandardCharsets.UTF_8));
+                        offset+= size * Character.BYTES;
+                        break;
+                    case DOUBLE:
+                        row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Double.BYTES+offset)).getDouble());
+                        offset += Double.BYTES;
+                        break;
+                    case VARCHAR: //! offset = offset----location and location------size
+                        int location = ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES+offset)).getInt();
+                        size = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES+offset, 2*Integer.BYTES+offset)).getInt();
+                        Object[] add = {new String(Arrays.copyOfRange(data, location, size*Character.BYTES+location), StandardCharsets.UTF_8),size};
+                        row.add(add);
+                        offset += 2*Integer.BYTES;
+                        break;
+                    }
+            }
+            fullPage.add(row);
+        }
+        Page decoded = new Page(pageNumber);
+        decoded.set_data(fullPage);
+        return decoded;
+    }
+
 
     /**
      * Creates Database File, or Reads existing one.
