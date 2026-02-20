@@ -1,6 +1,8 @@
 package Catalog;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 import BufferManager.BufferManager;
 import Common.*;
@@ -73,5 +75,78 @@ public class Catalog {
 
         // Now remove the Schema from the Catalog entirely.
         Schemas.remove(S);
+    }
+
+    public static void AttributeAdd(String schemaName, String attributeName, Type T, Integer Size, Boolean Nullable, Boolean Primary, Boolean Unique, Object Default) throws Exception{
+        // Creating new schema and setting its name, primary key, page id, and attributes
+        Schema oldSchema = GetSchema(schemaName);
+        if (oldSchema == null) {
+            throw  new Exception("Schema does not exist");
+        }
+        String newName = schemaName + "new!schema!name";
+        Schema newSchema = AddSchema(newName);
+        newSchema.Primary = oldSchema.Primary;
+        for(Attribute A : oldSchema.Attributes){
+            newSchema.AddAttribute(A.name, A.type, A.typeLength, A.notNull, A.primaryKey, A.unique, A.defaultVal);
+        }
+        newSchema.AddAttribute(attributeName, T, Size, Nullable, Primary, Unique, Default);
+
+        // Adding all data with new attribute added
+        int currPageId = oldSchema.PageId;
+        ArrayList<List<Object>> newData = new ArrayList<>();
+        while(currPageId != -1){
+            Page currPage = BufferManager.getPage(currPageId, oldSchema);
+            for(List<Object> row : currPage.get_data()){
+                List<Object> newRow = new ArrayList<>(row);
+                newRow.add(Default);
+                newData.add(newRow);
+            }
+            currPageId = currPage.get_next_pageid();
+        }
+        newSchema.Insert(newData);
+        newSchema.setName(schemaName);
+        RemoveSchema(oldSchema.Name);
+    }
+
+    public static void AttributeDrop(String schemaName, String attributeName) throws Exception {
+        // Creating new schema and setting its name, primary key, page id, and attributes
+        Schema oldSchema = GetSchema(schemaName);
+        if (oldSchema == null) {
+            throw  new Exception("Schema does not exist");
+        }
+        String newName = schemaName + "new!schema!name";
+        Schema newSchema = AddSchema(newName);
+        newSchema.Primary = oldSchema.Primary;
+        // the index of the attribute we want to remove
+        int attributeIndex = -1;
+        for(int i = 0; i < oldSchema.Attributes.size(); i++){
+            Attribute A =  oldSchema.Attributes.get(i);
+            if(Objects.equals(A.name, attributeName)){
+                attributeIndex = i;
+            }
+            else{
+                newSchema.AddAttribute(A.name, A.type, A.typeLength, A.notNull, A.primaryKey, A.unique, A.defaultVal);
+            }
+        }
+        if(attributeIndex == -1){
+            throw  new Exception("Attribute does not exist");
+        }
+
+        // Adding data with old attribute removed
+        int currPageId = BufferManager.getPage(oldSchema.PageId, oldSchema).get_pageid();
+        ArrayList<List<Object>> newData = new ArrayList<>();
+        while(currPageId != -1){
+            Page currPage = BufferManager.getPage(currPageId, oldSchema);
+            ArrayList<List<Object>> currPageData = currPage.get_data();
+            for(List<Object> row : currPageData){
+                List<Object> newRow = new ArrayList<>(row);
+                newRow.remove(attributeIndex);
+                newData.add(newRow);
+            }
+            currPageId = currPage.get_next_pageid();
+        }
+        newSchema.Insert(newData);
+        newSchema.setName(schemaName);
+        RemoveSchema(oldSchema.Name);
     }
 }

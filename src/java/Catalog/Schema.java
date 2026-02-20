@@ -61,6 +61,10 @@ public class Schema {
         throw new Exception("Schema does not have an attribute named " + Name);
     }
 
+    public void setName(String name){
+        this.Name = name;
+    }
+
     private static boolean isAlphaNumeric(String S) {return S.matches("[a-zA-Z0-9]+");}
 
     // Returns the maximum size of the row data in bytes.
@@ -156,7 +160,7 @@ public class Schema {
         }
     }
 
-    public static void Insert(ArrayList<ArrayList<Object>> rows) throws Exception {
+    public void Insert(ArrayList<List<Object>> rows) throws Exception {
         // TODO: Insert all rows into the table's pages, splitting when necessary.
     }
 }
