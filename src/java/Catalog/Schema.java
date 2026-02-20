@@ -39,6 +39,8 @@ public class Schema {
         if (A.name.equals(Name)) 
         throw new Exception("Schema already has an attribute named " + Name);
         
+        // TODO : Rewrite all pages of this schema to handle a new null attribute
+
         Attribute A = new Attribute(Name, T, Size, Primary, Nullable, Unique, Default);
         Attributes.add(A);
     }
@@ -61,12 +63,19 @@ public class Schema {
 
     private static boolean isAlphaNumeric(String S) {return S.matches("[a-zA-Z0-9]+");}
 
+    // Returns the maximum size of the row data in bytes.
     public Integer GetMaxRowSize() {
         Integer Size = 0;
 
         for (Attribute A : Attributes) Size += A.GetByteSize();
         
-        return Size;
+        return Size + ((int) this.Attributes.size() / 8);
+    }
+
+    public Type[] GetTypes() {
+        Type[] types = new Type[Attributes.size()];
+        for (int i = 0; i < Attributes.size(); i++) types[i] = Attributes.get(i).type;
+        return types;
     }
 
     // Gets all row data from the table specified by this schema.
@@ -80,7 +89,7 @@ public class Schema {
             // Getting all row data from this schema starting from the first
             // page and then any subsequent pages
             while(currPageId != -1){
-                Page page = BufferManager.getPage(currPageId);
+                Page page = BufferManager.getPage(currPageId, this);
                 if(page == null) break;
                 entries.addAll(page.get_data());
                 currPageId = page.get_next_pageid();
@@ -138,7 +147,22 @@ public class Schema {
         }
     }
 
-    public static void Insert(ArrayList<Object> rows) throws Exception {
-        // TODO: Insert all rows into the table's pages, splitting when necessary.
+    public void Insert(ArrayList<Object> Row) throws Exception {
+        Page P = BufferManager.getPage(this.PageId, this);
+        int Next;
+        // If there are no slots remaining, grab the next page until you find a spot.
+        while (P.get_slots_remaining() == 0)
+        // If there is a next page, grab it
+        if ((Next = P.get_next_pageid()) > -1)        
+        P = BufferManager.getPage(P.get_next_pageid(), this);
+        // Otherwise grab a brand new page and make it the next page.
+        else {
+            Page newPage = BufferManager.getEmptyPage(this);
+            P.set_nextpageid(newPage.get_pageid());
+            P = newPage;
+        }
+
+        // Now that we have a page with room, insert into it.
+        P.get_data().add(Row);
     }
 }

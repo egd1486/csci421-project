@@ -39,10 +39,9 @@ public class Catalog {
         Schema S;
         // Officially add it to the catalog
         Schemas.add(S = new Schema(Name));
-        // Assign it a free page, and put it into the buffer.
-        S.PageId = StorageManager.create_page();
-        // TODO: Make sure the newly assigned page is added to the buffer
-        BufferManager.getPage(S.PageId);
+        // Assign a free page into the buffer, and grab its id.
+        S.PageId = BufferManager.getEmptyPage(S).get_pageid();
+
         return S;
     }
 
@@ -66,10 +65,10 @@ public class Catalog {
         throw new Exception("Schema does not exist");
 
         // Schema exists, begin freeing its pages
-        Page page = BufferManager.getPage(S.PageId);
+        Page page = BufferManager.getPage(S.PageId, S);
         while (page != null) {
             StorageManager.markfreepage(page.get_pageid());
-            page = page.get_next_pageid() != 1 ? BufferManager.getPage(page.get_next_pageid()) : null;
+            page = page.get_next_pageid() != 1 ? BufferManager.getPage(page.get_next_pageid(), S) : null;
         }
 
         // Now remove the Schema from the Catalog entirely.
