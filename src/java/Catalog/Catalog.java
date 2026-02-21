@@ -162,6 +162,7 @@ public class Catalog {
             throw new Exception("Attribute does not exist");
         }
         if(oldSchema.Attributes.get(attributeIndex).primaryKey){
+            RemoveSchema(newName);
             throw new Exception("Cannot drop primary key attribute");
         }
 
