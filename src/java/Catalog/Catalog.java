@@ -51,7 +51,6 @@ public class Catalog {
         System.out.println(S.PageId);
 
         System.out.println("Schema: " + Name + " created successfully");
-        System.out.println(Schemas.toString());
 
         return S;
     }

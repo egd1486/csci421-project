@@ -120,10 +120,8 @@ public class Parser {
                     else if (c == ' ' && !inQuotes) {
                         String value = valuesBuilder.toString().trim();
                         if(!value.isEmpty()){
-                            System.out.println("Appending" + value);
                             row.add(value);
                         }
-                        System.out.println(row.toString() + " hiii");
                         valuesBuilder.setLength(0);
                     }
                     else if(c == ',' && !inQuotes){
@@ -134,7 +132,6 @@ public class Parser {
                         valuesBuilder.setLength(0);
                     }
                     else{
-                        System.out.println("Appending" + c);
                         valuesBuilder.append(c);
                     }
                 }
@@ -144,8 +141,6 @@ public class Parser {
                     row.add(lastValue);
                 }
                 rowsList.add(row);
-
-                System.out.println(rowsList.toString());
 
                 insert(tableName, rowsList);
             }
@@ -258,7 +253,7 @@ public class Parser {
                 if(constraints != null && constraints[i] != null){
                     for(String c : constraints[i].split(" ")){
                         switch(c){
-                            case "NULLABLE":
+                            case "NOTNULL":
                                 nullable = true;
                                 break;
                             case "PRIMARY":
@@ -321,7 +316,7 @@ public class Parser {
         } catch(Exception e){
             System.out.println("Error: " + e.getMessage());
         }
-        System.out.println(success + "rows inserted successfully");
+        System.out.println(success + " rows inserted successfully");
     }
 
     // Removes table and all of its data from database, removes schema from catalog

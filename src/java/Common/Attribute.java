@@ -41,8 +41,6 @@ public class Attribute { //for one column
     public Object Parse(Object O) throws Exception{
         if (O == null) return null;
 
-        System.out.println(O.toString() + "object string :)");
-
         // Handle not null.
         if (O.toString().toUpperCase().equals("NULL"))
         if (this.notNull) throw new Exception(this.name + " cannot be null");
@@ -51,15 +49,22 @@ public class Attribute { //for one column
         try {
             switch (this.type) {
                 case INT: O = Integer.parseInt(O.toString()); break;
-                case CHAR: O = String.format("%-"+this.typeLength.toString()+"s",O); break;
-                case DOUBLE: O = Double.parseDouble(O.toString()); break;
+                case CHAR: 
+                    if (O.toString().length() > this.typeLength) 
+                    throw new Exception("Char value must be " + this.typeLength + " characters");
+                    O = String.format("%-"+this.typeLength.toString()+"s",O); 
+                    break;
+                case DOUBLE: 
+                    if (!O.toString().contains("."))
+                    throw new Exception("Double values must contain a decimal");
+                    O = Double.parseDouble(O.toString()); break;
                 case BOOLEAN: O = Boolean.parseBoolean(O.toString()); break;
                 default: break;
             }
         } catch (Exception e) {
-            throw new Exception("Invalid default value");
+            throw e;
         }
-        System.out.println(O.getClass().toString());
+
         return O;
     }
 }
