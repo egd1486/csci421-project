@@ -58,13 +58,13 @@ public class StorageManager {
                    default -> {
                         // This case handles char/varchar which are stored in equivalent fashion :)
                         String string = (String) row.get(index);
+                        byte[] sbytes = string.getBytes(StandardCharsets.UTF_8);
 
                         // Write for string length
-                        dos.writeInt(string.length());
+                        dos.writeInt(sbytes.length);
 
                         // Write each char byte.
-                        for(int i = 0; i < string.length(); i++)
-                        dos.writeChar(string.charAt(i));
+                        dos.write(sbytes);
                    }
                }
             }
@@ -183,9 +183,9 @@ public class StorageManager {
                         // shift pointer over,
                         ptr += Integer.BYTES;
                         // construct string from here,
-                        String s = new String(data, ptr, size * Character.BYTES, StandardCharsets.UTF_16BE);
+                        String s = new String(data, ptr, size, StandardCharsets.UTF_8);
                         row.add(s);
-                        ptr += size * Character.BYTES;
+                        ptr += size;
                         break;
                     case DOUBLE:
                         row.add(decode_wrapper.getDouble(ptr));
@@ -194,8 +194,8 @@ public class StorageManager {
                     case VARCHAR: //! offset = offset----location and location------size
                         size = decode_wrapper.getInt(ptr);
                         ptr += Integer.BYTES;
-                        String object = new String(data, ptr, size * Character.BYTES, StandardCharsets.UTF_8);
-                        ptr += size * Character.BYTES;
+                        String object = new String(data, ptr, size, StandardCharsets.UTF_8);
+                        ptr += size;
                         row.add(object);
                         break;
                 }
