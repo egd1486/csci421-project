@@ -6,10 +6,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
-import Common.Type;
+
 import Common.Page;
-import Common.Attribute;
-import Catalog.*;
+import Catalog.Schema;
 import StorageManager.StorageManager;
 // Author: Jason Ha
 public class BufferManager {
@@ -52,7 +51,7 @@ public class BufferManager {
             }
         }
         Page page_to_remove = buffer[removal_page];
-        // System.out.println(page_to_remove.get_pageid());
+
         if(page_to_remove.check_dirty()){
             StorageManager.writePage(page_to_remove);
         }
@@ -69,11 +68,10 @@ public class BufferManager {
      * @return page
      */
     public static Page getPage(int pageId, Schema schema) throws IOException {
-        // System.out.println("pageId: " + pageId);
+
         //If a map contains the page id then we return page
         Page return_page = mapId.get(pageId);
         if(return_page != null){
-            // System.out.println("Page found in buffer");
             return_page.set_newtime();
             return return_page;
         }
@@ -113,18 +111,17 @@ public class BufferManager {
                 Page newEmptyPage = new Page(newPageId, schema);
                 buffer[i] = newEmptyPage;
                 mapId.put(newPageId, newEmptyPage);
-                // System.out.println(buffer.toString());
                 return newEmptyPage;
             }
         }
 
-        
 
-        //no empty slot in buffer so evict one 
+
+        //no empty slot in buffer so evict one
         Page newEmptyPage = new Page(newPageId, schema);
         buffer[lru()] = newEmptyPage;
         mapId.put(newPageId, newEmptyPage);
-        
+
         return newEmptyPage;
     }
 
@@ -202,7 +199,7 @@ public class BufferManager {
         System.out.println("Start testing Evict Empty Page");
         int bufferSize = 3;
         int pageSize = 256;
-       
+
         BufferManager.initialize(bufferSize);
         Schema schema = null;
         try {
@@ -235,7 +232,7 @@ public class BufferManager {
         }
         System.out.println("hasPassedEmptyPage: True");
 
-        //testing EVICTION 
+        //testing EVICTION
             //fill buffer, use lru,
         Page testPage2 = getEmptyPage(schema); //id 2
         Page testPage3 = getEmptyPage(schema);//id 3
@@ -269,12 +266,12 @@ public class BufferManager {
         }
             //did buffer and mapId grow
         if (mapId.size() != 3) {
-            System.out.println("mapId grew - failed evict"); 
+            System.out.println("mapId grew - failed evict");
             System.out.println(mapId.size());
             return;
         }
         if (buffer.length!= 3) {
-            System.out.println("buffer grew - failed evict"); 
+            System.out.println("buffer grew - failed evict");
             System.out.println(buffer.length);
             return;
         }
@@ -300,7 +297,7 @@ public class BufferManager {
         System.out.println("Start testing Dirty Empty Page");
         int bufferSize = 3;
         int pageSize = 256;
-       
+
         BufferManager.initialize(bufferSize);
         Schema schema = null;
         try {
@@ -328,7 +325,7 @@ public class BufferManager {
 
         Page testPage2 = getEmptyPage(schema); // id 6
         Page testPage3 = getEmptyPage(schema); //cuz buffer size 3 - id 7
-        
+
         //testing dirty page eviction
         Page testPage4 = getEmptyPage(schema); //id 8
             //read back from disk to see if data survived
@@ -336,7 +333,7 @@ public class BufferManager {
         ArrayList<ArrayList<Object>> dirtyData = dirtyPage.get_data();
         System.out.println(dirtyData.get(0)); //[1, Frank]
             //see if still exists in mapId and buffer
-        for (Page p: buffer) { //id 5 should be gone 
+        for (Page p: buffer) { //id 5 should be gone
             System.out.println("dirty page still existing?");
             System.out.println(p.get_pageid());
             System.out.println(p.check_dirty());
@@ -353,7 +350,7 @@ public class BufferManager {
         System.out.println("Start testing Get Page");
         int bufferSize = 3;
         int pageSize = 256;
-       
+
         BufferManager.initialize(bufferSize);
         Schema schema = null;
         try {
@@ -386,7 +383,7 @@ public class BufferManager {
         }
         System.out.println("hasPassedEmptyPage: True");
 
-        //testing EVICTION 
+        //testing EVICTION
             //fill buffer, use lru,
         Page testPage2 = getEmptyPage(schema); //id 10
         Page testPage3 = getEmptyPage(schema); //id 11
@@ -420,12 +417,12 @@ public class BufferManager {
         }
             //did buffer and mapId grow
         if (mapId.size() != 3) {
-            System.out.println("mapId grew - failed evict"); 
+            System.out.println("mapId grew - failed evict");
             System.out.println(mapId.size());
             return;
         }
         if (buffer.length!= 3) {
-            System.out.println("buffer grew - failed evict"); 
+            System.out.println("buffer grew - failed evict");
             System.out.println(buffer.length);
             return;
         }
@@ -458,7 +455,7 @@ public class BufferManager {
         System.out.println("Start testing Flush all");
         int bufferSize = 3;
         int pageSize = 256;
-       
+
         BufferManager.initialize(bufferSize);
         Schema schema = null;
         try {
@@ -486,17 +483,17 @@ public class BufferManager {
 
         Page testPage2 = getEmptyPage(schema); // id 14
         Page testPage3 = getEmptyPage(schema); //cuz buffer size 3 - id 15
-        
-        //testing flush all dirty page 
+
+        //testing flush all dirty page
         flush_all();
-        //buffer and mapId should only have 2 pages 
-        for (Page p: buffer) { //id 13 should be gone 
+        //buffer and mapId should only have 2 pages
+        for (Page p: buffer) { //id 13 should be gone
             System.out.println("dirty page still existing?");
             if (p == null) {
                 System.out.println("null page");
             } else {
                 System.out.println(p.get_pageid());
-                System.out.println(p.check_dirty());   
+                System.out.println(p.check_dirty());
             }
         }
         mapId.forEach((key, value) ->  System.out.println(key + " " + value.check_dirty()));
@@ -512,7 +509,7 @@ public class BufferManager {
          System.out.println("Start testing Write all types ");
         int bufferSize = 3;
         int pageSize = 256;
-       
+
         BufferManager.initialize(bufferSize);
         Schema schema = null;
         try {
@@ -557,7 +554,7 @@ public class BufferManager {
 
         Page testPage2 = getEmptyPage(schema); // id 17
         Page testPage3 = getEmptyPage(schema); //cuz buffer size 3 - id 18
-        
+
         //testing dirty page eviction
          System.out.println("HERE before");
         Page testPage4 = getEmptyPage(schema); //id 19
@@ -569,7 +566,7 @@ public class BufferManager {
         // System.out.println("HERE");
         System.out.println(dirtyData.get(0)); //[1, Frank]
             //see if still exists in mapId and buffer
-        for (Page p: buffer) { //id 16 should be gone 
+        for (Page p: buffer) { //id 16 should be gone
             System.out.println("dirty page still existing?");
             System.out.println(p.get_pageid());
             System.out.println(p.check_dirty());
@@ -590,11 +587,11 @@ public class BufferManager {
         testEvictionEmptyPage();
         testDirtyEmptyPage();
         testGetPage();
-        testFlushAll(); 
+        testFlushAll();
         // testWritingAllTypes();
-        
+
         // testCleanPageEvict();
-     
+
 
 
 
