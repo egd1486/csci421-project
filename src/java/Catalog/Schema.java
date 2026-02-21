@@ -214,6 +214,22 @@ public class Schema {
 
         // Now that we have a page with room, insert into it.
         P.get_data().add(Row);
+
+        // Calculate freebytes lost when adding this row.
+        int spacelost = 0;
+        for (int i=0; i<Row.size(); i++)
+        if (Row.get(i) == null) continue;
+        else switch (Attributes.get(i).type) {
+            case INT: spacelost += Integer.BYTES; break;
+                
+            case DOUBLE: spacelost += Double.BYTES; break;
+
+            case BOOLEAN: spacelost += 1; break;
+                
+            default: spacelost += Row.get(i).toString().length() + Integer.BYTES;
+        }
+
+        P.freebytes -= spacelost;
         P.set_isdirty(true);
     }
 

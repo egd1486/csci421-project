@@ -23,7 +23,7 @@ public class Page {
     private int pageId;
     private ArrayList<ArrayList<Object>> data;
     private int next_page_id;
-    private int freebytes;
+    public int freebytes;
     private boolean is_dirty;
     private long time;
     private Schema schema;
