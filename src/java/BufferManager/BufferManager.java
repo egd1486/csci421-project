@@ -142,102 +142,109 @@ public class BufferManager {
 
 
     public static void main(String[] args) throws IOException {
-        int bufferSize = 3;
-        int pageSize = 256; 
-        StorageManager.initializeDatabaseFile("tester", pageSize);
-        BufferManager.initialize(bufferSize);
-        Schema schema = null;
-        try {
-            schema = new Schema("Table");
-        } catch (Exception e) {
-            System.err.println(e);
-        }
-       
-        //testing getEmptyPage
-            //creation
-        Page testPage = getEmptyPage(schema);
-        boolean hasPassedEmptyPage = true;
-        if (testPage == null) { // empty
-            hasPassedEmptyPage = false;
-            System.out.println("hasPassedEmptyPage: False - Null page");
-            return;
-        }
-        int testpageId = testPage.get_pageid();
-        int currPagesCreated = StorageManager.getPageCounter();
-        if (testpageId < 0 || testpageId >=  currPagesCreated) { //not a valid pageId
-            hasPassedEmptyPage = false;
-            System.out.println("hasPassedEmptyPage: False - invalid pageId");
-            return;
-        }
-        Stack<Integer> free_pages = StorageManager.getFreePages();
-        if (free_pages.contains(testpageId)) { //page id given is dead page?
-            hasPassedEmptyPage = false;
-            System.out.println("hasPassedEmptyPage: False - dead pageId");
-            return;
-        }
-        if (mapId.get(testpageId) == null) { //not in buffer
-            hasPassedEmptyPage = false;
-            System.out.println("hasPassedEmptyPage: False - not in buffer");
-            return;
-        }
-        System.out.println("hasPassedEmptyPage: True");
-            //fill buffer, use lru, 
-        boolean passedEvictPage = true;
-        Page testPage2 = getEmptyPage(schema);
-        Page testPage3 = getEmptyPage(schema);
-        //verify buffer full
-        if (mapId.size() != 3) {
-            System.out.println("Filling buffer failed");
-            return;
-        }
-        Page testEvictPage = getEmptyPage(schema);
-            //do page exist
-        if (testEvictPage == null) { // empty
-            System.out.println("testEvictPageId: False - Null page");
-            passedEvictPage = false;
-            return;
-        }
-        int testEvictPageId = testEvictPage.get_pageid();
-        currPagesCreated = StorageManager.getPageCounter();
-        if (testEvictPageId < 0 || testEvictPageId >=  currPagesCreated) { //not a valid pageId
-            System.out.println("testEvictPageId: False - invalid pageId");
-            passedEvictPage = false;
-            return;
-        }
-        free_pages = StorageManager.getFreePages();
-        if (free_pages.contains(testEvictPageId)) { //page id given is dead page?
-            System.out.println("testEvictPageId: False - dead pageId");
-            passedEvictPage = false;
-            return;
-        }
-        if (mapId.get(testEvictPageId) == null) { //not in buffer
-            System.out.println("testEvictPageId: False - not in buffer");
-            passedEvictPage = false;
-            return;
-        }
-            //did buffer grow 
-        if (buffer.length != 3) { //! cuz buffer and mapId not synched 
-            System.out.println("buffer grew - failed evict");
-            System.out.println(mapId.size());
-            return;
-        }
-            //is testPage gone from mapId
-        if (mapId.get(testpageId) != null) { // in buffer
-            System.out.println("testEvictPageId: False - not in buffer");
-            passedEvictPage = false;
-            return;
-        }
-        System.out.println("testEvictPageId: True");
-        
-        //testing - getPage
-        Page samePage = getPage(testpageId, schema);
-        if (testPage == samePage) {
-            System.out.println("getPagePassed: True");
-        } else {
-            System.out.println("getPagePassed: False");
-        }
+//        int bufferSize = 3;
+//        int pageSize = 256;
+//        StorageManager.initializeDatabaseFile("tester", pageSize);
+//        BufferManager.initialize(bufferSize);
+//        Schema schema = null;
+//        try {
+//            schema = new Schema("Table");
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//
+//        //testing getEmptyPage
+//            //creation
+//        Page testPage = getEmptyPage(schema);
+//        boolean hasPassedEmptyPage = true;
+//        if (testPage == null) { // empty
+//            hasPassedEmptyPage = false;
+//            System.out.println("hasPassedEmptyPage: False - Null page");
+//            return;
+//        }
+//        int testpageId = testPage.get_pageid();
+//        int currPagesCreated = StorageManager.getPageCounter();
+//        if (testpageId < 0 || testpageId >=  currPagesCreated) { //not a valid pageId
+//            hasPassedEmptyPage = false;
+//            System.out.println("hasPassedEmptyPage: False - invalid pageId");
+//            return;
+//        }
+//        Stack<Integer> free_pages = StorageManager.getFreePages();
+//        if (free_pages.contains(testpageId)) { //page id given is dead page?
+//            hasPassedEmptyPage = false;
+//            System.out.println("hasPassedEmptyPage: False - dead pageId");
+//            return;
+//        }
+//        if (mapId.get(testpageId) == null) { //not in buffer
+//            hasPassedEmptyPage = false;
+//            System.out.println("hasPassedEmptyPage: False - not in buffer");
+//            return;
+//        }
+//        System.out.println("hasPassedEmptyPage: True");
+//            //fill buffer, use lru,
+//        boolean passedEvictPage = true;
+//        Page testPage2 = getEmptyPage(schema);
+//        Page testPage3 = getEmptyPage(schema);
+//        //verify buffer full
+//        if (mapId.size() != 3) {
+//            System.out.println("Filling buffer failed");
+//            return;
+//        }
+//        Page testEvictPage = getEmptyPage(schema);
+//            //do page exist
+//        if (testEvictPage == null) { // empty
+//            System.out.println("testEvictPageId: False - Null page");
+//            passedEvictPage = false;
+//            return;
+//        }
+//        int testEvictPageId = testEvictPage.get_pageid();
+//        currPagesCreated = StorageManager.getPageCounter();
+//        if (testEvictPageId < 0 || testEvictPageId >=  currPagesCreated) { //not a valid pageId
+//            System.out.println("testEvictPageId: False - invalid pageId");
+//            passedEvictPage = false;
+//            return;
+//        }
+//        free_pages = StorageManager.getFreePages();
+//        if (free_pages.contains(testEvictPageId)) { //page id given is dead page?
+//            System.out.println("testEvictPageId: False - dead pageId");
+//            passedEvictPage = false;
+//            return;
+//        }
+//        if (mapId.get(testEvictPageId) == null) { //not in buffer
+//            System.out.println("testEvictPageId: False - not in buffer");
+//            passedEvictPage = false;
+//            return;
+//        }
+//            //did buffer and mapId grow
+//        if (mapId.size() != 3) {
+//            System.out.println("mapId grew - failed evict"); //!
+//            System.out.println(mapId.size());
+//            return;
+//        }
+//        if (buffer.length!= 3) {
+//            System.out.println("buffer grew - failed evict"); //!
+//            System.out.println(mapId.size());
+//            return;
+//        }
+//            //is testPage gone from mapId and buffer
+//        if (mapId.get(testpageId) != null) { // in buffer
+//            System.out.println("testEvictPageId: False - not in buffer");
+//            passedEvictPage = false;
+//            return;
+//        }
+//        if (buffer.get) {
+//        }
+//        System.out.println("testEvictPageId: True");
+//
+//        //testing - getPage
+//        Page samePage = getPage(testpageId, schema);
+//        if (testPage == samePage) {
+//            System.out.println("getPagePassed: True");
+//        } else {
+//            System.out.println("getPagePassed: False");
+//        }
         //test map doesn't contain id, so it gets page from disk 
-        
+        System.out.println("hi");
 
 
 

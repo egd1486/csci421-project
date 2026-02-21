@@ -281,7 +281,7 @@ public class Parser {
             return;
         }
 
-        ArrayList<List<Object>> Data = schema.Select();
+        ArrayList<ArrayList<Object>> Data = schema.Select();
         schema.DisplayTable(Data);
     }
 

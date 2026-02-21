@@ -256,25 +256,6 @@ public class StorageManager {
         freepages.add(pageId);
     }
 
-    /**
-     * readPage reads the page data from a specific page number
-     * @param pageNumber what we readin chat
-     * @return A page that have the set of binary data we looking at
-     */
-    public static Page readPage(int pageNumber, Schema schema) throws IOException {
-        byte[] PageData = new byte[pageSize];
-        try(RandomAccessFile file = new RandomAccessFile(filename, "r")){
-            file.seek((long) pageNumber * pageSize);
-            file.readFully(PageData);
-        }
-        Page new_page = new Page(pageNumber, schema);
-
-        new_page.set_data(PageData);
-
-        return new_page;
-    }
-
-
 
 
 

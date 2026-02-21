@@ -109,7 +109,7 @@ public class Catalog {
             }
             currPageId = currPage.get_next_pageid();
         }
-        for(List<Object> row : newData){
+        for(ArrayList<Object> row : newData){
             newSchema.Insert(row);
         }
         newSchema.setName(schemaName);
@@ -144,18 +144,18 @@ public class Catalog {
 
         // Adding data with old attribute removed
         int currPageId = BufferManager.getPage(oldSchema.PageId, oldSchema).get_pageid();
-        ArrayList<List<Object>> newData = new ArrayList<>();
+        ArrayList<ArrayList<Object>> newData = new ArrayList<>();
         while(currPageId != -1){
             Page currPage = BufferManager.getPage(currPageId, oldSchema);
-            ArrayList<List<Object>> currPageData = currPage.get_data();
-            for(List<Object> row : currPageData){
-                List<Object> newRow = new ArrayList<>(row);
+            ArrayList<ArrayList<Object>> currPageData = currPage.get_data();
+            for(ArrayList<Object> row : currPageData){
+                ArrayList<Object> newRow = new ArrayList<>(row);
                 newRow.remove(attributeIndex);
                 newData.add(newRow);
             }
             currPageId = currPage.get_next_pageid();
         }
-        for(List<Object> row : newData){
+        for(ArrayList<Object> row : newData){
             newSchema.Insert(row);
         }
         newSchema.setName(schemaName);
