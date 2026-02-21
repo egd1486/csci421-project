@@ -115,7 +115,6 @@ public class Parser {
                     char c = values.charAt(i);
                     if(c == '"'){
                         inQuotes = !inQuotes;
-                        valuesBuilder.append(c);
                     }
                     else if (c == ' ' && !inQuotes) {
                         String value = valuesBuilder.toString().trim();
