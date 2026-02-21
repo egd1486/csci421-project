@@ -139,8 +139,6 @@ public class BufferManager {
 
 
 
-
-
     public static void main(String[] args) throws IOException {
         int bufferSize = 3;
         int pageSize = 256; 
