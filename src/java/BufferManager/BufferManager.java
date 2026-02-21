@@ -3,6 +3,7 @@ package BufferManager;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Stack;
 
 import Common.Page;
 import Catalog.Schema;
@@ -132,4 +133,66 @@ public class BufferManager {
     }
 
 
+     public static Page[] getBuffer() {
+        return buffer;
+    }
+
+
+
+
+
+    public static void main(String[] args) throws IOException {
+        int bufferSize = 3;
+        int pageSize = 256; 
+        StorageManager.initializeDatabaseFile("tester", pageSize);
+        BufferManager.initialize(bufferSize);
+        Schema schema = null;
+        try {
+            schema = new Schema("Table");
+        } catch (Exception e) {
+            System.err.println(e);
+        }
+       
+        //testing getEmptyPage
+        Page testPage = getEmptyPage(schema);
+        boolean hasPassedEmptyPage = true;
+        if (testPage == null) { // empty
+            hasPassedEmptyPage = false;
+            System.out.println("hasPassedEmptyPage: False - Null page");
+            return;
+        }
+        int testpageId = testPage.get_pageid();
+        int currPagesCreated = StorageManager.getPageCounter();
+        if (testpageId < 0 || testpageId >=  currPagesCreated) { //not a valid pageId
+            hasPassedEmptyPage = false;
+            System.out.println("hasPassedEmptyPage: False - invalid pageId");
+            return;
+        }
+        Stack<Integer> free_pages = StorageManager.getFreePages();
+        if (free_pages.contains(testpageId)) { //page id given is dead page?
+            hasPassedEmptyPage = false;
+            System.out.println("hasPassedEmptyPage: False - dead pageId");
+            return;
+        }
+        if (mapId.get(testpageId) == null) { //not in buffer
+            hasPassedEmptyPage = false;
+            System.out.println("hasPassedEmptyPage: False - not in buffer");
+            return;
+        }
+        //
+        System.out.println("hasPassedEmptyPage: True");
+        
+        //testing - getPage
+        Page samePage = getPage(testpageId, schema);
+        if (testPage == samePage) {
+            System.out.println("getPagePassed: True");
+        } else {
+            System.out.println("getPagePassed: False");
+        }
+
+        
+
+
+
+    }
 }

@@ -302,4 +302,13 @@ public class StorageManager {
     public static void setPageSize(int newSize) {
         pageSize = newSize;
     }
+
+
+    public static int getPageCounter() {
+        return page_counter;
+    }
+
+    public static Stack<Integer> getFreePages() {
+        return freepages;
+    }
 }

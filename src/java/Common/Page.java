@@ -85,7 +85,7 @@ public class Page {
         freebytes = num;
     }
 
-    public void set_data(ArrayList<List<Object>> data){
+    public void set_data(ArrayList<ArrayList<Object>> data){
         this.data = data;
 
         //Compute the size of what we currently have
