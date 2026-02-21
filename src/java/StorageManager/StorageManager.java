@@ -23,12 +23,11 @@ public class StorageManager {
 
     private static final int BOOLEAN_BYTES = 1; //hard coded since Boolean.BYTES dne
 
-    public static byte[] encoder(Page page) throws IOException {
+  public static byte[] encoder(Page page) throws IOException {
         Schema schema = page.get_schema();
 
         byte[] slotted_page = new byte[pageSize];
         ByteBuffer slotted_buffer = ByteBuffer.wrap(slotted_page);
-
 
         int numslots = 0;
         int free_ptr = pageSize-1;
@@ -37,7 +36,7 @@ public class StorageManager {
         int SLOT_ENTRY_SIZE = Integer.BYTES * 2;
 
         slotted_buffer.putInt(0, page.get_next_pageid());
-        slotted_buffer.putInt(Integer.BYTES, numslots);
+        
         slotted_buffer.putInt(Integer.BYTES * 2, free_ptr);
 
         Type[] type = schema.GetTypes();
@@ -48,60 +47,52 @@ public class StorageManager {
             BitSet bitmap = new BitSet(row.size());
 
             for(int index = 0; index < row.size(); index++){
-                if(row.get(index) == null){
-                    bitmap.set(index);
-                }
-               switch(type[index]){
-                   case INT -> {
-                       dos.writeInt((int) row.get(index));
-                   }
+            // Check if the value is null, and mark if so.
+            if(row.get(index) == null) bitmap.set(index);
+            // Otherwise, switch through the types to handle writing the value
+            else switch(type[index]){
+                   case INT -> dos.writeInt((int) row.get(index));
 
-                   case BOOLEAN -> {
-                       dos.writeBoolean((boolean) row.get(index));
-                   }
+                   case BOOLEAN -> dos.writeBoolean((boolean) row.get(index));
 
-                   case DOUBLE -> {
-                       dos.writeDouble((double) row.get(index));
-                   }
+                   case DOUBLE -> dos.writeDouble((double) row.get(index));
 
-                   case CHAR -> {
-                       String string = (String) row.get(index);
-                       int length = schema.Attributes.get(index).typeLength;
-                       for(int i = 0; i < length; i++){
-                           dos.writeChar(string.charAt(i));
-                       }
-                   }
-                   case VARCHAR -> {
-                       byte[] str = ((String) row.get(index)).getBytes();
-                    //    free_ptr -= str.length;
-                    //    int str_offSet =  free_ptr;
-                    //    System.arraycopy(str, 0, slotted_page, str_offSet, str.length);
+                   default -> {
+                        // This case handles char/varchar which are stored in equivalent fashion :)
+                        String string = (String) row.get(index);
 
-                       dos.writeInt(str.length);
-                       dos.write(str);
+                        // Write for string length
+                        int length = schema.Attributes.get(index).typeLength;
+                        dos.writeInt(schema.Attributes.get(index).typeLength);
+
+                        // Write each char byte.
+                        for(int i = 0; i < length; i++)
+                        dos.writeChar(string.charAt(i));
                    }
-                   default -> System.out.println("what the hell is this: " + row.get(index));
                }
             }
+
             byte[] row_data = byte_array.toByteArray();
             int bitmapSize = (row.size() + 7) / 8;
             byte[] fixedBitmap = new byte[bitmapSize];
             System.arraycopy(bitmap.toByteArray(), 0, fixedBitmap, 0, bitmap.toByteArray().length);
 
-            // numslots++;
-            int slot_index = HEADER_SIZE + numslots * SLOT_ENTRY_SIZE;
             numslots++;
-            int new_free_ptr = free_ptr - row_data.length;
+            int slot_index = HEADER_SIZE + (numslots - 1) * SLOT_ENTRY_SIZE;
+            int new_free_ptr = free_ptr - row_data.length - fixedBitmap.length;
 
             System.arraycopy(fixedBitmap, 0, slotted_page, new_free_ptr, fixedBitmap.length);
             System.arraycopy(row_data, 0, slotted_page, new_free_ptr + fixedBitmap.length, row_data.length);
 
+            // Store this rows location above,
             slotted_buffer.putInt(slot_index, new_free_ptr);
-            slotted_buffer.putInt(slot_index + Integer.BYTES, row_data.length);
-
-            slotted_buffer.putInt(Integer.BYTES, numslots);
-            slotted_buffer.putInt(Integer.BYTES * 2, new_free_ptr);
+            // And how long it is :)
+            slotted_buffer.putInt(slot_index + Integer.BYTES, fixedBitmap.length + row_data.length);
         }
+
+        // Write number of entries.
+        slotted_buffer.putInt(Integer.BYTES, numslots);
+
         return slotted_page;
     }
 
@@ -133,61 +124,78 @@ public class StorageManager {
         catch(Exception e){
             System.err.println(e);
         }
-        // Page new_page = new Page(pageNumber);
-        int nextPage = ByteBuffer.wrap(Arrays.copyOfRange(data, 0, Integer.BYTES)).getInt();
-        decoded.set_nextpageid(nextPage);
-        int numEntries = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES, 2*Integer.BYTES)).getInt();
-        int free_ptr= ByteBuffer.wrap(Arrays.copyOfRange(data, 2*Integer.BYTES, 3*Integer.BYTES)).getInt()+1;
-        decoded.set_freebytes((free_ptr-1) - numEntries*(2*Integer.BYTES) - 3*Integer.BYTES); // End of free space - slotSize * numEntries - headerSize
-        int size; //char and varchar
-        int offset;
-        Type[] attributes = schema.GetTypes(); //! Need way to get list of attributes, or add as parameter
-        for (int index = 1; index <= numEntries; index++){
-            offset = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*(2*index+1), Integer.BYTES*(2*index+2))).getInt();
-            int length = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*(2*index+2), Integer.BYTES*(2*index+3))).getInt();
-            ArrayList<Object> row = new ArrayList<Object>();
-            String nullPtr = "";
-            for (int nullByte = 0; nullByte < Math.ceil(attributes.length/8.0); nullByte++){
-                nullPtr += String.format("%" + 8 + "s" , Integer.toBinaryString(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, offset+1)).get())).replaceAll(" ", "0");
-                offset += 1;
-            }
-            for (int attr = 0; attr < attributes.length; attr++){
-                if (nullPtr.charAt(attr) == '1')
-                    row.add(null);
-                else{
-                    switch (attributes[attr]){
-                        case INT:
-                            row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES+offset)).getInt());
-                            offset += Integer.BYTES;
-                            break;
-                        case BOOLEAN:
-                            row.add(data[offset] == 1); //to get true or false
-                            offset += BOOLEAN_BYTES;
-                            break;
-                        case CHAR:
-                            size = schema.Attributes.get(attr).typeLength; // get length of string from schema
-                            row.add(new String(Arrays.copyOfRange(data, offset, size*Character.BYTES+offset), StandardCharsets.UTF_8));
-                            offset+= size * Character.BYTES;
-                            break;
-                        case DOUBLE:
-                            row.add((Float)(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Double.BYTES+offset)).getFloat()));
-                            offset += Double.BYTES;
-                            break;
-                        case VARCHAR: //! offset = offset----location and location------size
-                            // int location = ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES+offset)).getInt();
-                            // size = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES+offset, 2*Integer.BYTES+offset)).getInt();
-                             // Object[] add = {new String(Arrays.copyOfRange(data, location, size*Character.BYTES+location), StandardCharsets.UTF_8),size};
-                            // row.add(add);
-                            // row.add(new String(Arrays.copyOfRange(data, location, size+location), StandardCharsets.UTF_8));
-                            // offset += 2*Integer.BYTES;
-                            size = ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES + offset)).getInt();
-                            offset += Integer.BYTES;
-                            row.add(new String(Arrays.copyOfRange(data, offset, offset + size), StandardCharsets.UTF_8));
-                            offset += size;
 
-                            break;
-                    }
+
+        ByteBuffer decode_wrapper = ByteBuffer.wrap(data);
+        int HEADER_SIZE = Integer.BYTES * 3; // next_Page_id, num_slots(entries), free_ptr
+        int SLOT_ENTRY_SIZE = Integer.BYTES * 2;
+
+        int nextPage = decode_wrapper.getInt(0);
+        decoded.set_nextpageid(nextPage);
+        int numEntries = decode_wrapper.getInt(Integer.BYTES);
+        int freeptrstored = decode_wrapper.getInt(Integer.BYTES * 2);
+
+        // Page new_page = new Page(pageNumber);
+        int free_ptr = freeptrstored + 1; //Hold onto this for now
+        decoded.set_freebytes(free_ptr - numEntries*(2*Integer.BYTES) - 3*Integer.BYTES); // End of free space - slotSize * numEntries - headerSize
+
+        Type[] attributes = schema.GetTypes(); //! Need way to get list of attributes, or add as parameter
+        int bitmapsize = (attributes.length + 7) / 8;
+
+        for (int index = 0; index < numEntries; index++){
+            int slotPos = HEADER_SIZE + index * SLOT_ENTRY_SIZE;
+            int offset = decode_wrapper.getInt(slotPos);
+            int length = decode_wrapper.getInt(slotPos + Integer.BYTES);
+
+            int ptr = offset + bitmapsize; //keep offset maybe
+            boolean[] nullmap = new boolean[attributes.length];
+            byte[] nullbytes = new byte[bitmapsize];
+
+            // populate nullbytes
+            for (int i = 0; i < bitmapsize; i++) nullbytes[i] = data[offset+i];
+
+            // iterate through boolean array, setting nulls from nullbytes.
+            for (int i = 0; i < attributes.length; i++)
+            // Set true if bit is 1
+            nullmap[i] = ((nullbytes[i/8] >> (i%8)) & 1) == 1;
+
+            int size;
+            ArrayList<Object> row = new ArrayList<Object>();
+            for (int attr = 0; attr < attributes.length; attr++){
+                if (nullmap[attr]) {
+                    row.add(null);
+                    continue;
                 }
+                switch (attributes[attr]){
+                    case INT:
+                        row.add(decode_wrapper.getInt(ptr));
+                        ptr += Integer.BYTES;
+                        break;
+                    case BOOLEAN:
+                        row.add(data[ptr] != 0); //to get true or false
+                        ptr += 1;
+                        break;
+                    case CHAR:
+                        size = decode_wrapper.getInt(ptr); // get length of string at the front
+                        // shift pointer over,
+                        ptr += Integer.BYTES;
+                        // construct string from here,
+                        String s = new String(data, ptr, size * Character.BYTES, StandardCharsets.UTF_16BE);
+                        row.add(s);
+                        ptr += size;
+                        break;
+                    case DOUBLE:
+                        row.add(decode_wrapper.getDouble(ptr));
+                        ptr += Double.BYTES;
+                        break;
+                    case VARCHAR: //! offset = offset----location and location------size
+                        size = decode_wrapper.getInt(ptr);
+                        ptr += Integer.BYTES;
+                        String object = new String(data, ptr, size, StandardCharsets.UTF_8);
+                        row.add(object);
+                        break;
+                }
+
             }
             fullPage.add(row);
         }
