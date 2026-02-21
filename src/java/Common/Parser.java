@@ -263,7 +263,6 @@ public class Parser {
         try{
             // Creating new table schema
             Schema schema = Catalog.AddSchema(tableName);
-            System.out.println(Arrays.toString(attr));
             // Populating table schema with attributes
             for(int i = 0; i < attr.length; i++){
                 boolean nullable = false;

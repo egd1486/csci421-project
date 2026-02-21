@@ -50,15 +50,34 @@ public class Attribute { //for one column
             switch (this.type) {
                 case INT: O = Integer.parseInt(O.toString()); break;
                 case CHAR: 
-                    if (O.toString().length() > this.typeLength) 
+                    if (O.toString().length() != this.typeLength)
                     throw new Exception("Char value must be " + this.typeLength + " characters");
                     O = String.format("%-"+this.typeLength.toString()+"s",O); 
+                    break;
+                case VARCHAR:
+                    if (O.toString().length() > this.typeLength) {
+                        throw new Exception("VARCHAR values must be between 0 and " + this.typeLength + " characters");
+                    }
+                    O = String.format("%-"+this.typeLength.toString()+"s",O);
                     break;
                 case DOUBLE: 
                     if (!O.toString().contains("."))
                     throw new Exception("Double values must contain a decimal");
                     O = Double.parseDouble(O.toString()); break;
-                case BOOLEAN: O = Boolean.parseBoolean(O.toString()); break;
+                case BOOLEAN:
+                    if(O.toString().equals("True")){
+                        O = "True";
+                        break;
+                    }
+                    else if(O.toString().equals("False")){
+                        O = "False";
+                        break;
+                    }
+                    else if(O.toString().equals("NULL")){
+                        O = "NULL";
+                        break;
+                    }
+                    throw new Exception("Boolean values must be True, False, or NULL");
                 default: break;
             }
         } catch (Exception e) {

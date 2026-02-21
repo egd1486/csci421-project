@@ -52,7 +52,7 @@ public class JottQL{
             Parser.parse(command);
         }
         try{
-            // BufferManager.writeSchemas();
+            //BufferManager.writeSchemas();
             BufferManager.flush_all();
         }
         catch (Exception e){
