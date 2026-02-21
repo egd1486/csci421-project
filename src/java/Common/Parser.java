@@ -209,7 +209,7 @@ public class Parser {
                 // Getting conditionals if needed
                 // Calling Add command once all data obtained
                 if(keywords.length == 6){
-                    alterAdd(tableName, attrName, type, typeSize, true, false, null);
+                    alterAdd(tableName, attrName, type, typeSize, false, false, null);
                 }
                 else if(keywords.length == 8){
                     String hasDefault = keywords[6];
@@ -293,7 +293,6 @@ public class Parser {
         int success = 0;
         try{
             for (ArrayList<String> S_Row : rows) {
-                System.out.println(S_Row.toString() + "this is srow");
                 ArrayList<Attribute> attributes = schema.Attributes;
 
                 // Checking if number of attributes match
@@ -303,11 +302,8 @@ public class Parser {
 
                 ArrayList<Object> Row = new ArrayList<>();
                 // Loop through row and parse strings via attribute method,
-                for (int i = 0; i < attributes.size(); i++) {
-                    Row.add(attributes.get(i).Parse(S_Row.get(i)));
-                    System.out.println(S_Row.get(i) + " woahhhh");
-                }
-                
+                for (int i = 0; i < attributes.size(); i++)
+                Row.add(attributes.get(i).Parse(S_Row.get(i)));
 
                 schema.Insert(Row);
                 success++;

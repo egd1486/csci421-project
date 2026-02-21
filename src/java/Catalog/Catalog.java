@@ -59,7 +59,6 @@ public class Catalog {
         // Force uppercase
         Name = Name.toUpperCase();
 
-        for (Schema S : Schemas) System.out.println(S.Name + " MEMEMEMEMEMEM");
         for (Schema S : Schemas) if (S.Name.equals(Name)) return S;
 
         return null; 
@@ -90,7 +89,7 @@ public class Catalog {
         // Creating new schema and setting its name, primary key, page id, and attributes
         Schema oldSchema = GetSchema(schemaName);
 
-        if(!Nullable && Default==null){
+        if(Nullable && Default==null){
             throw new Exception("NOT NULL attribute missing default value");
         }
 
