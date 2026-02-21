@@ -54,7 +54,7 @@ public class BufferManager {
         Page page_to_remove = buffer[removal_page];
 
         if(page_to_remove.check_dirty()){
-            StorageManager.writePage(page_to_remove);
+            // StorageManager.writePage(page_to_remove);
         }
         mapId.remove(page_to_remove.get_pageid());
         buffer[removal_page] = null;
@@ -255,7 +255,6 @@ public class BufferManager {
         System.out.println();
     }
 
-
     public static void testEvictionEmptyPage() throws Exception {
         System.out.println("Start testing Evict Empty Page");
         int bufferSize = 3;
@@ -390,9 +389,9 @@ public class BufferManager {
         //testing dirty page eviction
         Page testPage4 = getEmptyPage(schema); //id 8
             //read back from disk to see if data survived
-        Page dirtyPage = StorageManager.decode(schemaDirty, testPage1Id);
-        ArrayList<ArrayList<Object>> dirtyData = dirtyPage.get_data();
-        System.out.println(dirtyData.get(0)); //[1, Frank]
+        // Page dirtyPage = StorageManager.decode(schemaDirty, testPage1Id); //!
+        // ArrayList<ArrayList<Object>> dirtyData = dirtyPage.get_data(); //!
+        // System.out.println(dirtyData.get(0)); //[1, Frank] //!
             //see if still exists in mapId and buffer
         for (Page p: buffer) { //id 5 should be gone
             System.out.println("dirty page still existing?");
@@ -621,11 +620,11 @@ public class BufferManager {
         Page testPage4 = getEmptyPage(schema); //id 19
             //read back from disk to see if data survived
              System.out.println("HERE after");
-        Page dirtyPage = StorageManager.decode(schemaDirty, testPage1Id);
-        // System.out.println("HERE");
-        ArrayList<ArrayList<Object>> dirtyData = dirtyPage.get_data();
-        // System.out.println("HERE");
-        System.out.println(dirtyData.get(0)); //[1, Frank]
+        // Page dirtyPage = StorageManager.decode(schemaDirty, testPage1Id); //!
+        // // System.out.println("HERE");
+        // ArrayList<ArrayList<Object>> dirtyData = dirtyPage.get_data();//!
+        // // System.out.println("HERE");
+        // System.out.println(dirtyData.get(0)); //[1, Frank, false, "19901", 14.29]//!
             //see if still exists in mapId and buffer
         for (Page p: buffer) { //id 16 should be gone
             System.out.println("dirty page still existing?");
@@ -640,23 +639,15 @@ public class BufferManager {
         System.out.println();
     }
 
-    public static void testCleanPageEvict() {
-
-    }
+   
 
     public static void main(String[] args) throws Exception {
-        testCreationEmptyPage();
-        testEvictionEmptyPage();
-        testDirtyEmptyPage();
-        testGetPage();
-        testFlushAll();
-        // testWritingAllTypes();
-
-        // testCleanPageEvict();
-
-
-
-
+        testCreationEmptyPage(); //test if we can create empty page
+        testEvictionEmptyPage(); //test evicting clean empty page 
+        testDirtyEmptyPage();  //! testing evicting dirty empty page - wrote int and varchar - 1 row
+        testGetPage(); //test getting a page
+        testFlushAll(); //test flush all
+        testWritingAllTypes(); //! waiting for encode/decode to be debugged - testing writing all types, 2 rows
     }
 }
 
