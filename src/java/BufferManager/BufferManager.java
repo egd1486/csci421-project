@@ -6,7 +6,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
-
+import Common.Type;
 import Common.Page;
 import Catalog.Schema;
 import StorageManager.StorageManager;
