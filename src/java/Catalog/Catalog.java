@@ -117,7 +117,12 @@ public class Catalog {
             Page currPage = BufferManager.getPage(currPageId, oldSchema);
             for(ArrayList<Object> row : currPage.get_data()){
                 ArrayList<Object> newRow = new ArrayList<>(row);
-                newRow.add(Default);
+                if(Default instanceof String){
+                    newRow.add(Default.toString().substring(1, Default.toString().length()-1));
+                }
+                else{
+                    newRow.add(Default);
+                }
                 newData.add(newRow);
             }
             currPageId = currPage.get_next_pageid();

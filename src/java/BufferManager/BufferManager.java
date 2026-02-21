@@ -1,11 +1,12 @@
 package BufferManager;
 
 import java.io.IOException;
-import java.nio.Buffer;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
-
+import Common.Type;
 import Common.Page;
 import Catalog.Schema;
 import StorageManager.StorageManager;
@@ -50,9 +51,9 @@ public class BufferManager {
             }
         }
         Page page_to_remove = buffer[removal_page];
-
+        System.out.println(page_to_remove.get_pageid());
         if(page_to_remove.check_dirty()){
-            StorageManager.writePage(page_to_remove.get_pageid(), page_to_remove.get_data());
+            StorageManager.writePage(page_to_remove);
         }
         mapId.remove(page_to_remove.get_pageid());
         buffer[removal_page] = null;
@@ -67,11 +68,11 @@ public class BufferManager {
      * @return page
      */
     public static Page getPage(int pageId, Schema schema) throws IOException {
-        System.out.println("pageId: " + pageId);
+        // System.out.println("pageId: " + pageId);
         //If a map contains the page id then we return page
         Page return_page = mapId.get(pageId);
         if(return_page != null){
-            System.out.println("Page found in buffer");
+            // System.out.println("Page found in buffer");
             return_page.set_newtime();
             return return_page;
         }
@@ -111,7 +112,7 @@ public class BufferManager {
                 Page newEmptyPage = new Page(newPageId, schema);
                 buffer[i] = newEmptyPage;
                 mapId.put(newPageId, newEmptyPage);
-                System.out.println(buffer.toString());
+                // System.out.println(buffer.toString());
                 return newEmptyPage;
             }
         }
@@ -134,7 +135,7 @@ public class BufferManager {
         for(Page check_page : buffer){
             if(check_page != null){
                 if(check_page.check_dirty()){
-                    StorageManager.writePage(check_page.get_pageid(), check_page.get_data());
+                    StorageManager.writePage(check_page);
                 }
             }
         }
@@ -146,111 +147,205 @@ public class BufferManager {
     }
 
 
+    public static void testCreationEmptyPage() throws IOException {
+        int bufferSize = 3;
+        int pageSize = 256;
+        StorageManager.initializeDatabaseFile("tester", pageSize);
+        BufferManager.initialize(bufferSize);
+        Schema schema = null;
+        try {
+            schema = new Schema("Table");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
-    public static void main(String[] args) throws IOException {
-//        int bufferSize = 3;
-//        int pageSize = 256;
-//        StorageManager.initializeDatabaseFile("tester", pageSize);
-//        BufferManager.initialize(bufferSize);
-//        Schema schema = null;
-//        try {
-//            schema = new Schema("Table");
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//
-//        //testing getEmptyPage
-//            //creation
-//        Page testPage = getEmptyPage(schema);
-//        boolean hasPassedEmptyPage = true;
-//        if (testPage == null) { // empty
-//            hasPassedEmptyPage = false;
-//            System.out.println("hasPassedEmptyPage: False - Null page");
-//            return;
-//        }
-//        int testpageId = testPage.get_pageid();
-//        int currPagesCreated = StorageManager.getPageCounter();
-//        if (testpageId < 0 || testpageId >=  currPagesCreated) { //not a valid pageId
-//            hasPassedEmptyPage = false;
-//            System.out.println("hasPassedEmptyPage: False - invalid pageId");
-//            return;
-//        }
-//        Stack<Integer> free_pages = StorageManager.getFreePages();
-//        if (free_pages.contains(testpageId)) { //page id given is dead page?
-//            hasPassedEmptyPage = false;
-//            System.out.println("hasPassedEmptyPage: False - dead pageId");
-//            return;
-//        }
-//        if (mapId.get(testpageId) == null) { //not in buffer
-//            hasPassedEmptyPage = false;
-//            System.out.println("hasPassedEmptyPage: False - not in buffer");
-//            return;
-//        }
-//        System.out.println("hasPassedEmptyPage: True");
-//            //fill buffer, use lru,
-//        boolean passedEvictPage = true;
-//        Page testPage2 = getEmptyPage(schema);
-//        Page testPage3 = getEmptyPage(schema);
-//        //verify buffer full
-//        if (mapId.size() != 3) {
-//            System.out.println("Filling buffer failed");
-//            return;
-//        }
-//        Page testEvictPage = getEmptyPage(schema);
-//            //do page exist
-//        if (testEvictPage == null) { // empty
-//            System.out.println("testEvictPageId: False - Null page");
-//            passedEvictPage = false;
-//            return;
-//        }
-//        int testEvictPageId = testEvictPage.get_pageid();
-//        currPagesCreated = StorageManager.getPageCounter();
-//        if (testEvictPageId < 0 || testEvictPageId >=  currPagesCreated) { //not a valid pageId
-//            System.out.println("testEvictPageId: False - invalid pageId");
-//            passedEvictPage = false;
-//            return;
-//        }
-//        free_pages = StorageManager.getFreePages();
-//        if (free_pages.contains(testEvictPageId)) { //page id given is dead page?
-//            System.out.println("testEvictPageId: False - dead pageId");
-//            passedEvictPage = false;
-//            return;
-//        }
-//        if (mapId.get(testEvictPageId) == null) { //not in buffer
-//            System.out.println("testEvictPageId: False - not in buffer");
-//            passedEvictPage = false;
-//            return;
-//        }
-//            //did buffer and mapId grow
-//        if (mapId.size() != 3) {
-//            System.out.println("mapId grew - failed evict"); //!
-//            System.out.println(mapId.size());
-//            return;
-//        }
-//        if (buffer.length!= 3) {
-//            System.out.println("buffer grew - failed evict"); //!
-//            System.out.println(mapId.size());
-//            return;
-//        }
-//            //is testPage gone from mapId and buffer
-//        if (mapId.get(testpageId) != null) { // in buffer
-//            System.out.println("testEvictPageId: False - not in buffer");
-//            passedEvictPage = false;
-//            return;
-//        }
-//        if (buffer.get) {
-//        }
-//        System.out.println("testEvictPageId: True");
-//
-//        //testing - getPage
-//        Page samePage = getPage(testpageId, schema);
-//        if (testPage == samePage) {
-//            System.out.println("getPagePassed: True");
-//        } else {
-//            System.out.println("getPagePassed: False");
-//        }
-        //test map doesn't contain id, so it gets page from disk 
-        System.out.println("hi");
+        //testing getEmptyPage
+            //creation
+        Page testPage = getEmptyPage(schema);
+        if (testPage == null) { // empty
+            System.out.println("hasPassedEmptyPage: False - Null page");
+            return;
+        }
+        int testpageId = testPage.get_pageid();
+        int currPagesCreated = StorageManager.getPageCounter();
+        if (testpageId < 0 || testpageId >=  currPagesCreated) { //not a valid pageId
+            System.out.println("hasPassedEmptyPage: False - invalid pageId");
+            return;
+        }
+        Stack<Integer> free_pages = StorageManager.getFreePages();
+        if (free_pages.contains(testpageId)) { //page id given is dead page?
+            System.out.println("hasPassedEmptyPage: False - dead pageId");
+            return;
+        }
+        if (mapId.get(testpageId) == null) { //not in buffer
+            System.out.println("hasPassedEmptyPage: False - not in buffer");
+            return;
+        }
+        System.out.println("hasPassedEmptyPage: True");
+
+        //reset
+        mapId = new HashMap<>();
+        buffer = new Page[buffer.length];
+    }
+
+
+    public static void testEvictionEmptyPage() throws Exception {
+        int bufferSize = 3;
+        int pageSize = 256;
+        // StorageManager.initializeDatabaseFile("tester", pageSize);
+        BufferManager.initialize(bufferSize);
+        Schema schema = null;
+        try {
+            schema = new Schema("Table");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        //testing getEmptyPage
+            //creation
+        Page testPage = getEmptyPage(schema);
+        if (testPage == null) { // empty
+            System.out.println("hasPassedEmptyPage: False - Null page");
+            return;
+        }
+        int testpageId = testPage.get_pageid();
+        int currPagesCreated = StorageManager.getPageCounter();
+        if (testpageId < 0 || testpageId >=  currPagesCreated) { //not a valid pageId
+            System.out.println("hasPassedEmptyPage: False - invalid pageId");
+            return;
+        }
+        Stack<Integer> free_pages = StorageManager.getFreePages();
+        if (free_pages.contains(testpageId)) { //page id given is dead page?
+            System.out.println("hasPassedEmptyPage: False - dead pageId");
+            return;
+        }
+        if (mapId.get(testpageId) == null) { //not in buffer
+            System.out.println("hasPassedEmptyPage: False - not in buffer");
+            return;
+        }
+        System.out.println("hasPassedEmptyPage: True");
+
+        //testing EVICTION 
+            //fill buffer, use lru,
+        Page testPage2 = getEmptyPage(schema);
+        Page testPage3 = getEmptyPage(schema);
+            //verify buffer full
+        if (mapId.size() != 3) {
+            System.out.println("Filling buffer failed");
+            System.out.println(mapId.size());
+            return;
+        }
+        Page testEvictPage = getEmptyPage(schema);
+            //do page exist
+        if (testEvictPage == null) { // empty
+            System.out.println("testEvictPageId: False - Null page");
+            return;
+        }
+        //test eviction now
+        int testEvictPageId = testEvictPage.get_pageid();
+        currPagesCreated = StorageManager.getPageCounter();
+        if (testEvictPageId < 0 || testEvictPageId >=  currPagesCreated) { //not a valid pageId
+            System.out.println("testEvictPageId: False - invalid pageId");
+            return;
+        }
+        free_pages = StorageManager.getFreePages();
+        if (free_pages.contains(testEvictPageId)) { //page id given is dead page?
+            System.out.println("testEvictPageId: False - dead pageId");
+            return;
+        }
+        if (mapId.get(testEvictPageId) == null) { //not in buffer
+            System.out.println("testEvictPageId: False - not in buffer");
+            return;
+        }
+            //did buffer and mapId grow
+        if (mapId.size() != 3) {
+            System.out.println("mapId grew - failed evict"); 
+            System.out.println(mapId.size());
+            return;
+        }
+        if (buffer.length!= 3) {
+            System.out.println("buffer grew - failed evict"); 
+            System.out.println(buffer.length);
+            return;
+        }
+            //is testPage gone from mapId and buffer
+        if (mapId.get(testpageId) != null) { // in buffer
+            System.out.println("testEvictPageId: False - evicted still in mapId");
+            return;
+        }
+        if (Arrays.asList(buffer).contains(testPage))  {
+            System.out.println("testEvictPageId: False - evicted still in buffer");
+            return;
+        }
+        System.out.println("testEvictPageId: True");
+
+        //reset
+        mapId = new HashMap<>();
+        buffer = new Page[buffer.length];
+    }
+
+    public static void testDirtyEmptyPage() throws Exception {
+        int bufferSize = 3;
+        int pageSize = 256;
+        // StorageManager.initializeDatabaseFile("tester", pageSize);
+        BufferManager.initialize(bufferSize);
+        Schema schema = null;
+        try {
+            schema = new Schema("Table");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        Schema schemaDirty = null;
+        try {
+            schemaDirty = new Schema("Table2");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        schemaDirty.AddAttribute("personId", Type.INT, null, false, true, true, null);
+        schemaDirty.AddAttribute("name", Type.VARCHAR, 10, null, false, null, null);
+        ArrayList<Object> row = new ArrayList<Object>();
+        row.add(1);
+        row.add("Frank");
+        Page testPage1 = getEmptyPage(schemaDirty);
+        int testPage1Id = testPage1.get_pageid();
+        schemaDirty.setPageId(testPage1Id);
+        schemaDirty.Insert(row);
+        testPage1.set_isdirty(true);
+
+        Page testPage2 = getEmptyPage(schema);
+        Page testPage3 = getEmptyPage(schema); //cuz buffer size 3
+        
+        //testing dirty page eviction
+        // Repeat the whole test but before the 4th call, mark one of the 3 pages as dirty.
+        //  Specifically mark the oldest one dirty. When eviction happens that dirty page should be written to disk.
+        //  After eviction, read that pageId back from disk and confirm the data survived.
+        //  This tests the if dirty → writePage branch inside lru().
+        Page testPage4 = getEmptyPage(schema);
+            //read back from disk to see if data survived
+        Page dirtyPage = StorageManager.decode(schemaDirty, testPage1Id);
+        ArrayList<ArrayList<Object>> dirtyData = dirtyPage.get_data();
+        System.out.println(dirtyData.get(0));
+        // if (!dirtyPage.equals(testPage2)) {
+        //     System.out.println("evict dirty page - write didn't work ");
+        // }
+    }
+
+    public static void main(String[] args) throws Exception {
+        testCreationEmptyPage();
+        testEvictionEmptyPage();
+        testDirtyEmptyPage();
+        
+        
+
+
+        // //testing - getPage
+        // Page samePage = getPage(testEvictPageId, schema);
+        // if (testEvictPage == samePage) {
+        //     System.out.println("getPagePassed: True");
+        // } else {
+        //     System.out.println("getPagePassed: False");
+        // }
 
 
 
