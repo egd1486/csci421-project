@@ -1,11 +1,8 @@
-import java.io.IOException;
-import java.util.Scanner;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import BufferManager.BufferManager;
 import Common.Parser;
 import StorageManager.StorageManager;
-import BufferManager.BufferManager;
+import java.io.IOException;
+import java.util.Scanner;
 
 public class JottQL{
 
@@ -43,7 +40,7 @@ public class JottQL{
             String line = scanner.nextLine().trim();
             if(line.trim().equals("<QUIT>")){
                 scanner.close();
-                return;
+                break;
             }
             StringBuilder builder = new StringBuilder(line);
             while(!line.endsWith(";")){
@@ -53,6 +50,13 @@ public class JottQL{
             String command = builder.toString().trim();
             System.out.println("Command: " + command);
             Parser.parse(command);
+        }
+        try{
+            BufferManager.writeSchemas();
+            BufferManager.flush_all();
+        }
+        catch (Exception e){
+            System.err.println(e);
         }
     }
 }
