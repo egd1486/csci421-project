@@ -154,7 +154,9 @@ public class BufferManager {
             }
             else{
                 next = getEmptyPage(Catalog.AttributeTable);
+                current.set_nextpageid(next.get_pageid());
             }
+            current.set_isdirty(true);
             current.set_freebytes(0);
             current.set_data(new ArrayList<ArrayList<Object>>());
             for (Schema table : Catalog.Schemas){
@@ -181,9 +183,11 @@ public class BufferManager {
                         }
                         else{
                             next = getEmptyPage(Catalog.AttributeTable);
+                            current.set_nextpageid(next.get_pageid());
                         }
                         current.set_data(new ArrayList<ArrayList<Object>>());
                         current.set_freebytes(0);
+                        current.set_isdirty(true);
 
                         ArrayList<Object> newRow = new ArrayList<Object>();
                         newRow.add(table.Name); //SchemaName
@@ -200,6 +204,17 @@ public class BufferManager {
                         current.set_data(newTable);
                     }
                 }
+            }
+            if (current.get_data().size() == 0){
+                StorageManager.markfreepage(current.get_pageid());
+            }
+            while(current.get_next_pageid() != -1){
+                current.set_nextpageid(-1);
+                current.set_isdirty(true);
+                current = next;
+                next = getPage(current.get_next_pageid(), Catalog.AttributeTable);
+                current.set_data(new ArrayList<ArrayList<Object>>());
+                StorageManager.markfreepage(current.get_pageid());
             }
         } catch (Exception e) {
             System.err.println(e);
