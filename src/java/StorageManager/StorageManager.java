@@ -266,9 +266,9 @@ public class StorageManager {
             // database_access.seek(page_size);
             // database_access.write(catalog_page);
 
-        }catch(IOException e) {
-             e.printStackTrace();
-        }
+        // }catch(IOException e) {
+        //      e.printStackTrace();
+        // }
     }
 
     /**
