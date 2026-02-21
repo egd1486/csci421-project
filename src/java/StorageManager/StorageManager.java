@@ -1,5 +1,6 @@
 package StorageManager;
 
+import Catalog.Catalog;
 import Common.*;
 
 import java.io.File;
@@ -72,9 +73,9 @@ public class StorageManager {
                    }
                    case VARCHAR -> {
                        byte[] str = ((String) row.get(index)).getBytes();
-                       free_ptr -= str.length;
-                       int str_offSet =  free_ptr;
-                       System.arraycopy(str, 0, slotted_page, str_offSet, str.length);
+                    //    free_ptr -= str.length;
+                    //    int str_offSet =  free_ptr;
+                    //    System.arraycopy(str, 0, slotted_page, str_offSet, str.length);
 
                        dos.writeInt(str.length);
                        dos.write(str);
@@ -87,8 +88,9 @@ public class StorageManager {
             byte[] fixedBitmap = new byte[bitmapSize];
             System.arraycopy(bitmap.toByteArray(), 0, fixedBitmap, 0, bitmap.toByteArray().length);
 
-            numslots++;
+            // numslots++;
             int slot_index = HEADER_SIZE + numslots * SLOT_ENTRY_SIZE;
+            numslots++;
             int new_free_ptr = free_ptr - row_data.length;
 
             System.arraycopy(fixedBitmap, 0, slotted_page, new_free_ptr, fixedBitmap.length);
@@ -145,8 +147,8 @@ public class StorageManager {
             int length = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*(2*index+2), Integer.BYTES*(2*index+3))).getInt();
             ArrayList<Object> row = new ArrayList<Object>();
             String nullPtr = "";
-            for (int nullByte = 0; nullByte < Math.ceil(attributes.length/8); nullByte++){
-                nullPtr += String.format("%" + 8 + "s" , Integer.toBinaryString(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, offset+1)).getInt())).replaceAll(" ", "0");
+            for (int nullByte = 0; nullByte < Math.ceil(attributes.length/8.0); nullByte++){
+                nullPtr += String.format("%" + 8 + "s" , Integer.toBinaryString(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, offset+1)).get())).replaceAll(" ", "0");
                 offset += 1;
             }
             for (int attr = 0; attr < attributes.length; attr++){
@@ -172,11 +174,17 @@ public class StorageManager {
                             offset += Double.BYTES;
                             break;
                         case VARCHAR: //! offset = offset----location and location------size
-                            int location = ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES+offset)).getInt();
-                            size = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES+offset, 2*Integer.BYTES+offset)).getInt();
-                            Object[] add = {new String(Arrays.copyOfRange(data, location, size*Character.BYTES+location), StandardCharsets.UTF_8),size};
-                            row.add(add);
-                            offset += 2*Integer.BYTES;
+                            // int location = ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES+offset)).getInt();
+                            // size = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES+offset, 2*Integer.BYTES+offset)).getInt();
+                             // Object[] add = {new String(Arrays.copyOfRange(data, location, size*Character.BYTES+location), StandardCharsets.UTF_8),size};
+                            // row.add(add);
+                            // row.add(new String(Arrays.copyOfRange(data, location, size+location), StandardCharsets.UTF_8));
+                            // offset += 2*Integer.BYTES;
+                            size = ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES + offset)).getInt();
+                            offset += Integer.BYTES;
+                            row.add(new String(Arrays.copyOfRange(data, offset, offset + size), StandardCharsets.UTF_8));
+                            offset += size;
+
                             break;
                     }
                 }
@@ -209,31 +217,58 @@ public class StorageManager {
             System.out.println("Ignoring provided page size. Using prior size of " + page_size);
 
             // TODO: Read schema values, and initialize into Catalog.
-
+            Page schemaTable = decode(Catalog.AttributeTable, 1);
+            ArrayList<ArrayList<Object>> data = schemaTable.get_schema().Select();
+            for (ArrayList<Object> row : data){
+                if(Catalog.GetSchema(row.get(0).toString()) == null){
+                    try{
+                        Catalog.AddSchema(row.get(0).toString());
+                    }
+                    catch(Exception e){
+                        System.err.println(e);
+                    }
+                }
+                try{
+                    Catalog.AttributeAdd(row.get(0).toString(), row.get(2).toString(), Type.values()[(Integer)row.get(3)], (Integer)row.get(4), (Boolean)row.get(5), (Boolean)row.get(7), (Boolean)row.get(6), row.get(8));
+                }
+                catch (Exception e){
+                    System.err.println(e);
+                }
+            }
             return;
         }
         System.out.println("No database found. Creating new database...");
+        freepages = new Stack<Integer>();
+        filename = database_name;
+        pageSize = page_size;
+        // // Otherwise, create the database from scratch. Assume we make the first page contains the information about the database
+        // try(RandomAccessFile database_access = new RandomAccessFile(database_name,"rw")){
 
-        // Otherwise, create the database from scratch. Assume we make the first page contains the information about the database
-        try(RandomAccessFile database_access = new RandomAccessFile(database_name,"rw")){
-            filename = database_name;
-            pageSize = page_size;
-            page_counter = 1; //Were moving the page counter because page 0 will contain all of our basic information not in catalog
-            freepages = new Stack<Integer>();
+        //     page_counter = 2; //Were moving the page counter because page 0 will contain all of our basic information not in catalog
 
-            byte[] database_info = new byte[page_size];
-            ByteBuffer database_wrapped = ByteBuffer.wrap(database_info);
+        //     byte[] database_info = new byte[page_size];
+        //     ByteBuffer database_wrapped = ByteBuffer.wrap(database_info);
 
-            database_wrapped.putInt(0, page_size);
-            database_wrapped.putInt(Integer.BYTES, 1); //Number of pages
-            database_wrapped.putInt(Integer.BYTES * 2, -1); //SchemePageId or the pointer to catalogPageId
-            database_wrapped.putInt(Integer.BYTES * 3, -1); //Bitmap of free_list_pages
+            // database_wrapped.putInt(0, page_size);
+            // database_wrapped.putInt(Integer.BYTES, 1); //Number of pages
+            // database_wrapped.putInt(Integer.BYTES * 2, 1); //SchemePageId or the pointer to catalogPageId
+            // database_wrapped.putInt(Integer.BYTES * 3, -1); //Bitmap of free_list_pages
 
-            database_access.seek(0);
-            database_access.write(database_info);
-        }catch(IOException e) {
-            e.printStackTrace();
-        }
+            // database_access.seek(0);
+            // database_access.write(database_info);
+
+            // byte[] catalog_page = new byte[page_size];
+            // ByteBuffer catalog_buffer = ByteBuffer.wrap(catalog_page);
+            // catalog_buffer.putInt(0, -1); //nextCatalogPage
+            // catalog_buffer.putInt(Integer.BYTES, 0); //ENTRIES
+            // catalog_buffer.putInt(Integer.BYTES * 2, page_size); //OH BOI ANOTHER SLOTTED PAGE APPROACH
+
+            // database_access.seek(page_size);
+            // database_access.write(catalog_page);
+
+        // }catch(IOException e) {
+        //      e.printStackTrace();
+        // }
     }
 
     /**
@@ -265,12 +300,12 @@ public class StorageManager {
      * @param objects list of objects
      * @throws IOException self-explantory
      */
-    public static void writePage(int pageNumber, ArrayList<ArrayList<Object>> data) throws IOException {
-       try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
-           //Serialize it into bytes and then write it
-          //file.write(data, pageNumber * pageSize, pageSize);
-       }
-    }
+    // public static void writePage(int pageNumber, ArrayList<ArrayList<Object>> data) throws IOException {
+    //    try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
+    //        //Serialize it into bytes and then write it
+    //       //file.write(data, pageNumber * pageSize, pageSize);
+    //    }
+    // }
 
     // === Getter Functions ===
 

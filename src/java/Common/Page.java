@@ -37,6 +37,7 @@ public class Page {
         data = new ArrayList<>();
         is_dirty = false;
         time = System.currentTimeMillis();
+        next_page_id = -1;
     }
 
     /**

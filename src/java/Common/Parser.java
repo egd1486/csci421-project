@@ -4,6 +4,7 @@ import Catalog.Schema;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class Parser {
@@ -111,7 +112,7 @@ public class Parser {
                 // Iterating through input values
                 for(int i = 0; i < values.length(); i++){
                     // Checks every character and adds it to the current value
-                    // Only splits when comma is found outside of quotes
+                    // Only splits when comma is found outside of quotes.
                     char c = values.charAt(i);
                     if(c == '"'){
                         inQuotes = !inQuotes;
@@ -120,16 +121,23 @@ public class Parser {
                     else if (c == ' ' && !inQuotes) {
                         String value = valuesBuilder.toString().trim();
                         if(!value.isEmpty()){
-                            row.add(value);
+                            if(value.startsWith("\"") && value.endsWith("\"") && value.length() == 2){
+                                row.add("");
+                            }
+                            else if(value.startsWith("\"") && value.endsWith("\"") && value.length() > 2){
+                                row.add(value.substring(1, value.length()-1));
+                            }
+                            else{
+                                row.add(value);
+                            }
                         }
                         valuesBuilder.setLength(0);
                     }
                     else if(c == ',' && !inQuotes){
                         String value = valuesBuilder.toString().trim();
-                        if(!value.isEmpty()){
-                            rowsList.add(row);
-                            row = new ArrayList<>();
-                        }
+                        if(!value.isEmpty()) row.add(value);
+                        rowsList.add(row);
+                        row = new ArrayList<>();
                         valuesBuilder.setLength(0);
                     }
                     else{
@@ -140,8 +148,8 @@ public class Parser {
                 String lastValue = valuesBuilder.toString().trim();
                 if(!lastValue.isEmpty()){
                     row.add(lastValue);
-                    rowsList.add(row);
                 }
+                rowsList.add(row);
 
                 insert(tableName, rowsList);
             }
@@ -211,13 +219,16 @@ public class Parser {
                 // Getting conditionals if needed
                 // Calling Add command once all data obtained
                 if(keywords.length == 6){
-                    alterAdd(tableName, attrName, type, typeSize, true, false, null);
+                    alterAdd(tableName, attrName, type, typeSize, false, false, null);
                 }
                 else if(keywords.length == 8){
                     String hasDefault = keywords[6];
                     String defaultVal =  keywords[7];
                     if(hasDefault.equals("DEFAULT")){
-                        alterAdd(tableName, attrName, type, typeSize, true, true, defaultVal);
+                        if(defaultVal != null && defaultVal.charAt(0) == '"' && defaultVal.charAt(defaultVal.length() - 1) == '"'){
+                            String defaultNoQuotes = defaultVal.substring(1, defaultVal.length()-1);
+                            alterAdd(tableName, attrName, type, typeSize, false, true, defaultNoQuotes);
+                        }
                     }
                 }
                 else if(keywords.length == 9){
@@ -227,7 +238,13 @@ public class Parser {
                     if(!condition1.equals("NOTNULL") || !condition2.equals("DEFAULT")){
                         throw new Exception("Invalid command");
                     }
-                    alterAdd(tableName, attrName, type, typeSize, false, true, defaultVal);
+                    if(defaultVal != null && defaultVal.charAt(0) == '"' && defaultVal.charAt(defaultVal.length() - 1) == '"'){
+                        String defaultNoQuotes = defaultVal.substring(1, defaultVal.length()-1);
+                        alterAdd(tableName, attrName, type, typeSize, true, true, defaultNoQuotes);
+                    }
+                    else{
+                        alterAdd(tableName, attrName, type, typeSize, true, true, defaultVal);
+                    }
                 }
                 else{
                     throw new Exception("Invalid command");
@@ -246,6 +263,7 @@ public class Parser {
         try{
             // Creating new table schema
             Schema schema = Catalog.AddSchema(tableName);
+            System.out.println(Arrays.toString(attr));
             // Populating table schema with attributes
             for(int i = 0; i < attr.length; i++){
                 boolean nullable = false;
@@ -254,10 +272,10 @@ public class Parser {
                 if(constraints != null && constraints[i] != null){
                     for(String c : constraints[i].split(" ")){
                         switch(c){
-                            case "NULLABLE":
+                            case "NOTNULL":
                                 nullable = true;
                                 break;
-                            case "PRIMARY":
+                            case "PRIMARYKEY":
                                 primary = true;
                                 break;
                             case "UNIQUE":
@@ -296,10 +314,16 @@ public class Parser {
         try{
             for (ArrayList<String> S_Row : rows) {
                 ArrayList<Attribute> attributes = schema.Attributes;
+
+                // Checking if number of attributes match
+                if (attributes.size() != S_Row.size())
+                throw new Exception("Invalid number of attributes");
+
+
                 ArrayList<Object> Row = new ArrayList<>();
                 // Loop through row and parse strings via attribute method,
-                for (int i = 0; i < Row.size(); i++) 
-                Row.set(i, attributes.get(i).Parse(S_Row.get(i)));
+                for (int i = 0; i < attributes.size(); i++)
+                Row.add(attributes.get(i).Parse(S_Row.get(i)));
 
                 schema.Insert(Row);
                 success++;
@@ -307,7 +331,7 @@ public class Parser {
         } catch(Exception e){
             System.out.println("Error: " + e.getMessage());
         }
-        System.out.println(success + "rows inserted successfully");
+        System.out.println(success + " rows inserted successfully");
     }
 
     // Removes table and all of its data from database, removes schema from catalog
@@ -332,9 +356,10 @@ public class Parser {
         }
         try{
             // Tries to add an attribute to the schema
+            System.out.println(defaultVal);
             Catalog.AttributeAdd(tableName, attrName, type, typeSize, nullable, false, false, defaultVal);
         } catch(Exception e){
-            System.out.println("Error: " + e.getMessage());
+            System.out.println("Error2: " + e.getMessage());
             return;
         }
 
