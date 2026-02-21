@@ -27,11 +27,11 @@ public class JottQL{
             return;
         }
 
-        // Initialize database through Storage Manager,
-        StorageManager.initializeDatabaseFile(dbLocation, pageSize);
-
         // Initialize Buffer Manager with bufferSize
         BufferManager.initialize(bufferSize);
+
+        // Initialize database through Storage Manager,
+        StorageManager.initializeDatabaseFile(dbLocation, pageSize);
 
         // Entering infinite loop and prompting for JottQL commands
         Scanner scanner = new Scanner(System.in);

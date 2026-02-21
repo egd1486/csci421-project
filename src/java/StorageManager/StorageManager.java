@@ -62,11 +62,10 @@ public class StorageManager {
                         String string = (String) row.get(index);
 
                         // Write for string length
-                        int length = schema.Attributes.get(index).typeLength;
-                        dos.writeInt(schema.Attributes.get(index).typeLength);
+                        dos.writeInt(string.length());
 
                         // Write each char byte.
-                        for(int i = 0; i < length; i++)
+                        for(int i = 0; i < string.length(); i++)
                         dos.writeChar(string.charAt(i));
                    }
                }
@@ -192,6 +191,7 @@ public class StorageManager {
                         size = decode_wrapper.getInt(ptr);
                         ptr += Integer.BYTES;
                         String object = new String(data, ptr, size, StandardCharsets.UTF_8);
+                        ptr += size;
                         row.add(object);
                         break;
                 }
@@ -214,6 +214,8 @@ public class StorageManager {
         // First check if the file exists
         File database_file = new File(database_name);
         System.out.println("Accessing database location...");
+
+        page_counter = 2; //Were moving the page counter because page 0-1 will contain all of our basic db info
 
         if (database_file.exists()) {
             System.out.println("Database found. Restarting database...");
@@ -249,34 +251,31 @@ public class StorageManager {
         freepages = new Stack<Integer>();
         filename = database_name;
         pageSize = page_size;
-        // // Otherwise, create the database from scratch. Assume we make the first page contains the information about the database
-        // try(RandomAccessFile database_access = new RandomAccessFile(database_name,"rw")){
+        // Otherwise, create the database from scratch. Assume we make the first page contains the information about the database
+        try(RandomAccessFile database_access = new RandomAccessFile(database_name,"rw")){
+            byte[] database_info = new byte[page_size];
+            ByteBuffer database_wrapped = ByteBuffer.wrap(database_info);
 
-        //     page_counter = 2; //Were moving the page counter because page 0 will contain all of our basic information not in catalog
+            database_wrapped.putInt(0, page_size);
+            database_wrapped.putInt(Integer.BYTES, 1); //Number of pages
+            database_wrapped.putInt(Integer.BYTES * 2, 1); //SchemePageId or the pointer to catalogPageId
+            database_wrapped.putInt(Integer.BYTES * 3, -1); //Bitmap of free_list_pages
 
-        //     byte[] database_info = new byte[page_size];
-        //     ByteBuffer database_wrapped = ByteBuffer.wrap(database_info);
+            database_access.seek(0);
+            database_access.write(database_info);
 
-            // database_wrapped.putInt(0, page_size);
-            // database_wrapped.putInt(Integer.BYTES, 1); //Number of pages
-            // database_wrapped.putInt(Integer.BYTES * 2, 1); //SchemePageId or the pointer to catalogPageId
-            // database_wrapped.putInt(Integer.BYTES * 3, -1); //Bitmap of free_list_pages
+            byte[] catalog_page = new byte[page_size];
+            ByteBuffer catalog_buffer = ByteBuffer.wrap(catalog_page);
+            catalog_buffer.putInt(0, -1); //nextCatalogPage
+            catalog_buffer.putInt(Integer.BYTES, 0); //ENTRIES
+            catalog_buffer.putInt(Integer.BYTES * 2, page_size); //OH BOI ANOTHER SLOTTED PAGE APPROACH
 
-            // database_access.seek(0);
-            // database_access.write(database_info);
+            database_access.seek(page_size);
+            database_access.write(catalog_page);
 
-            // byte[] catalog_page = new byte[page_size];
-            // ByteBuffer catalog_buffer = ByteBuffer.wrap(catalog_page);
-            // catalog_buffer.putInt(0, -1); //nextCatalogPage
-            // catalog_buffer.putInt(Integer.BYTES, 0); //ENTRIES
-            // catalog_buffer.putInt(Integer.BYTES * 2, page_size); //OH BOI ANOTHER SLOTTED PAGE APPROACH
-
-            // database_access.seek(page_size);
-            // database_access.write(catalog_page);
-
-        // }catch(IOException e) {
-        //      e.printStackTrace();
-        // }
+        }catch(IOException e) {
+             e.printStackTrace();
+        }
     }
 
     /**

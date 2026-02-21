@@ -209,6 +209,7 @@ public class Schema {
 
         // Now that we have a page with room, insert into it.
         P.get_data().add(Row);
+        P.set_isdirty(true);
     }
 
      public void setPageId(int newPageId) {

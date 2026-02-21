@@ -65,18 +65,11 @@ public class Attribute { //for one column
                     throw new Exception("Double values must contain a decimal");
                     O = Double.parseDouble(O.toString()); break;
                 case BOOLEAN:
-                    if(O.toString().equals("True")){
-                        O = "True";
-                        break;
-                    }
-                    else if(O.toString().equals("False")){
-                        O = "False";
-                        break;
-                    }
-                    else if(O.toString().equals("NULL")){
-                        O = "NULL";
-                        break;
-                    }
+                    boolean True = O.toString().equals("True");
+                    // If true or false, return which it is
+                    if(True || O.toString().equals("False"))
+                    return True;
+                    // Otherwise, throw error for syntax
                     throw new Exception("Boolean values must be True, False, or NULL");
                 default: break;
             }
