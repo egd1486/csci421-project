@@ -107,14 +107,14 @@ public class Schema {
     }
 
     // Displays a table in an easy to read format
-    public void DisplayTable(ArrayList<List<Object>> rows){
+    public void DisplayTable(ArrayList<ArrayList<Object>> rows){
         // Calculating width of each column
         int numAttributes = this.Attributes.size();
         int[] columnWidths = new int[numAttributes];
         for(int i = 0; i < numAttributes; i++){
             columnWidths[i] = this.Attributes.get(i).name.length();
         }
-        for(List<Object> row : rows){
+        for(ArrayList<Object> row : rows){
             for(int i = 0; i < numAttributes; i++){
                 Object value = row.get(i);
                 String valueString;

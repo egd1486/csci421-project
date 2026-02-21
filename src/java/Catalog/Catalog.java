@@ -99,11 +99,11 @@ public class Catalog {
 
         // Adding all data with new attribute added
         int currPageId = oldSchema.PageId;
-        ArrayList<List<Object>> newData = new ArrayList<>();
+        ArrayList<ArrayList<Object>> newData = new ArrayList<>();
         while(currPageId != -1){
             Page currPage = BufferManager.getPage(currPageId, oldSchema);
-            for(List<Object> row : currPage.get_data()){
-                List<Object> newRow = new ArrayList<>(row);
+            for(ArrayList<Object> row : currPage.get_data()){
+                ArrayList<Object> newRow = new ArrayList<>(row);
                 newRow.add(Default);
                 newData.add(newRow);
             }
