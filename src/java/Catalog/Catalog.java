@@ -116,12 +116,7 @@ public class Catalog {
             Page currPage = BufferManager.getPage(currPageId, oldSchema);
             for(ArrayList<Object> row : currPage.get_data()){
                 ArrayList<Object> newRow = new ArrayList<>(row);
-                if(Default instanceof String){
-                    newRow.add(Default.toString().substring(1, Default.toString().length()-1));
-                }
-                else{
-                    newRow.add(Default);
-                }
+                newRow.add(Default);
                 newData.add(newRow);
             }
             currPageId = currPage.get_next_pageid();
@@ -164,7 +159,10 @@ public class Catalog {
         }
         if(attributeIndex == -1){
             RemoveSchema(newName);
-            throw new Exception("Attribute does not exista");
+            throw new Exception("Attribute does not exist");
+        }
+        if(oldSchema.Attributes.get(attributeIndex).primaryKey){
+            throw new Exception("Cannot drop primary key attribute");
         }
 
         // Adding data with old attribute removed
