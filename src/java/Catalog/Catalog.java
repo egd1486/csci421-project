@@ -81,6 +81,10 @@ public class Catalog {
         // Creating new schema and setting its name, primary key, page id, and attributes
         Schema oldSchema = GetSchema(schemaName);
 
+        if(!Nullable && Default==null){
+            throw new Exception("NOT NULL attribute missing default value");
+        }
+
         // Creating the new schema under an unused name,
         String newName = schemaName + "new!schema!name";
         Schema newSchema = AddSchema(newName);
