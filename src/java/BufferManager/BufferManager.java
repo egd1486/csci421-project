@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
+import java.util.Arrays;
 
 import Common.Page;
 import Catalog.Schema;
