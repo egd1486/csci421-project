@@ -247,7 +247,6 @@ public class StorageManager {
         }
         return page_counter++;
     }
-
     /**
      * Whenever we delete a page from memory instead of just removing and creating a hole in database we can just mark a pageid as free
      * This way we can just replace it so we don't shift down <3
