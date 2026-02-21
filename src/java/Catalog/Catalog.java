@@ -159,7 +159,11 @@ public class Catalog {
         }
         if(attributeIndex == -1){
             RemoveSchema(newName);
-            throw new Exception("Attribute does not exista");
+            throw new Exception("Attribute does not exist");
+        }
+        if(oldSchema.Attributes.get(attributeIndex).primaryKey){
+            RemoveSchema(newName);
+            throw new Exception("Cannot drop primary key attribute");
         }
 
         // Adding data with old attribute removed

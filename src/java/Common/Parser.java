@@ -4,6 +4,7 @@ import Catalog.Schema;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class Parser {
@@ -115,11 +116,20 @@ public class Parser {
                     char c = values.charAt(i);
                     if(c == '"'){
                         inQuotes = !inQuotes;
+                        valuesBuilder.append(c);
                     }
                     else if (c == ' ' && !inQuotes) {
                         String value = valuesBuilder.toString().trim();
                         if(!value.isEmpty()){
-                            row.add(value);
+                            if(value.startsWith("\"") && value.endsWith("\"") && value.length() == 2){
+                                row.add("");
+                            }
+                            else if(value.startsWith("\"") && value.endsWith("\"") && value.length() > 2){
+                                row.add(value.substring(1, value.length()-1));
+                            }
+                            else{
+                                row.add(value);
+                            }
                         }
                         valuesBuilder.setLength(0);
                     }
@@ -215,7 +225,10 @@ public class Parser {
                     String hasDefault = keywords[6];
                     String defaultVal =  keywords[7];
                     if(hasDefault.equals("DEFAULT")){
-                        alterAdd(tableName, attrName, type, typeSize, true, true, defaultVal);
+                        if(defaultVal != null && defaultVal.charAt(0) == '"' && defaultVal.charAt(defaultVal.length() - 1) == '"'){
+                            String defaultNoQuotes = defaultVal.substring(1, defaultVal.length()-1);
+                            alterAdd(tableName, attrName, type, typeSize, false, true, defaultNoQuotes);
+                        }
                     }
                 }
                 else if(keywords.length == 9){
@@ -225,7 +238,13 @@ public class Parser {
                     if(!condition1.equals("NOTNULL") || !condition2.equals("DEFAULT")){
                         throw new Exception("Invalid command");
                     }
-                    alterAdd(tableName, attrName, type, typeSize, false, true, defaultVal);
+                    if(defaultVal != null && defaultVal.charAt(0) == '"' && defaultVal.charAt(defaultVal.length() - 1) == '"'){
+                        String defaultNoQuotes = defaultVal.substring(1, defaultVal.length()-1);
+                        alterAdd(tableName, attrName, type, typeSize, true, true, defaultNoQuotes);
+                    }
+                    else{
+                        alterAdd(tableName, attrName, type, typeSize, true, true, defaultVal);
+                    }
                 }
                 else{
                     throw new Exception("Invalid command");
@@ -244,6 +263,7 @@ public class Parser {
         try{
             // Creating new table schema
             Schema schema = Catalog.AddSchema(tableName);
+            System.out.println(Arrays.toString(attr));
             // Populating table schema with attributes
             for(int i = 0; i < attr.length; i++){
                 boolean nullable = false;
@@ -255,7 +275,7 @@ public class Parser {
                             case "NOTNULL":
                                 nullable = true;
                                 break;
-                            case "PRIMARY":
+                            case "PRIMARYKEY":
                                 primary = true;
                                 break;
                             case "UNIQUE":
@@ -336,9 +356,10 @@ public class Parser {
         }
         try{
             // Tries to add an attribute to the schema
+            System.out.println(defaultVal);
             Catalog.AttributeAdd(tableName, attrName, type, typeSize, nullable, false, false, defaultVal);
         } catch(Exception e){
-            System.out.println("Error: " + e.getMessage());
+            System.out.println("Error2: " + e.getMessage());
             return;
         }
 
