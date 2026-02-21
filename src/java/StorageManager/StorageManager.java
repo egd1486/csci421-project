@@ -36,8 +36,6 @@ public class StorageManager {
         int SLOT_ENTRY_SIZE = Integer.BYTES * 2;
 
         slotted_buffer.putInt(0, page.get_next_pageid());
-        
-        slotted_buffer.putInt(Integer.BYTES * 2, free_ptr);
 
         Type[] type = schema.GetTypes();
         for(List<Object> row : page.get_data()){
@@ -91,6 +89,8 @@ public class StorageManager {
 
         // Write number of entries.
         slotted_buffer.putInt(Integer.BYTES, numslots);
+
+        slotted_buffer.putInt(Integer.BYTES * 2, free_ptr);
 
         return slotted_page;
     }
