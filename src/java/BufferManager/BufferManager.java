@@ -6,6 +6,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
+<<<<<<< HEAD
+=======
+import Common.Type;
+>>>>>>> 7393b54afbc8bb2577a6ae0ef82781821d456f5a
 import Common.Page;
 import Common.Attribute;
 import Catalog.*;
