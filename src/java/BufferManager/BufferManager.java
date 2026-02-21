@@ -73,7 +73,7 @@ public class BufferManager {
         }
 
         // Get the page from disk
-        Page page_from_disk = StorageManager.readPage(pageId, schema);
+        Page page_from_disk = StorageManager.decode(schema, pageId);
 
         //Else map doesn't contain id we find a free page considering at some point in random index a frame can be free
         // due to removal of the page so linear scan O(N) check every index if we have empty page
