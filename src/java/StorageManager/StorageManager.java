@@ -121,6 +121,7 @@ public class StorageManager {
      * @param pagenumber The name of the database
      */
     public Page decode(Schema schema, int pageNumber){
+        Page decoded = new Page(pageNumber, schema);
         ArrayList<List<Object>> fullPage = new ArrayList<List<Object>>();
         byte[] data = new byte[pageSize];
         try(RandomAccessFile file = new RandomAccessFile(filename, "r")){
@@ -131,56 +132,61 @@ public class StorageManager {
             System.err.println(e);
         }
         // Page new_page = new Page(pageNumber);
-        int numEntries = ByteBuffer.wrap(Arrays.copyOfRange(data, 0, Integer.BYTES)).getInt();
-        int free_ptr= ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES, 2*Integer.BYTES)).getInt()+1;
+        int nextPage = ByteBuffer.wrap(Arrays.copyOfRange(data, 0, Integer.BYTES)).getInt();
+        decoded.set_nextpageid(nextPage);
+        int numEntries = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES, 2*Integer.BYTES)).getInt();
+        int free_ptr= ByteBuffer.wrap(Arrays.copyOfRange(data, 2*Integer.BYTES, 3*Integer.BYTES)).getInt()+1;
+        decoded.set_freebytes((free_ptr-1) - numEntries*(2*Integer.BYTES) - 3*Integer.BYTES); // End of free space - slotSize * numEntries - headerSize
         int size; //char and varchar
+        int offset;
         Type[] attributes = schema.GetTypes(); //! Need way to get list of attributes, or add as parameter
         for (int index = 1; index <= numEntries; index++){
-            int offset = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*2*index, Integer.BYTES*(2*index+1))).getInt();
-            int length = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*(2*index+1), Integer.BYTES*(2*index+2))).getInt();
+            offset = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*(2*index+1), Integer.BYTES*(2*index+2))).getInt();
+            int length = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES*(2*index+2), Integer.BYTES*(2*index+3))).getInt();
             ArrayList<Object> row = new ArrayList<Object>();
             String nullPtr = "";
-            for (int nullByte = 0; nullByte < Math.ceil(1/8); nullByte++){
-                nullPtr += ByteBuffer.wrap(Arrays.copyOfRange(data, offset, offset+Integer.BYTES)).getInt();
-                offset += Integer.BYTES;
+            for (int nullByte = 0; nullByte < Math.ceil(attributes.length/8); nullByte++){
+                nullPtr += String.format("%" + 8 + "s" , Integer.toBinaryString(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, offset+1)).getInt())).replaceAll(" ", "0");
+                offset += 1;
             }
             for (int attr = 0; attr < attributes.length; attr++){
                 if (nullPtr.charAt(attr) == '1')
                     row.add(null);
-                else
+                else{
                     switch (attributes[attr]){
-                    case INT:
-                        row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES+offset)).getInt());
-                        offset += Integer.BYTES;
-                        break;
-                    case BOOLEAN:
-                        row.add(data[offset] == 1); //to get true or false
-                        offset += BOOLEAN_BYTES;
-                        break;
-                    case CHAR: //!add size to copyOfRange so you get full char array?
-                        size = 1; //! get length of attr from schema
-                        row.add(new String(Arrays.copyOfRange(data, offset, size*Character.BYTES+offset), StandardCharsets.UTF_8));
-                        offset+= size * Character.BYTES;
-                        break;
-                    case DOUBLE:
-                        row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Double.BYTES+offset)).getDouble());
-                        offset += Double.BYTES;
-                        break;
-                    case VARCHAR: //! offset = offset----location and location------size
-                        int location = ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES+offset)).getInt();
-                        size = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES+offset, 2*Integer.BYTES+offset)).getInt();
-                        Object[] add = {new String(Arrays.copyOfRange(data, location, size*Character.BYTES+location), StandardCharsets.UTF_8),size};
-                        row.add(add);
-                        offset += 2*Integer.BYTES;
-                        break;
+                        case INT:
+                            row.add(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES+offset)).getInt());
+                            offset += Integer.BYTES;
+                            break;
+                        case BOOLEAN:
+                            row.add(data[offset] == 1); //to get true or false
+                            offset += BOOLEAN_BYTES;
+                            break;
+                        case CHAR:
+                            size = schema.Attributes.get(attr).typeLength; // get length of string from schema
+                            row.add(new String(Arrays.copyOfRange(data, offset, size*Character.BYTES+offset), StandardCharsets.UTF_8));
+                            offset+= size * Character.BYTES;
+                            break;
+                        case DOUBLE:
+                            row.add((Float)(ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Double.BYTES+offset)).getFloat()));
+                            offset += Double.BYTES;
+                            break;
+                        case VARCHAR: //! offset = offset----location and location------size
+                            int location = ByteBuffer.wrap(Arrays.copyOfRange(data, offset, Integer.BYTES+offset)).getInt();
+                            size = ByteBuffer.wrap(Arrays.copyOfRange(data, Integer.BYTES+offset, 2*Integer.BYTES+offset)).getInt();
+                            Object[] add = {new String(Arrays.copyOfRange(data, location, size*Character.BYTES+location), StandardCharsets.UTF_8),size};
+                            row.add(add);
+                            offset += 2*Integer.BYTES;
+                            break;
                     }
+                }
             }
             fullPage.add(row);
         }
-        Page decoded = new Page(pageNumber, schema);
         decoded.set_data(fullPage);
         return decoded;
     }
+
 
 
     /**
