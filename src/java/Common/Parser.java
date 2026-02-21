@@ -300,9 +300,15 @@ public class Parser {
             for (ArrayList<String> S_Row : rows) {
                 System.out.println(S_Row.toString() + "this is srow");
                 ArrayList<Attribute> attributes = schema.Attributes;
+
+                // Checking if number of attributes match
+                if (attributes.size() != S_Row.size())
+                throw new Exception("Invalid number of attributes");
+
+
                 ArrayList<Object> Row = new ArrayList<>();
                 // Loop through row and parse strings via attribute method,
-                for (int i = 0; i < S_Row.size(); i++) {
+                for (int i = 0; i < attributes.size(); i++) {
                     Row.add(attributes.get(i).Parse(S_Row.get(i)));
                     System.out.println(S_Row.get(i) + " woahhhh");
                 }
@@ -312,7 +318,6 @@ public class Parser {
                 success++;
             }
         } catch(Exception e){
-            e.printStackTrace();
             System.out.println("Error: " + e.getMessage());
         }
         System.out.println(success + "rows inserted successfully");
