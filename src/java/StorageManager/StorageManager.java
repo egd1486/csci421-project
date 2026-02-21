@@ -47,9 +47,10 @@ public class StorageManager {
             BitSet bitmap = new BitSet(row.size());
 
             for(int index = 0; index < row.size(); index++){
+                if(row.get(index) == null){
+                    bitmap.set(index);
+                }
                switch(type[index]){
-                   case null -> bitmap.set(index);
-
                    case INT -> {
                        dos.writeInt((int) row.get(index));
                    }
@@ -69,7 +70,6 @@ public class StorageManager {
                            dos.writeChar(string.charAt(i));
                        }
                    }
-
                    case VARCHAR -> {
                        byte[] str = ((String) row.get(index)).getBytes();
                        free_ptr -= str.length;
