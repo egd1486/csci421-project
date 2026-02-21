@@ -6,9 +6,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
-
+import Common.Type;
 import Common.Page;
-import Catalog.Schema;
+import Common.Attribute;
+import Catalog.*;
 import StorageManager.StorageManager;
 // Author: Jason Ha
 public class BufferManager {
@@ -144,6 +145,66 @@ public class BufferManager {
         }
     }
 
+      public static void writeSchemas(){
+        try {
+            Page current = getPage(1, Catalog.AttributeTable);
+            Page next;
+            if (current.get_next_pageid() != -1){
+                next = getPage(current.get_next_pageid(), Catalog.AttributeTable); 
+            }
+            else{
+                next = getEmptyPage(Catalog.AttributeTable);
+            }
+            current.set_freebytes(0);
+            current.set_data(new ArrayList<ArrayList<Object>>());
+            for (Schema table : Catalog.Schemas){
+                for(Attribute attr : table.Attributes){
+                    if(current.get_slots_remaining()>0){
+                        ArrayList<Object> newRow = new ArrayList<Object>();
+                        newRow.add(table.Name); //SchemaName
+                        newRow.add(table.PageId); //StartPage
+                        newRow.add(attr.name); //AttributeName
+                        newRow.add(attr.type.ordinal()); //Type
+                        newRow.add(attr.typeLength); //Length
+                        newRow.add(attr.notNull); //NotNull
+                        newRow.add(attr.unique); //Unique
+                        newRow.add(attr.primaryKey); //Primary
+                        newRow.add(attr.defaultVal); //DefaultValue
+                        ArrayList<ArrayList<Object>> newTable = current.get_data();
+                        newTable.add(newRow);
+                        current.set_data(newTable);
+                    }
+                    else{
+                        current = next;
+                        if (current.get_next_pageid() != -1){
+                            next = getPage(current.get_next_pageid(), Catalog.AttributeTable); 
+                        }
+                        else{
+                            next = getEmptyPage(Catalog.AttributeTable);
+                        }
+                        current.set_data(new ArrayList<ArrayList<Object>>());
+                        current.set_freebytes(0);
+
+                        ArrayList<Object> newRow = new ArrayList<Object>();
+                        newRow.add(table.Name); //SchemaName
+                        newRow.add(table.PageId); //StartPage
+                        newRow.add(attr.name); //AttributeName
+                        newRow.add(attr.type.ordinal()); //Type
+                        newRow.add(attr.typeLength); //Length
+                        newRow.add(attr.notNull); //NotNull
+                        newRow.add(attr.unique); //Unique
+                        newRow.add(attr.primaryKey); //Primary
+                        newRow.add(attr.defaultVal); //DefaultValue
+                        ArrayList<ArrayList<Object>> newTable = current.get_data();
+                        newTable.add(newRow);
+                        current.set_data(newTable);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println(e);
+        }
+    }
 
      public static Page[] getBuffer() {
         return buffer;
@@ -582,6 +643,7 @@ public class BufferManager {
     public static void testCleanPageEvict() {
 
     }
+
     public static void main(String[] args) throws Exception {
         testCreationEmptyPage();
         testEvictionEmptyPage();
