@@ -249,22 +249,22 @@ public class StorageManager {
         //     byte[] database_info = new byte[page_size];
         //     ByteBuffer database_wrapped = ByteBuffer.wrap(database_info);
 
-        //     database_wrapped.putInt(0, page_size);
-        //     database_wrapped.putInt(Integer.BYTES, 1); //Number of pages
-        //     database_wrapped.putInt(Integer.BYTES * 2, 1); //SchemePageId or the pointer to catalogPageId
-        //     database_wrapped.putInt(Integer.BYTES * 3, -1); //Bitmap of free_list_pages
+            // database_wrapped.putInt(0, page_size);
+            // database_wrapped.putInt(Integer.BYTES, 1); //Number of pages
+            // database_wrapped.putInt(Integer.BYTES * 2, 1); //SchemePageId or the pointer to catalogPageId
+            // database_wrapped.putInt(Integer.BYTES * 3, -1); //Bitmap of free_list_pages
 
-        //     database_access.seek(0);
-        //     database_access.write(database_info);
+            // database_access.seek(0);
+            // database_access.write(database_info);
 
-        //     byte[] catalog_page = new byte[page_size];
-        //     ByteBuffer catalog_buffer = ByteBuffer.wrap(catalog_page);
-        //     catalog_buffer.putInt(0, -1); //nextCatalogPage
-        //     catalog_buffer.putInt(Integer.BYTES, 0); //ENTRIES
-        //     catalog_buffer.putInt(Integer.BYTES * 2, page_size); //OH BOI ANOTHER SLOTTED PAGE APPROACH
+            // byte[] catalog_page = new byte[page_size];
+            // ByteBuffer catalog_buffer = ByteBuffer.wrap(catalog_page);
+            // catalog_buffer.putInt(0, -1); //nextCatalogPage
+            // catalog_buffer.putInt(Integer.BYTES, 0); //ENTRIES
+            // catalog_buffer.putInt(Integer.BYTES * 2, page_size); //OH BOI ANOTHER SLOTTED PAGE APPROACH
 
-        //     database_access.seek(page_size);
-        //     database_access.write(catalog_page);
+            // database_access.seek(page_size);
+            // database_access.write(catalog_page);
 
         // }catch(IOException e) {
         //      e.printStackTrace();
