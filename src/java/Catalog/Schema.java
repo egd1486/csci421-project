@@ -99,7 +99,6 @@ public class Schema {
                 currPageId = page.get_next_pageid();
             }
         } catch (Exception e){
-            e.printStackTrace();
             System.out.println("Error: " + e);
         }
         return entries;
@@ -159,12 +158,16 @@ public class Schema {
 
         // Check for uniqueness if needed.
         for (int i=0; i<Row.size(); i++) {
-            if (Attributes.get(i).unique) {
+            Attribute A = Attributes.get(i);
+            if (A.unique || A.primaryKey) {
                 for (ArrayList<Object> R : this.Select()) {
                     if (R.get(i).equals(Row.get(i)))
-                    throw new Exception("Entry is not unique.");
+                    throw new Exception(A.name + " must be unique.");
                 }
             }
+
+            if (A.notNull && Row.get(i) == null)
+            throw new Exception(A.name + " cannot be null.");
         }
 
         

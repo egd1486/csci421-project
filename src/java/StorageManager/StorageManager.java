@@ -214,11 +214,11 @@ public class StorageManager {
         }
         System.out.println("No database found. Creating new database...");
         freepages = new Stack<Integer>();
-
+        filename = database_name;
+        pageSize = page_size;
         // // Otherwise, create the database from scratch. Assume we make the first page contains the information about the database
         // try(RandomAccessFile database_access = new RandomAccessFile(database_name,"rw")){
-        //     filename = database_name;
-        //     pageSize = page_size;
+
         //     page_counter = 1; //Were moving the page counter because page 0 will contain all of our basic information not in catalog
 
         //     byte[] database_info = new byte[page_size];
