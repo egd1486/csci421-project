@@ -41,6 +41,11 @@ public class Attribute { //for one column
     public Object Parse(Object O) throws Exception{
         if (O == null) return null;
 
+        // Handle not null.
+        if (O.toString().toUpperCase().equals("NULL"))
+        if (this.notNull) throw new Exception(this.name + " cannot be null");
+        else return null;
+
         try {
             switch (this.type) {
                 case INT: O = Integer.parseInt(O.toString()); break;

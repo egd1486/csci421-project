@@ -122,7 +122,7 @@ public class StorageManager {
      */
     public Page decode(Schema schema, int pageNumber){
         Page decoded = new Page(pageNumber, schema);
-        ArrayList<List<Object>> fullPage = new ArrayList<List<Object>>();
+        ArrayList<ArrayList<Object>> fullPage = new ArrayList<ArrayList<Object>>();
         byte[] data = new byte[pageSize];
         try(RandomAccessFile file = new RandomAccessFile(filename, "r")){
             file.seek(pageNumber * pageSize);
@@ -284,7 +284,7 @@ public class StorageManager {
      * @param objects list of objects
      * @throws IOException self-explantory
      */
-    public static void writePage(int pageNumber, ArrayList<List<Object>> data) throws IOException {
+    public static void writePage(int pageNumber, ArrayList<ArrayList<Object>> data) throws IOException {
        try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
            //Serialize it into bytes and then write it
           //file.write(data, pageNumber * pageSize, pageSize);
