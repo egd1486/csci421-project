@@ -300,12 +300,12 @@ public class StorageManager {
      * @param objects list of objects
      * @throws IOException self-explantory
      */
-    public static void writePage(int pageNumber, ArrayList<ArrayList<Object>> data) throws IOException {
-       try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
-           //Serialize it into bytes and then write it
-          //file.write(data, pageNumber * pageSize, pageSize);
-       }
-    }
+    // public static void writePage(int pageNumber, ArrayList<ArrayList<Object>> data) throws IOException {
+    //    try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
+    //        //Serialize it into bytes and then write it
+    //       //file.write(data, pageNumber * pageSize, pageSize);
+    //    }
+    // }
 
     // === Getter Functions ===
 
