@@ -120,7 +120,7 @@ public class StorageManager {
      * Decode the data from a page in the memory.
      * @param pagenumber The name of the database
      */
-    public Page decode(Schema schema, int pageNumber){
+    public static Page decode(Schema schema, int pageNumber){
         Page decoded = new Page(pageNumber, schema);
         ArrayList<ArrayList<Object>> fullPage = new ArrayList<ArrayList<Object>>();
         byte[] data = new byte[pageSize];
