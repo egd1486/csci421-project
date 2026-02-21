@@ -80,15 +80,21 @@ public class Catalog {
     public static void AttributeAdd(String schemaName, String attributeName, Type T, Integer Size, Boolean Nullable, Boolean Primary, Boolean Unique, Object Default) throws Exception{
         // Creating new schema and setting its name, primary key, page id, and attributes
         Schema oldSchema = GetSchema(schemaName);
-        if (oldSchema == null) {
-            throw  new Exception("Schema does not exist");
+
+        if(!Nullable && Default==null){
+            throw new Exception("NOT NULL attribute missing default value");
         }
+
+        // Creating the new schema under an unused name,
         String newName = schemaName + "new!schema!name";
         Schema newSchema = AddSchema(newName);
+        // Copy over primary key if used,
         newSchema.Primary = oldSchema.Primary;
-        for(Attribute A : oldSchema.Attributes){
-            newSchema.AddAttribute(A.name, A.type, A.typeLength, A.notNull, A.primaryKey, A.unique, A.defaultVal);
-        }
+
+        // Now loop over old attributes and add to the new schema,
+        for(Attribute A : oldSchema.Attributes) newSchema.Attributes.add(A);
+
+        // Add the new unique attribute,
         newSchema.AddAttribute(attributeName, T, Size, Nullable, Primary, Unique, Default);
 
         // Adding all data with new attribute added
@@ -113,25 +119,27 @@ public class Catalog {
     public static void AttributeDrop(String schemaName, String attributeName) throws Exception {
         // Creating new schema and setting its name, primary key, page id, and attributes
         Schema oldSchema = GetSchema(schemaName);
-        if (oldSchema == null) {
-            throw  new Exception("Schema does not exist");
-        }
+
+        // Check if attribute to be removed exists
+        for(Attribute A : oldSchema.Attributes) if(Objects.equals(A.name, attributeName)) break;
+        else throw new Exception("Attribute does not exist");
+
         String newName = schemaName + "new!schema!name";
         Schema newSchema = AddSchema(newName);
         newSchema.Primary = oldSchema.Primary;
+
         // the index of the attribute we want to remove
         int attributeIndex = -1;
         for(int i = 0; i < oldSchema.Attributes.size(); i++){
-            Attribute A =  oldSchema.Attributes.get(i);
-            if(Objects.equals(A.name, attributeName)){
-                attributeIndex = i;
-            }
-            else{
-                newSchema.AddAttribute(A.name, A.type, A.typeLength, A.notNull, A.primaryKey, A.unique, A.defaultVal);
-            }
+            Attribute A = oldSchema.Attributes.get(i);
+            // If the attribute is found, mark its index and dont add it
+            if(A.name.equals(attributeName)) attributeIndex = i;
+            // Otherwise just add it.
+            else newSchema.Attributes.add(A);
         }
         if(attributeIndex == -1){
-            throw  new Exception("Attribute does not exist");
+            RemoveSchema(newName);
+            throw new Exception("Attribute does not exist");
         }
 
         // Adding data with old attribute removed
