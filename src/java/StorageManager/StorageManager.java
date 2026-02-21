@@ -17,7 +17,7 @@ import java.io.DataOutputStream;
 public class StorageManager {
     public static int pageSize;
     private static String filename;
-    private static int page_counter; // What page is created
+    private static int page_counter; // What page is created and 1 because page 0 stores information
     private static Stack<Integer> freepages;
 
     private static final int BOOLEAN_BYTES = 1; //hard coded since Boolean.BYTES dne
@@ -188,30 +188,43 @@ public class StorageManager {
      * @param database_name The name of the database
      * @param page_size the size of teh database
      */
-    public static void initializeDatabaseFile(String database_name, int page_size) {
+    public static void initializeDatabaseFile(String database_name, int page_size) throws IOException {
         // First check if the file exists
         File database_file = new File(database_name);
         System.out.println("Accessing database location...");
 
         if (database_file.exists()) {
             System.out.println("Database found. Restarting database...");
-            // TODO: Read existing database constants
+            filename = database_name;
+            try(RandomAccessFile database_access = new RandomAccessFile(database_name, "r")){
+                database_access.seek(0);
+                pageSize = database_access.readInt();
+            }
+            System.out.println("Ignoring provided page size. Using prior size of " + page_size);
 
-            System.out.println("Ignoring provided page size. Using prior size of ____...");
-
-            // TODO: Read schema values, and initalize into Catalog.
+            // TODO: Read schema values, and initialize into Catalog.
 
             return;
         }
         System.out.println("No database found. Creating new database...");
 
-        // Otherwise, create the database from scratch.
+        // Otherwise, create the database from scratch. Assume we make the first page contains the information about the database
         try(RandomAccessFile database_access = new RandomAccessFile(database_name,"rw")){
-            byte[] database = new byte[page_size];
             filename = database_name;
             pageSize = page_size;
-            database_access.write(database);
+            page_counter = 1; //Were moving the page counter because page 0 will contain all of our basic information not in catalog
             freepages = new Stack<Integer>();
+
+            byte[] database_info = new byte[page_size];
+            ByteBuffer database_wrapped = ByteBuffer.wrap(database_info);
+
+            database_wrapped.putInt(0, page_size);
+            database_wrapped.putInt(Integer.BYTES, 1); //Number of pages
+            database_wrapped.putInt(Integer.BYTES * 2, -1); //SchemePageId or the pointer to catalogPageId
+            database_wrapped.putInt(Integer.BYTES * 3, -1); //Bitmap of free_list_pages
+
+            database_access.seek(0);
+            database_access.write(database_info);
         }catch(IOException e) {
             e.printStackTrace();
         }
