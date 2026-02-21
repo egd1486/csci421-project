@@ -23,7 +23,7 @@ public class Schema {
     }
 
     public void AddAttribute(String Name, Type T, Integer Size, Boolean Nullable, Boolean Primary, Boolean Unique, Object Default) throws Exception {
-        if (Primary != null) // If the attribute should be primary,
+        if (Primary != null && Primary) // If the attribute should be primary,
         // If we already have a primary key, throw.
         if (this.Primary != null) throw new Exception("Schema already has a primary key");
         // Otherwise, handle it.
@@ -34,14 +34,12 @@ public class Schema {
 
         // Check if Attribute is alphanumeric
         if (!isAlphaNumeric(Name)) 
-        throw new Exception("Attribute name contains non-alphanumeric characters");
+        throw new Exception("Attribute name" + Name + " contains non-alphanumeric characters");
 
         // Iterate over attributes to see if name is in use.
         for (Attribute A : Attributes) 
         if (A.name.equals(Name)) 
         throw new Exception("Schema already has an attribute named " + Name);
-        
-        // TODO : Rewrite all pages of this schema to handle a new null attribute
 
         Attribute A = new Attribute(Name, T, Size, Primary, Nullable, Unique, Default);
         Attributes.add(A);
@@ -101,6 +99,7 @@ public class Schema {
                 currPageId = page.get_next_pageid();
             }
         } catch (Exception e){
+            e.printStackTrace();
             System.out.println("Error: " + e);
         }
         return entries;
@@ -140,7 +139,7 @@ public class Schema {
         System.out.println();
 
         // Printing row data
-        for(List<Object> row : rows){
+        for(ArrayList<Object> row : rows){
             System.out.print("|");
             for(int i = 0; i < numAttributes; i++){
                 Object value = row.get(i);
@@ -159,7 +158,7 @@ public class Schema {
         throw new Exception("Row must have " + Attributes.size() + " values");
 
         // Check for uniqueness if needed.
-        for (int i=0; i++<Row.size(); i++) {
+        for (int i=0; i<Row.size(); i++) {
             if (Attributes.get(i).unique) {
                 for (ArrayList<Object> R : this.Select()) {
                     if (R.get(i).equals(Row.get(i)))
@@ -168,6 +167,7 @@ public class Schema {
             }
         }
 
+        
 
         Page P = BufferManager.getPage(this.PageId, this);
         int Next;

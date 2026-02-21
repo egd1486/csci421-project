@@ -1,6 +1,7 @@
 package BufferManager;
 
 import java.io.IOException;
+import java.nio.Buffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
@@ -66,10 +67,11 @@ public class BufferManager {
      * @return page
      */
     public static Page getPage(int pageId, Schema schema) throws IOException {
-
+        System.out.println("pageId: " + pageId);
         //If a map contains the page id then we return page
         Page return_page = mapId.get(pageId);
         if(return_page != null){
+            System.out.println("Page found in buffer");
             return_page.set_newtime();
             return return_page;
         }
@@ -109,14 +111,18 @@ public class BufferManager {
                 Page newEmptyPage = new Page(newPageId, schema);
                 buffer[i] = newEmptyPage;
                 mapId.put(newPageId, newEmptyPage);
+                System.out.println(buffer.toString());
                 return newEmptyPage;
             }
         }
+
+        
 
         //no empty slot in buffer so evict one 
         Page newEmptyPage = new Page(newPageId, schema);
         buffer[lru()] = newEmptyPage;
         mapId.put(newPageId, newEmptyPage);
+        
         return newEmptyPage;
     }
 

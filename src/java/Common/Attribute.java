@@ -41,6 +41,8 @@ public class Attribute { //for one column
     public Object Parse(Object O) throws Exception{
         if (O == null) return null;
 
+        System.out.println(O.toString() + "object string :)");
+
         // Handle not null.
         if (O.toString().toUpperCase().equals("NULL"))
         if (this.notNull) throw new Exception(this.name + " cannot be null");
@@ -57,7 +59,7 @@ public class Attribute { //for one column
         } catch (Exception e) {
             throw new Exception("Invalid default value");
         }
-
+        System.out.println(O.getClass().toString());
         return O;
     }
 }

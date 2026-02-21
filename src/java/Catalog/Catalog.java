@@ -19,9 +19,9 @@ public class Catalog {
             AttributeTable = new Schema("AttributeTable");
             AttributeTable.PageId = 0;
 
-            AttributeTable.AddAttribute("Schema_Name", Type.VARCHAR, 50, false, false, false, null);
-            AttributeTable.AddAttribute("Start_Page", Type.INT, 50, false, false, false, null);
-            AttributeTable.AddAttribute("Attribute_Name", Type.VARCHAR, 50, false, true, false, null);
+            AttributeTable.AddAttribute("SchemaName", Type.VARCHAR, 50, false, false, false, null);
+            AttributeTable.AddAttribute("StartPage", Type.INT, 50, false, false, false, null);
+            AttributeTable.AddAttribute("AttributeName", Type.VARCHAR, 50, false, true, false, null);
             AttributeTable.AddAttribute("Type", Type.INT, 50, false, false, false, null);
             AttributeTable.AddAttribute("Length", Type.INT, 50, false, false, false, null);
             AttributeTable.AddAttribute("NotNull", Type.BOOLEAN, 50, false, false, false, null);
@@ -29,7 +29,10 @@ public class Catalog {
             AttributeTable.AddAttribute("Primary", Type.BOOLEAN, 0, false, false, false, null);
             AttributeTable.AddAttribute("DefaultValue", Type.VARCHAR, 50, false, false, false, null);
             
-        } catch (Exception e) {throw new ExceptionInInitializerError(e);}
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new ExceptionInInitializerError(e);
+        }
     }
 
     public static Schema AddSchema(String Name) throws Exception {
@@ -37,12 +40,19 @@ public class Catalog {
         if (GetSchema(Name) != null) 
         throw new Exception("Schema already exists");
 
+        //Force uppercase
+        Name = Name.toUpperCase();
+
         // Create the new schema if there was no issue, and return it
         Schema S;
         // Officially add it to the catalog
         Schemas.add(S = new Schema(Name));
         // Assign a free page into the buffer, and grab its id.
         S.PageId = BufferManager.getEmptyPage(S).get_pageid();
+        System.out.println(S.PageId);
+
+        System.out.println("Schema: " + Name + " created successfully");
+        System.out.println(Schemas.toString());
 
         return S;
     }
@@ -51,6 +61,7 @@ public class Catalog {
         // Force uppercase
         Name = Name.toUpperCase();
 
+        for (Schema S : Schemas) System.out.println(S.Name + " MEMEMEMEMEMEM");
         for (Schema S : Schemas) if (S.Name.equals(Name)) return S;
 
         return null; 
@@ -70,7 +81,7 @@ public class Catalog {
         Page page = BufferManager.getPage(S.PageId, S);
         while (page != null) {
             StorageManager.markfreepage(page.get_pageid());
-            page = page.get_next_pageid() != 1 ? BufferManager.getPage(page.get_next_pageid(), S) : null;
+            page = page.get_next_pageid() != -1 ? BufferManager.getPage(page.get_next_pageid(), S) : null;
         }
 
         // Now remove the Schema from the Catalog entirely.
@@ -86,7 +97,7 @@ public class Catalog {
         }
 
         // Creating the new schema under an unused name,
-        String newName = schemaName + "new!schema!name";
+        String newName = schemaName + "newschemaname939393";
         Schema newSchema = AddSchema(newName);
         // Copy over primary key if used,
         newSchema.Primary = oldSchema.Primary;
@@ -101,6 +112,7 @@ public class Catalog {
         int currPageId = oldSchema.PageId;
         ArrayList<ArrayList<Object>> newData = new ArrayList<>();
         while(currPageId != -1){
+            System.out.println("currPageId: " + currPageId);
             Page currPage = BufferManager.getPage(currPageId, oldSchema);
             for(ArrayList<Object> row : currPage.get_data()){
                 ArrayList<Object> newRow = new ArrayList<>(row);
@@ -112,8 +124,9 @@ public class Catalog {
         for(ArrayList<Object> row : newData){
             newSchema.Insert(row);
         }
-        newSchema.setName(schemaName);
+        
         RemoveSchema(oldSchema.Name);
+        newSchema.setName(oldSchema.Name);
     }
 
     public static void AttributeDrop(String schemaName, String attributeName) throws Exception {
@@ -158,7 +171,8 @@ public class Catalog {
         for(ArrayList<Object> row : newData){
             newSchema.Insert(row);
         }
-        newSchema.setName(schemaName);
+        
         RemoveSchema(oldSchema.Name);
+        newSchema.setName(oldSchema.Name);
     }
 }

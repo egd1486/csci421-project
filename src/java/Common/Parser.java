@@ -120,19 +120,21 @@ public class Parser {
                     else if (c == ' ' && !inQuotes) {
                         String value = valuesBuilder.toString().trim();
                         if(!value.isEmpty()){
+                            System.out.println("Appending" + value);
                             row.add(value);
                         }
+                        System.out.println(row.toString() + " hiii");
                         valuesBuilder.setLength(0);
                     }
                     else if(c == ',' && !inQuotes){
                         String value = valuesBuilder.toString().trim();
-                        if(!value.isEmpty()){
-                            rowsList.add(row);
-                            row = new ArrayList<>();
-                        }
+                        if(!value.isEmpty()) row.add(value);
+                        rowsList.add(row);
+                        row = new ArrayList<>();
                         valuesBuilder.setLength(0);
                     }
                     else{
+                        System.out.println("Appending" + c);
                         valuesBuilder.append(c);
                     }
                 }
@@ -140,8 +142,10 @@ public class Parser {
                 String lastValue = valuesBuilder.toString().trim();
                 if(!lastValue.isEmpty()){
                     row.add(lastValue);
-                    rowsList.add(row);
                 }
+                rowsList.add(row);
+
+                System.out.println(rowsList.toString());
 
                 insert(tableName, rowsList);
             }
@@ -295,16 +299,21 @@ public class Parser {
         int success = 0;
         try{
             for (ArrayList<String> S_Row : rows) {
+                System.out.println(S_Row.toString() + "this is srow");
                 ArrayList<Attribute> attributes = schema.Attributes;
                 ArrayList<Object> Row = new ArrayList<>();
                 // Loop through row and parse strings via attribute method,
-                for (int i = 0; i < Row.size(); i++) 
-                Row.set(i, attributes.get(i).Parse(S_Row.get(i)));
+                for (int i = 0; i < S_Row.size(); i++) {
+                    Row.add(attributes.get(i).Parse(S_Row.get(i)));
+                    System.out.println(S_Row.get(i) + " woahhhh");
+                }
+                
 
                 schema.Insert(Row);
                 success++;
             }
         } catch(Exception e){
+            e.printStackTrace();
             System.out.println("Error: " + e.getMessage());
         }
         System.out.println(success + "rows inserted successfully");
