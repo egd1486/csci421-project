@@ -111,7 +111,7 @@ public class Parser {
                 // Iterating through input values
                 for(int i = 0; i < values.length(); i++){
                     // Checks every character and adds it to the current value
-                    // Only splits when comma is found outside of quotes
+                    // Only splits when comma is found outside of quotes.
                     char c = values.charAt(i);
                     if(c == '"'){
                         inQuotes = !inQuotes;
