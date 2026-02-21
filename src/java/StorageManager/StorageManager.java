@@ -204,7 +204,7 @@ public class StorageManager {
             fullPage.add(row);
         }
         int slot_dir_end = HEADER_SIZE + (numEntries * SLOT_ENTRY_SIZE);
-        int free_space = slot_dir_end - free_ptr;
+        int free_space = free_ptr - slot_dir_end;
         decoded.set_data(fullPage);
         decoded.set_freebytes(free_space);
         return decoded;

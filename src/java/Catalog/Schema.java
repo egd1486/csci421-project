@@ -4,6 +4,7 @@ import BufferManager.BufferManager;
 import Common.*;
 
 import java.lang.reflect.Array;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -226,7 +227,7 @@ public class Schema {
 
             case BOOLEAN: spacelost += 1; break;
                 
-            default: spacelost += Row.get(i).toString().length() + Integer.BYTES;
+            default: spacelost += Row.get(i).toString().getBytes(StandardCharsets.UTF_8).length + Integer.BYTES;
         }
 
         P.freebytes -= spacelost;
