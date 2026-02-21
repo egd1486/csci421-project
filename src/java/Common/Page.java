@@ -110,6 +110,8 @@ public class Page {
 
         int max_row_size = schema.GetMaxRowSize();
 
+        System.out.println("Max Row Size: " + max_row_size);
+
         int rows = data.size();
 
         int available_space;
@@ -120,6 +122,7 @@ public class Page {
         // otherwise just use the specified freebytes.
         else available_space = freebytes;
 
+        System.out.println("Available Space: " + available_space+ " " + available_space / (max_row_size + header_size));
         return (int) available_space / (max_row_size + header_size);
     }
 
