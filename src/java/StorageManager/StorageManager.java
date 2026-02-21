@@ -49,11 +49,11 @@ public class StorageManager {
             if(row.get(index) == null) bitmap.set(index);
             // Otherwise, switch through the types to handle writing the value
             else switch(type[index]){
-                   case INT -> dos.writeInt((int) row.get(index));
+                   case INT -> {dos.writeInt((int) row.get(index));}
 
-                   case BOOLEAN -> dos.writeBoolean((boolean) row.get(index));
+                   case BOOLEAN -> {dos.writeBoolean((boolean) row.get(index));}
 
-                   case DOUBLE -> dos.writeDouble((double) row.get(index));
+                   case DOUBLE -> {dos.writeDouble((double) row.get(index));}
 
                    default -> {
                         // This case handles char/varchar which are stored in equivalent fashion :)
@@ -76,6 +76,8 @@ public class StorageManager {
 
             numslots++;
             int slot_index = HEADER_SIZE + (numslots - 1) * SLOT_ENTRY_SIZE;
+            System.out.println("Row data size:" + row_data.length);
+            System.out.println(row.toString());
             int new_free_ptr = free_ptr - row_data.length - fixedBitmap.length;
 
             System.arraycopy(fixedBitmap, 0, slotted_page, new_free_ptr, fixedBitmap.length);
@@ -85,10 +87,14 @@ public class StorageManager {
             slotted_buffer.putInt(slot_index, new_free_ptr);
             // And how long it is :)
             slotted_buffer.putInt(slot_index + Integer.BYTES, fixedBitmap.length + row_data.length);
+            // Now update free_ptr
+            free_ptr = new_free_ptr;
         }
 
         // Write number of entries.
         slotted_buffer.putInt(Integer.BYTES, numslots);
+        // Write free pointer.
+        slotted_buffer.putInt(Integer.BYTES * 2, free_ptr);
 
         slotted_buffer.putInt(Integer.BYTES * 2, free_ptr);
 
@@ -135,7 +141,7 @@ public class StorageManager {
         int freeptrstored = decode_wrapper.getInt(Integer.BYTES * 2);
 
         // Page new_page = new Page(pageNumber);
-        int free_ptr = freeptrstored + 1; //Hold onto this for now
+        int free_ptr = freeptrstored; //Hold onto this for now
         decoded.set_freebytes(free_ptr - numEntries*(2*Integer.BYTES) - 3*Integer.BYTES); // End of free space - slotSize * numEntries - headerSize
 
         Type[] attributes = schema.GetTypes(); //! Need way to get list of attributes, or add as parameter
@@ -181,7 +187,7 @@ public class StorageManager {
                         // construct string from here,
                         String s = new String(data, ptr, size * Character.BYTES, StandardCharsets.UTF_16BE);
                         row.add(s);
-                        ptr += size;
+                        ptr += size * Character.BYTES;
                         break;
                     case DOUBLE:
                         row.add(decode_wrapper.getDouble(ptr));
@@ -190,8 +196,8 @@ public class StorageManager {
                     case VARCHAR: //! offset = offset----location and location------size
                         size = decode_wrapper.getInt(ptr);
                         ptr += Integer.BYTES;
-                        String object = new String(data, ptr, size, StandardCharsets.UTF_8);
-                        ptr += size;
+                        String object = new String(data, ptr, size * Character.BYTES, StandardCharsets.UTF_8);
+                        ptr += size * Character.BYTES;
                         row.add(object);
                         break;
                 }
@@ -268,7 +274,7 @@ public class StorageManager {
             ByteBuffer catalog_buffer = ByteBuffer.wrap(catalog_page);
             catalog_buffer.putInt(0, -1); //nextCatalogPage
             catalog_buffer.putInt(Integer.BYTES, 0); //ENTRIES
-            catalog_buffer.putInt(Integer.BYTES * 2, page_size); //OH BOI ANOTHER SLOTTED PAGE APPROACH
+            catalog_buffer.putInt(Integer.BYTES * 2, page_size-1); //OH BOI ANOTHER SLOTTED PAGE APPROACH
 
             database_access.seek(page_size);
             database_access.write(catalog_page);

@@ -75,11 +75,16 @@ public class Schema {
 
     // Returns the maximum size of the row data in bytes.
     public Integer GetMaxRowSize() {
-        Integer Size = 0;
+        int Size = 0;
 
-        for (Attribute A : Attributes) Size += A.GetByteSize();
+        for (Attribute A : Attributes) {
+            int s = A.GetByteSize();
+            Size += s;
+
+        }
+            
         
-        return Size + ((int) this.Attributes.size() / 8);
+        return Size + ( (Attributes.size() + 7) / 8);
     }
 
     public Type[] GetTypes() {
