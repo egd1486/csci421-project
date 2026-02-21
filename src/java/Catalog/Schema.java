@@ -2,6 +2,8 @@ package Catalog;
 
 import BufferManager.BufferManager;
 import Common.*;
+
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -85,8 +87,8 @@ public class Schema {
     // Gets all row data from the table specified by this schema.
     // Returns a list of lists where each inner list represents a row
     // containing the row's data.
-    public ArrayList<List<Object>> Select() {
-        ArrayList<List<Object>> entries = new ArrayList<>();
+    public ArrayList<ArrayList<Object>> Select() {
+        ArrayList<ArrayList<Object>> entries = new ArrayList<ArrayList<Object>>();
         try{
             // Getting first page where this schema's data is stored
             int currPageId = this.PageId;
@@ -151,7 +153,22 @@ public class Schema {
         }
     }
 
-    public void Insert(List<Object> Row) throws Exception {
+    public void Insert(ArrayList<Object> Row) throws Exception {
+        // First check if the row to be inserted is valid.
+        if (Row.size() != Attributes.size())
+        throw new Exception("Row must have " + Attributes.size() + " values");
+
+        // Check for uniqueness if needed.
+        for (int i=0; i++<Row.size(); i++) {
+            if (Attributes.get(i).unique) {
+                for (ArrayList<Object> R : this.Select()) {
+                    if (R.get(i).equals(Row.get(i)))
+                    throw new Exception("Entry is not unique.");
+                }
+            }
+        }
+
+
         Page P = BufferManager.getPage(this.PageId, this);
         int Next;
         // If there are no slots remaining, grab the next page until you find a spot.

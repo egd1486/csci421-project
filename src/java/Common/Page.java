@@ -21,7 +21,7 @@ import StorageManager.StorageManager;
  */
 public class Page {
     private int pageId;
-    private ArrayList<List<Object>> data;
+    private ArrayList<ArrayList<Object>> data;
     private int next_page_id;
     private int freebytes;
     private boolean is_dirty;
@@ -122,7 +122,7 @@ public class Page {
         return (int) available_space / (max_row_size + header_size);
     }
 
-    public ArrayList<List<Object>> get_data() {
+    public ArrayList<ArrayList<Object>> get_data() {
         return data;
     }
 

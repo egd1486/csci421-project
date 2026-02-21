@@ -1,6 +1,8 @@
 package Common;
 import Catalog.Catalog;
 import Catalog.Schema;
+
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -102,7 +104,8 @@ public class Parser {
                 else{
                     throw new Exception("Invalid command");
                 }
-                ArrayList<String> valuesList = new ArrayList<>();
+                ArrayList<ArrayList<String>> rowsList = new ArrayList<>();
+                ArrayList<String> row = new ArrayList<>();
                 boolean inQuotes = false;
                 StringBuilder valuesBuilder = new StringBuilder();
                 // Iterating through input values
@@ -114,10 +117,18 @@ public class Parser {
                         inQuotes = !inQuotes;
                         valuesBuilder.append(c);
                     }
+                    else if (c == ' ' && !inQuotes) {
+                        String value = valuesBuilder.toString().trim();
+                        if(!value.isEmpty()){
+                            row.add(value);
+                        }
+                        valuesBuilder.setLength(0);
+                    }
                     else if(c == ',' && !inQuotes){
                         String value = valuesBuilder.toString().trim();
                         if(!value.isEmpty()){
-                            valuesList.add(value);
+                            rowsList.add(row);
+                            row = new ArrayList<>();
                         }
                         valuesBuilder.setLength(0);
                     }
@@ -128,10 +139,11 @@ public class Parser {
                 // Adding last value to list
                 String lastValue = valuesBuilder.toString().trim();
                 if(!lastValue.isEmpty()){
-                    valuesList.add(lastValue);
+                    row.add(lastValue);
+                    rowsList.add(row);
                 }
 
-                insert(tableName, valuesList);
+                insert(tableName, rowsList);
             }
             else if(command.startsWith("DROP TABLE")){
                 if(keywords.length == 3){
@@ -274,21 +286,28 @@ public class Parser {
     }
 
     // Inserts a record into a table
-    public static void insert(String tableName, ArrayList<String> values){
+    public static void insert(String tableName, ArrayList<ArrayList<String>> rows){
         Schema schema = Catalog.GetSchema(tableName);
         if(schema == null){
             System.out.println("Table: " + tableName + " does not exist");
             return;
         }
+        int success = 0;
+        try{
+            for (ArrayList<String> S_Row : rows) {
+                ArrayList<Attribute> attributes = schema.Attributes;
+                ArrayList<Object> Row = new ArrayList<>();
+                // Loop through row and parse strings via attribute method,
+                for (int i = 0; i < Row.size(); i++) 
+                Row.set(i, attributes.get(i).Parse(S_Row.get(i)));
 
-        // Validate that values are of correct data type for table schema
-        // Create record using data
-        // Get page from buffer manager, insert record into page
-        // Repeat for all given rows
-        // Question: how are values given if table has more than one attribute? Space separated?
-        for(String row : values){
-            return;
+                schema.Insert(Row);
+                success++;
+            }
+        } catch(Exception e){
+            System.out.println("Error: " + e.getMessage());
         }
+        System.out.println(success + "rows inserted successfully");
     }
 
     // Removes table and all of its data from database, removes schema from catalog
@@ -297,7 +316,10 @@ public class Parser {
 
         catch (Exception e){
             System.out.println("Error: " + e.getMessage());
+            return;
         }
+
+        System.out.println("Table: " + tableName + " dropped successfully");
     }
 
     // Adds an attribute to a table
@@ -313,7 +335,10 @@ public class Parser {
             Catalog.AttributeAdd(tableName, attrName, type, typeSize, nullable, false, false, defaultVal);
         } catch(Exception e){
             System.out.println("Error: " + e.getMessage());
+            return;
         }
+
+        System.out.println("Attribute: " + attrName + " added successfully");
     }
 
     // Removes an attribute from a table
@@ -329,6 +354,9 @@ public class Parser {
             Catalog.AttributeDrop(tableName, attrName);
         } catch(Exception e){
             System.out.println("Error: " + e.getMessage());
+            return;
         }
+
+        System.out.println("Attribute: " + attrName + " dropped successfully");
     }
 }
