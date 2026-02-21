@@ -22,7 +22,7 @@ public class Schema {
         this.Name = Name;
     }
 
-    public void AddAttribute(String Name, Type T, Integer Size, Boolean Nullable, Boolean Primary, Boolean Unique, Object Default) throws Exception {
+    public Attribute AddAttribute(String Name, Type T, Integer Size, Boolean Nullable, Boolean Primary, Boolean Unique, Object Default) throws Exception {
         if (Primary != null && Primary) // If the attribute should be primary,
         // If we already have a primary key, throw.
         if (this.Primary != null) throw new Exception("Schema already has a primary key");
@@ -47,6 +47,8 @@ public class Schema {
         Attribute A = new Attribute(Name, T, Size, isPrimary, isNullable, isUnique, Default);
         // Attribute A = new Attribute(Name, T, Size, Primary, Nullable, Unique, Default);
         Attributes.add(A);
+
+        return A;
     }
 
     public void RemoveAttribute(String Name) throws Exception {
@@ -91,6 +93,12 @@ public class Schema {
     // containing the row's data.
     public ArrayList<ArrayList<Object>> Select() {
         ArrayList<ArrayList<Object>> entries = new ArrayList<ArrayList<Object>>();
+
+        Object[] defaults = new Object[this.Attributes.size()];
+        for (int i=0; i<this.Attributes.size(); i++) 
+        if (this.Attributes.get(i).defaultVal != null)
+        defaults[i] = this.Attributes.get(i).defaultVal;
+
         try{
             // Getting first page where this schema's data is stored
             int currPageId = this.PageId;
@@ -99,7 +107,16 @@ public class Schema {
             while(currPageId != -1){
                 Page page = BufferManager.getPage(currPageId, this);
                 if(page == null) break;
-                entries.addAll(page.get_data());
+
+                // Set default values
+                ArrayList<ArrayList<Object>> pageData = page.get_data();
+                for (ArrayList<Object> row : pageData)
+                for (int i=0; i<row.size(); i++)
+                // if there is a default, use it wheen the value is null
+                if (row.get(i) == null && defaults[i] != null)
+                row.set(i, defaults[i]);
+                    
+                entries.addAll(pageData);
                 currPageId = page.get_next_pageid();
             }
         } catch (Exception e){
