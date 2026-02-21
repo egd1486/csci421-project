@@ -1,5 +1,6 @@
 package StorageManager;
 
+import Catalog.Catalog;
 import Common.*;
 
 import java.io.File;
@@ -216,7 +217,24 @@ public class StorageManager {
             System.out.println("Ignoring provided page size. Using prior size of " + page_size);
 
             // TODO: Read schema values, and initialize into Catalog.
-
+            Page schemaTable = decode(Catalog.AttributeTable, 1);
+            ArrayList<ArrayList<Object>> data = schemaTable.get_schema().Select();
+            for (ArrayList<Object> row : data){
+                if(Catalog.GetSchema(row.get(0).toString()) == null){
+                    try{
+                        Catalog.AddSchema(row.get(0).toString());
+                    }
+                    catch(Exception e){
+                        System.err.println(e);
+                    }
+                }
+                try{
+                    Catalog.AttributeAdd(row.get(0).toString(), row.get(2).toString(), Type.values()[(Integer)row.get(3)], (Integer)row.get(4), (Boolean)row.get(5), (Boolean)row.get(7), (Boolean)row.get(6), row.get(8));
+                }
+                catch (Exception e){
+                    System.err.println(e);
+                }
+            }
             return;
         }
         System.out.println("No database found. Creating new database...");
