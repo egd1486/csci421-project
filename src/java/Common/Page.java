@@ -38,6 +38,7 @@ public class Page {
         is_dirty = false;
         time = System.currentTimeMillis();
         next_page_id = -1;
+        freebytes = StorageManager.pageSize;
     }
 
     /**
@@ -112,18 +113,7 @@ public class Page {
 
         System.out.println("Max Row Size: " + max_row_size);
 
-        int rows = data.size();
-
-        int available_space;
-        // if freebytes not provided,
-        if (freebytes == 0)
-        // calculate the available space from pageSize and other constants
-        available_space = (StorageManager.pageSize - page_metadata - (header_size*rows) - (max_row_size*rows));
-        // otherwise just use the specified freebytes.
-        else available_space = freebytes;
-
-        System.out.println("Available Space: " + available_space+ " " + available_space / (max_row_size + header_size));
-        return (int) available_space / (max_row_size + header_size);
+        return (int) freebytes / (max_row_size + header_size);
     }
 
     public ArrayList<ArrayList<Object>> get_data() {

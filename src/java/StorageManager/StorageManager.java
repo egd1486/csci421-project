@@ -96,8 +96,6 @@ public class StorageManager {
         // Write free pointer.
         slotted_buffer.putInt(Integer.BYTES * 2, free_ptr);
 
-        slotted_buffer.putInt(Integer.BYTES * 2, free_ptr);
-
         return slotted_page;
     }
 
@@ -205,7 +203,10 @@ public class StorageManager {
             }
             fullPage.add(row);
         }
+        int slot_dir_end = HEADER_SIZE + (numEntries * SLOT_ENTRY_SIZE);
+        int free_space = slot_dir_end - free_ptr;
         decoded.set_data(fullPage);
+        decoded.set_freebytes(free_space);
         return decoded;
     }
 
