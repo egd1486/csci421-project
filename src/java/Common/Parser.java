@@ -116,11 +116,20 @@ public class Parser {
                     char c = values.charAt(i);
                     if(c == '"'){
                         inQuotes = !inQuotes;
+                        valuesBuilder.append(c);
                     }
                     else if (c == ' ' && !inQuotes) {
                         String value = valuesBuilder.toString().trim();
                         if(!value.isEmpty()){
-                            row.add(value);
+                            if(value.startsWith("\"") && value.endsWith("\"") && value.length() == 2){
+                                row.add("");
+                            }
+                            else if(value.startsWith("\"") && value.endsWith("\"") && value.length() > 2){
+                                row.add(value.substring(1, value.length()-1));
+                            }
+                            else{
+                                row.add(value);
+                            }
                         }
                         valuesBuilder.setLength(0);
                     }
