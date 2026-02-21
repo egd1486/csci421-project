@@ -41,7 +41,11 @@ public class Schema {
         if (A.name.equals(Name)) 
         throw new Exception("Schema already has an attribute named " + Name);
 
-        Attribute A = new Attribute(Name, T, Size, Primary, Nullable, Unique, Default);
+        boolean isPrimary  = Primary  != null && Primary;
+        boolean isNullable = Nullable != null && Nullable;
+        boolean isUnique   = Unique   != null && Unique;
+        Attribute A = new Attribute(Name, T, Size, isPrimary, isNullable, isUnique, Default);
+        // Attribute A = new Attribute(Name, T, Size, Primary, Nullable, Unique, Default);
         Attributes.add(A);
     }
 
@@ -189,4 +193,9 @@ public class Schema {
         // Now that we have a page with room, insert into it.
         P.get_data().add(Row);
     }
+
+     public void setPageId(int newPageId) {
+        this.PageId = newPageId;
+    }
+
 }
