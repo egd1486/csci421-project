@@ -355,7 +355,6 @@ public class Parser {
         }
         try{
             // Tries to add an attribute to the schema
-            System.out.println(defaultVal);
             Catalog.AttributeAdd(tableName, attrName, type, typeSize, nullable, false, false, defaultVal);
         } catch(Exception e){
             System.out.println("Error2: " + e.getMessage());

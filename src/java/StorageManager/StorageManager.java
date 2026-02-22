@@ -76,8 +76,7 @@ public class StorageManager {
 
             numslots++;
             int slot_index = HEADER_SIZE + (numslots - 1) * SLOT_ENTRY_SIZE;
-            System.out.println("Row data size:" + row_data.length);
-            System.out.println(row.toString());
+
             int new_free_ptr = free_ptr - row_data.length - fixedBitmap.length;
 
             System.arraycopy(fixedBitmap, 0, slotted_page, new_free_ptr, fixedBitmap.length);
@@ -220,7 +219,7 @@ public class StorageManager {
         // First check if the file exists
         File database_file = new File(database_name);
         System.out.println("Accessing database location...");
-
+        freepages = new Stack<Integer>(); // Create freepage stack!
         page_counter = 2; //Were moving the page counter because page 0-1 will contain all of our basic db info
 
         if (database_file.exists()) {
@@ -253,7 +252,6 @@ public class StorageManager {
                     Boolean NotNull = (Boolean)row.get(5), Primary = (Boolean)row.get(7), Unique = (Boolean)row.get(6);
                     String AName = row.get(2).toString();
                     // Recreate attributes
-                    if (Primary) S.Primary = S.Attributes.size();
                     S.AddAttribute(AName, T, Size, NotNull, Primary, Unique, row.get(8));
                 }
                 catch (Exception e){
@@ -263,7 +261,7 @@ public class StorageManager {
             return;
         }
         System.out.println("No database found. Creating new database...");
-        freepages = new Stack<Integer>();
+        
         filename = database_name;
         pageSize = page_size;
         // Otherwise, create the database from scratch. Assume we make the first page contains the information about the database

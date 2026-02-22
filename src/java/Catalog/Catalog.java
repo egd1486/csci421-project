@@ -48,7 +48,6 @@ public class Catalog {
         Schemas.add(S = new Schema(Name));
         // Assign a free page into the buffer, and grab its id.
         S.PageId = BufferManager.getEmptyPage(S).get_pageid();
-        System.out.println(S.PageId);
 
         System.out.println("Schema: " + Name + " created successfully");
 
@@ -114,7 +113,6 @@ public class Catalog {
         int currPageId = oldSchema.PageId;
         ArrayList<ArrayList<Object>> newData = new ArrayList<>();
         while(currPageId != -1){
-            System.out.println("currPageId: " + currPageId);
             Page currPage = BufferManager.getPage(currPageId, oldSchema);
             for(ArrayList<Object> row : currPage.get_data()){
                 ArrayList<Object> newRow = new ArrayList<>(row);
