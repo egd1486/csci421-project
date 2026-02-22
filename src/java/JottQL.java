@@ -54,6 +54,7 @@ public class JottQL{
         try{
             BufferManager.flush_all();
             BufferManager.writeSchemas();
+            BufferManager.writeFreePages();
         }
         catch (Exception e){
             System.err.println(e);

@@ -227,7 +227,15 @@ public class StorageManager {
             filename = database_name;
             try(RandomAccessFile database_access = new RandomAccessFile(database_name, "r")){
                 database_access.seek(0);
+                freepages.add(database_access.readInt());
+                database_access.seek(Integer.BYTES);
                 pageSize = database_access.readInt();
+                int free = freepages.peek();
+                while(free != -1){
+                    database_access.seek(free*pageSize);
+                    free = database_access.readInt();
+                    freepages.add(free);
+                }
             }
             System.out.println("Ignoring provided page size. Using prior size of " + page_size);
 
@@ -268,11 +276,12 @@ public class StorageManager {
         try(RandomAccessFile database_access = new RandomAccessFile(database_name,"rw")){
             byte[] database_info = new byte[page_size];
             ByteBuffer database_wrapped = ByteBuffer.wrap(database_info);
-
-            database_wrapped.putInt(0, page_size);
-            database_wrapped.putInt(Integer.BYTES, 1); //Number of pages
-            database_wrapped.putInt(Integer.BYTES * 2, 1); //SchemePageId or the pointer to catalogPageId
-            database_wrapped.putInt(Integer.BYTES * 3, -1); //Bitmap of free_list_pages
+            
+            freepages.add(2);
+            database_wrapped.putInt(0, 2);
+            database_wrapped.putInt(Integer.BYTES, page_size);
+            database_wrapped.putInt(Integer.BYTES*2, 1); //Number of pages
+            database_wrapped.putInt(Integer.BYTES * 3, 1); //SchemePageId or the pointer to catalogPageId
 
             database_access.seek(0);
             database_access.write(database_info);
@@ -311,7 +320,28 @@ public class StorageManager {
         freepages.add(pageId);
     }
 
-
+    /**
+    * Write freepages into database on quit. Can't do like this because need to be in buffer I think? 
+    * Alternative method in BufferManager
+    * @param database_name
+    */
+    /*
+    public static void writeFreePages(String database_name) throws IOException{
+        try(RandomAccessFile database_access = new RandomAccessFile(database_name, "w")){
+            if (freepages.isEmpty()){
+                database_access.seek(0);
+                database_access.writeInt(-1);
+                return;
+            }
+            int free = 0;
+            while(!freepages.isEmpty()){
+                database_access.seek(free*pageSize);
+                free = freepages.pop();
+                database_access.writeInt(free);
+            }
+        }
+    }
+    */
 
 
     /**
