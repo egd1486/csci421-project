@@ -25,7 +25,6 @@ public class StorageManager {
 
   public static byte[] encoder(Page page) throws IOException {
         Schema schema = page.get_schema();
-
         byte[] slotted_page = new byte[pageSize];
         ByteBuffer slotted_buffer = ByteBuffer.wrap(slotted_page);
 
@@ -105,6 +104,25 @@ public class StorageManager {
      * @throws IOException self-explantory
      */
     public static void writePage(Page page_adding_to_memory) throws IOException {
+        if (page_adding_to_memory.get_pageid() == 0){
+            try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
+                file.seek(0);
+                file.writeInt(page_adding_to_memory.get_next_pageid());
+                file.seek(Integer.BYTES);
+                file.writeInt(pageSize);
+                file.seek(Integer.BYTES*2);
+                file.writeInt(page_counter);
+                file.seek(Integer.BYTES*3);
+                file.writeInt(1);
+                return;
+            }
+        }
+        if(page_adding_to_memory.get_schema() == null){
+            try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
+                file.seek(page_adding_to_memory.get_pageid()*pageSize);
+                file.writeInt(page_adding_to_memory.get_next_pageid());
+            }
+        }
         try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
             byte[] adding = encoder(page_adding_to_memory);
             file.seek((long) pageSize * page_adding_to_memory.get_pageid());
@@ -117,6 +135,22 @@ public class StorageManager {
      */
     public static Page decode(Schema schema, int pageNumber){
         Page decoded = new Page(pageNumber, schema);
+        if (schema == null){
+            if (pageNumber == 0){
+                return(new Page(0, null));
+            }
+            else{
+                Page free = new Page(pageNumber, null);
+                try(RandomAccessFile file = new RandomAccessFile(filename, "r")){
+                    file.seek(pageNumber * pageSize);
+                    free.set_nextpageid(file.readInt());
+                }
+                catch (Exception e){
+                    System.err.println(e);
+                }
+                
+            }
+        }
         ArrayList<ArrayList<Object>> fullPage = new ArrayList<ArrayList<Object>>();
         byte[] data = new byte[pageSize];
         try(RandomAccessFile file = new RandomAccessFile(filename, "r")){
