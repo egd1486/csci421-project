@@ -107,7 +107,7 @@ public class BufferManager {
      */
     public static Page getEmptyPage(Schema schema) throws IOException {
         int newPageId;
-        if(StorageManager.getFreePages().isEmpty()){
+        if(StorageManager.getFreePages().peek()==-1){
             newPageId = StorageManager.create_page();
         }
         else{
