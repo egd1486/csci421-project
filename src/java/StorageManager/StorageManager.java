@@ -144,6 +144,7 @@ public class StorageManager {
                 try(RandomAccessFile file = new RandomAccessFile(filename, "r")){
                     file.seek(pageNumber * pageSize);
                     free.set_nextpageid(file.readInt());
+                    return free;
                 }
                 catch (Exception e){
                     System.err.println(e);
