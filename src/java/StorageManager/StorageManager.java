@@ -121,6 +121,7 @@ public class StorageManager {
             try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
                 file.seek(page_adding_to_memory.get_pageid()*pageSize);
                 file.writeInt(page_adding_to_memory.get_next_pageid());
+                return;
             }
         }
         try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
