@@ -263,14 +263,14 @@ public class StorageManager {
             filename = database_name;
             try(RandomAccessFile database_access = new RandomAccessFile(database_name, "r")){
                 database_access.seek(0);
-                freepages.add(database_access.readInt());
+                int free = database_access.readInt();
                 database_access.seek(Integer.BYTES);
                 pageSize = database_access.readInt();
-                int free = freepages.peek();
+                freepages.add(-1);
                 while(free != -1){
+                    freepages.add(free);
                     database_access.seek(free*pageSize);
                     free = database_access.readInt();
-                    freepages.add(free);
                 }
             }
             System.out.println("Ignoring provided page size. Using prior size of " + page_size);
