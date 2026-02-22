@@ -1,6 +1,7 @@
 package BufferManager;
 
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -199,7 +200,30 @@ public class BufferManager {
      public static Page[] getBuffer() {
         return buffer;
     }
-
+    /**
+     * Write freepages into database on quit.
+     */
+    public static void writeFreePages() throws IOException{
+        Stack<Integer> freepages= StorageManager.getFreePages();
+        if (freepages.isEmpty()){
+            Page zero = getPage(0, null);
+            zero.set_isdirty(true);
+            zero.set_nextpageid(-1);
+            flush_all();
+            return;
+        }
+        int free = 0;
+        while(!freepages.isEmpty()){
+            Page next = getPage(free, null);
+            free = freepages.pop();
+            next.set_nextpageid(free);
+            next.set_isdirty(true);
+        }
+        Page next = getPage(free, null);
+        next.set_nextpageid(-1);
+        next.set_isdirty(true);
+        flush_all();
+    }
 
     // public static void testCreationEmptyPage() throws IOException {
     //     System.out.println("Start testing Create Empty Page");
