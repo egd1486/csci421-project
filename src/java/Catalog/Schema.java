@@ -204,7 +204,7 @@ public class Schema {
         // If there are no slots remaining, grab the next page until you find a spot.
         while (P.get_slots_remaining() == 0)
         // If there is a next page, grab it
-        if ((Next = P.get_next_pageid()) > -1)        
+        if ((Next = P.get_next_pageid()) > -1)
         P = BufferManager.getPage(P.get_next_pageid(), this);
         // Otherwise grab a brand new page and make it the next page.
         else {
@@ -215,7 +215,6 @@ public class Schema {
 
         // Now that we have a page with room, insert into it.
         P.get_data().add(Row);
-
         // Calculate freebytes lost when adding this row.
         int spacelost = 8; // 8 bytes for the slot entry
         for (int i=0; i<Row.size(); i++)

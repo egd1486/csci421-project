@@ -106,8 +106,14 @@ public class BufferManager {
      * @return empty page
      */
     public static Page getEmptyPage(Schema schema) throws IOException {
-        int newPageId = StorageManager.create_page();
-        //check if have empty slot in buffer to place new empty page
+        int newPageId;
+        if(StorageManager.getFreePages().isEmpty()){
+            newPageId = StorageManager.create_page();
+        }
+        else{
+            newPageId = StorageManager.nextFreePage();
+        }
+            //check if have empty slot in buffer to place new empty page
         for(int i = 0; i < buffer.length; i++){
             if(buffer[i] == null) {
                 Page newEmptyPage = new Page(newPageId, schema);

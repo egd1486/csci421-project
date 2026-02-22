@@ -357,6 +357,13 @@ public class StorageManager {
     }
 
     /**
+     * Returns next empty page and removes it from freePages
+     */
+    public static int nextFreePage(){
+        return freepages.pop();
+    }
+
+    /**
     * Write freepages into database on quit. Can't do like this because need to be in buffer I think? 
     * Alternative method in BufferManager
     * @param database_name
