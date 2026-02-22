@@ -52,8 +52,8 @@ public class JottQL{
             Parser.parse(command);
         }
         try{
-            //BufferManager.writeSchemas();
             BufferManager.flush_all();
+            BufferManager.writeSchemas();
         }
         catch (Exception e){
             System.err.println(e);

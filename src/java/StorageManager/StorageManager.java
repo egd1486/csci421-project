@@ -140,7 +140,6 @@ public class StorageManager {
 
         // Page new_page = new Page(pageNumber);
         int free_ptr = freeptrstored; //Hold onto this for now
-        decoded.set_freebytes(free_ptr - numEntries*(2*Integer.BYTES) - 3*Integer.BYTES); // End of free space - slotSize * numEntries - headerSize
 
         Type[] attributes = schema.GetTypes(); //! Need way to get list of attributes, or add as parameter
         int bitmapsize = (attributes.length + 7) / 8;
@@ -237,16 +236,25 @@ public class StorageManager {
             Page schemaTable = decode(Catalog.AttributeTable, 1);
             ArrayList<ArrayList<Object>> data = schemaTable.get_schema().Select();
             for (ArrayList<Object> row : data){
-                if(Catalog.GetSchema(row.get(0).toString()) == null){
-                    try{
-                        Catalog.AddSchema(row.get(0).toString());
-                    }
-                    catch(Exception e){
-                        System.err.println(e);
-                    }
-                }
+                Schema S;
+                String name = row.get(0).toString();
+                if((S = Catalog.GetSchema(name)) == null)
                 try{
-                    Catalog.AttributeAdd(row.get(0).toString(), row.get(2).toString(), Type.values()[(Integer)row.get(3)], (Integer)row.get(4), (Boolean)row.get(5), (Boolean)row.get(7), (Boolean)row.get(6), row.get(8));
+                    Catalog.Schemas.add(S = new Schema(name));
+                    S.PageId = Integer.parseInt(row.get(1).toString());
+                }
+                catch(Exception e){
+                    System.err.println(e);
+                }
+                
+                try{
+                    Integer Size = (Integer)row.get(4);
+                    Type T = Type.values()[(Integer)row.get(3)];
+                    Boolean NotNull = (Boolean)row.get(5), Primary = (Boolean)row.get(7), Unique = (Boolean)row.get(6);
+                    String AName = row.get(2).toString();
+                    // Recreate attributes
+                    if (Primary) S.Primary = S.Attributes.size();
+                    S.AddAttribute(AName, T, Size, NotNull, Primary, Unique, row.get(8));
                 }
                 catch (Exception e){
                     System.err.println(e);

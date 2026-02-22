@@ -217,7 +217,7 @@ public class Schema {
         P.get_data().add(Row);
 
         // Calculate freebytes lost when adding this row.
-        int spacelost = 0;
+        int spacelost = 8; // 8 bytes for the slot entry
         for (int i=0; i<Row.size(); i++)
         if (Row.get(i) == null) continue;
         else switch (Attributes.get(i).type) {

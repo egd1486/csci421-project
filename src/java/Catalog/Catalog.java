@@ -16,7 +16,7 @@ public class Catalog {
     static {
         // This won't fail, but wrap it in a try catch so Java stops yelling at us.
         try {
-            AttributeTable = new Schema("AttributeTable");
+            AttributeTable = new Schema("ATTRIBUTETABLE");
             AttributeTable.PageId = 1;
 
             AttributeTable.AddAttribute("SchemaName", Type.VARCHAR, 50, false, false, false, null);
@@ -77,7 +77,9 @@ public class Catalog {
         // Schema exists, begin freeing its pages
         Page page = BufferManager.getPage(S.PageId, S);
         while (page != null) {
-            StorageManager.markfreepage(page.get_pageid());
+            page.set_isdirty(false);
+            int page_id = page.get_pageid();
+            if (page_id > 1) StorageManager.markfreepage(page.get_pageid());
             page = page.get_next_pageid() != -1 ? BufferManager.getPage(page.get_next_pageid(), S) : null;
         }
 
