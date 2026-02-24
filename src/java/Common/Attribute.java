@@ -19,12 +19,12 @@ public class Attribute { //for one column
         this.defaultVal = this.Parse(defaultVal);
     }
 
-    public Integer GetByteSize() {
+    public Integer GetFixedSize() {
         switch (this.type) {
             case INT:
                 return Integer.BYTES;
             case CHAR:
-                return this.typeLength + Integer.BYTES;
+                return this.typeLength;
             case DOUBLE:
                 return Double.BYTES;
             case VARCHAR:

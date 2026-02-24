@@ -74,6 +74,10 @@ public class Schema {
         this.Name = name;
     }
 
+    public Integer GetFixedSize() {
+        
+    }
+
     // Returns the maximum size of the row data in bytes.
     public Integer GetMaxRowSize() {
         int Size = 0;
