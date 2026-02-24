@@ -1,6 +1,5 @@
 package StorageManager;
 
-import Catalog.Catalog;
 import Common.*;
 
 import java.io.File;
@@ -8,343 +7,331 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.*;
 
-import Catalog.Schema;
+import Catalog.*;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
+
+
 
 public class StorageManager {
-    public static int pageSize;
-    private static String filename;
-    private static int page_counter; // What page is created and 1 because page 0 stores information
-    private static Stack<Integer> freepages;
+    public static int PageSize;
+    public static boolean CanShort;
+    private static String Filename;
+    private static int PageCount;
+    private static Stack<Integer> FreePages;
+    // Save 3 integers for page size, page counter, and top free page.
+    private static final int PageStart = Integer.BYTES * 3; 
 
-    private static final int BOOLEAN_BYTES = 1; //hard coded since Boolean.BYTES dne
-
-  public static byte[] encoder(Page page) throws IOException {
-        Schema schema = page.get_schema();
-
-        byte[] slotted_page = new byte[pageSize];
-        ByteBuffer slotted_buffer = ByteBuffer.wrap(slotted_page);
-
-        int numslots = 0;
-        int free_ptr = pageSize-1;
-
-        int HEADER_SIZE = Integer.BYTES * 3; // next_Page_id, num_slots(entries), free_ptr
-        int SLOT_ENTRY_SIZE = Integer.BYTES * 2;
-
-        slotted_buffer.putInt(0, page.get_next_pageid());
-
-        Type[] type = schema.GetTypes();
-        for(List<Object> row : page.get_data()){
-
-            ByteArrayOutputStream byte_array = new ByteArrayOutputStream();
-            DataOutputStream dos = new DataOutputStream(byte_array);
-            BitSet bitmap = new BitSet(row.size());
-
-            for(int index = 0; index < row.size(); index++){
-            // Check if the value is null, and mark if so.
-            if(row.get(index) == null) bitmap.set(index);
-            // Otherwise, switch through the types to handle writing the value
-            else switch(type[index]){
-                   case INT -> {dos.writeInt((int) row.get(index));}
-
-                   case BOOLEAN -> {dos.writeBoolean((boolean) row.get(index));}
-
-                   case DOUBLE -> {dos.writeDouble((double) row.get(index));}
-
-                   default -> {
-                        // This case handles char/varchar which are stored in equivalent fashion :)
-                        String string = (String) row.get(index);
-                        byte[] sbytes = string.getBytes(StandardCharsets.UTF_8);
-
-                        // Write for string length
-                        dos.writeInt(sbytes.length);
-
-                        // Write each char byte.
-                        dos.write(sbytes);
-                   }
-               }
-            }
-
-            byte[] row_data = byte_array.toByteArray();
-            int bitmapSize = (row.size() + 7) / 8;
-            byte[] fixedBitmap = new byte[bitmapSize];
-            System.arraycopy(bitmap.toByteArray(), 0, fixedBitmap, 0, bitmap.toByteArray().length);
-
-            numslots++;
-            int slot_index = HEADER_SIZE + (numslots - 1) * SLOT_ENTRY_SIZE;
-
-            int new_free_ptr = free_ptr - row_data.length - fixedBitmap.length;
-
-            System.arraycopy(fixedBitmap, 0, slotted_page, new_free_ptr, fixedBitmap.length);
-            System.arraycopy(row_data, 0, slotted_page, new_free_ptr + fixedBitmap.length, row_data.length);
-
-            // Store this rows location above,
-            slotted_buffer.putInt(slot_index, new_free_ptr);
-            // And how long it is :)
-            slotted_buffer.putInt(slot_index + Integer.BYTES, fixedBitmap.length + row_data.length);
-            // Now update free_ptr
-            free_ptr = new_free_ptr;
-        }
-
-        // Write number of entries.
-        slotted_buffer.putInt(Integer.BYTES, numslots);
-        // Write free pointer.
-        slotted_buffer.putInt(Integer.BYTES * 2, free_ptr);
-
-        return slotted_page;
-    }
-
-
-    /**
-     * WritePage writes the page into disk
-     * @param page_adding_to_memory what page were addinginto memory
-     * @throws IOException self-explantory
-     */
-    public static void writePage(Page page_adding_to_memory) throws IOException {
-        try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
-            byte[] adding = encoder(page_adding_to_memory);
-            file.seek((long) pageSize * page_adding_to_memory.get_pageid());
-            file.write(adding);
-        }
-    }
-    /**
-     * Decode the data from a page in the memory.
-     * @param pagenumber The name of the database
-     */
-    public static Page decode(Schema schema, int pageNumber){
-        Page decoded = new Page(pageNumber, schema);
-        ArrayList<ArrayList<Object>> fullPage = new ArrayList<ArrayList<Object>>();
-        byte[] data = new byte[pageSize];
-        try(RandomAccessFile file = new RandomAccessFile(filename, "r")){
-            file.seek(pageNumber * pageSize);
-            file.readFully(data);
-        }
-        catch(Exception e){
-            System.err.println(e);
-        }
-
-
-        ByteBuffer decode_wrapper = ByteBuffer.wrap(data);
-        int HEADER_SIZE = Integer.BYTES * 3; // next_Page_id, num_slots(entries), free_ptr
-        int SLOT_ENTRY_SIZE = Integer.BYTES * 2;
-
-        int nextPage = decode_wrapper.getInt(0);
-        decoded.set_nextpageid(nextPage);
-        int numEntries = decode_wrapper.getInt(Integer.BYTES);
-        int freeptrstored = decode_wrapper.getInt(Integer.BYTES * 2);
-
-        // Page new_page = new Page(pageNumber);
-        int free_ptr = freeptrstored; //Hold onto this for now
-
-        Type[] attributes = schema.GetTypes(); //! Need way to get list of attributes, or add as parameter
-        int bitmapsize = (attributes.length + 7) / 8;
-
-        for (int index = 0; index < numEntries; index++){
-            int slotPos = HEADER_SIZE + index * SLOT_ENTRY_SIZE;
-            int offset = decode_wrapper.getInt(slotPos);
-            int length = decode_wrapper.getInt(slotPos + Integer.BYTES);
-
-            int ptr = offset + bitmapsize; //keep offset maybe
-            boolean[] nullmap = new boolean[attributes.length];
-            byte[] nullbytes = new byte[bitmapsize];
-
-            // populate nullbytes
-            for (int i = 0; i < bitmapsize; i++) nullbytes[i] = data[offset+i];
-
-            // iterate through boolean array, setting nulls from nullbytes.
-            for (int i = 0; i < attributes.length; i++)
-            // Set true if bit is 1
-            nullmap[i] = ((nullbytes[i/8] >> (i%8)) & 1) == 1;
-
-            int size;
-            ArrayList<Object> row = new ArrayList<Object>();
-            for (int attr = 0; attr < attributes.length; attr++){
-                if (nullmap[attr]) {
-                    row.add(null);
-                    continue;
-                }
-                switch (attributes[attr]){
-                    case INT:
-                        row.add(decode_wrapper.getInt(ptr));
-                        ptr += Integer.BYTES;
-                        break;
-                    case BOOLEAN:
-                        row.add(data[ptr] != 0); //to get true or false
-                        ptr += 1;
-                        break;
-                    case CHAR:
-                        size = decode_wrapper.getInt(ptr); // get length of string at the front
-                        // shift pointer over,
-                        ptr += Integer.BYTES;
-                        // construct string from here,
-                        String s = new String(data, ptr, size, StandardCharsets.UTF_8);
-                        row.add(s);
-                        ptr += size;
-                        break;
-                    case DOUBLE:
-                        row.add(decode_wrapper.getDouble(ptr));
-                        ptr += Double.BYTES;
-                        break;
-                    case VARCHAR: //! offset = offset----location and location------size
-                        size = decode_wrapper.getInt(ptr);
-                        ptr += Integer.BYTES;
-                        String object = new String(data, ptr, size, StandardCharsets.UTF_8);
-                        ptr += size;
-                        row.add(object);
-                        break;
-                }
-
-            }
-            fullPage.add(row);
-        }
-        int slot_dir_end = HEADER_SIZE + (numEntries * SLOT_ENTRY_SIZE);
-        int free_space = free_ptr - slot_dir_end;
-        decoded.set_data(fullPage);
-        decoded.set_freebytes(free_space);
-        return decoded;
-    }
-
-
-
-    /**
-     * Creates Database File, or Reads existing one.
-     * @param database_name The name of the database
-     * @param page_size the size of teh database
-     */
-    public static void initializeDatabaseFile(String database_name, int page_size) throws IOException {
-        // First check if the file exists
-        File database_file = new File(database_name);
-        System.out.println("Accessing database location...");
-        freepages = new Stack<Integer>(); // Create freepage stack!
-        page_counter = 2; //Were moving the page counter because page 0-1 will contain all of our basic db info
-
-        if (database_file.exists()) {
-            System.out.println("Database found. Restarting database...");
-            filename = database_name;
-            try(RandomAccessFile database_access = new RandomAccessFile(database_name, "r")){
-                database_access.seek(0);
-                pageSize = database_access.readInt();
-            }
-            System.out.println("Ignoring provided page size. Using prior size of " + page_size);
-
-            // TODO: Read schema values, and initialize into Catalog.
-            Page schemaTable = decode(Catalog.AttributeTable, 1);
-            ArrayList<ArrayList<Object>> data = schemaTable.get_schema().Select();
-            for (ArrayList<Object> row : data){
-                Schema S;
-                String name = row.get(0).toString();
-                if((S = Catalog.GetSchema(name)) == null)
-                try{
-                    Catalog.Schemas.add(S = new Schema(name));
-                    S.PageId = Integer.parseInt(row.get(1).toString());
-                }
-                catch(Exception e){
-                    System.err.println(e);
-                }
-                
-                try{
-                    Integer Size = (Integer)row.get(4);
-                    Type T = Type.values()[(Integer)row.get(3)];
-                    Boolean NotNull = (Boolean)row.get(5), Primary = (Boolean)row.get(7), Unique = (Boolean)row.get(6);
-                    String AName = row.get(2).toString();
-                    // Recreate attributes
-                    S.AddAttribute(AName, T, Size, NotNull, Primary, Unique, row.get(8));
-                }
-                catch (Exception e){
-                    System.err.println(e);
-                }
-            }
-            return;
-        }
-        System.out.println("No database found. Creating new database...");
+    public static void Init(String database_name, int page_size) throws Exception {
+        PageCount = 1; // Assume page 0 is reserved for the catalog.
+        Filename = database_name;
+        FreePages = new Stack<>();
+        PageSize = page_size;
+        // Determine whether we can use short indexing from page size
+        CanShort = page_size <= Short.MAX_VALUE;
         
-        filename = database_name;
-        pageSize = page_size;
-        // Otherwise, create the database from scratch. Assume we make the first page contains the information about the database
-        try(RandomAccessFile database_access = new RandomAccessFile(database_name,"rw")){
-            byte[] database_info = new byte[page_size];
-            ByteBuffer database_wrapped = ByteBuffer.wrap(database_info);
+        File DBFile = new File(database_name);
+        System.out.println("Accessing database location...");
 
-            database_wrapped.putInt(0, page_size);
-            database_wrapped.putInt(Integer.BYTES, 1); //Number of pages
-            database_wrapped.putInt(Integer.BYTES * 2, 1); //SchemePageId or the pointer to catalogPageId
-            database_wrapped.putInt(Integer.BYTES * 3, -1); //Bitmap of free_list_pages
+        // Parse DB params, or prepare them for the new file
+        RandomAccessFile raf = null;
+        byte[] DBParameters = new byte[PageStart];
 
-            database_access.seek(0);
-            database_access.write(database_info);
+        // ByteBuffer for easy parsing,
+        ByteBuffer DBParams = ByteBuffer.wrap(DBParameters); 
 
-            byte[] catalog_page = new byte[page_size];
-            ByteBuffer catalog_buffer = ByteBuffer.wrap(catalog_page);
-            catalog_buffer.putInt(0, -1); //nextCatalogPage
-            catalog_buffer.putInt(Integer.BYTES, 0); //ENTRIES
-            catalog_buffer.putInt(Integer.BYTES * 2, page_size-1); //OH BOI ANOTHER SLOTTED PAGE APPROACH
+        if (DBFile.exists()) {
+            System.out.println("Database found. Restarting database...");
 
-            database_access.seek(page_size);
-            database_access.write(catalog_page);
+            // DB exists, read params from the top,
+            raf = new RandomAccessFile(DBFile, "r");
+            raf.seek(0);
+            raf.readFully(DBParameters);
 
-        }catch(IOException e) {
-             e.printStackTrace();
+            PageSize = DBParams.getInt(0);
+            PageCount = DBParams.getInt(Integer.BYTES);
+            int FreePagePtr = DBParams.getInt(Integer.BYTES * 2);
+
+            // Re-determine whether we can use short indexing from page size, since size may have changed here.
+            CanShort = PageSize <= Short.MAX_VALUE;
+            
+            System.out.println("Ignoring provided page size. Using prior size of " + PageSize);
+
+            // If TopFree has a nonzero value, we have real free page(s) to consider.
+            if (FreePagePtr > 0) {
+                // Prepare a List so we can stack the pages in order.
+                ArrayList<Integer> FreePageList = new ArrayList<>();
+                
+                while (FreePagePtr > 0) {
+                    // Cache the page id if valid,
+                    FreePageList.add(FreePagePtr);
+                    // Get the next one,
+                    raf.seek(PageStart + (FreePagePtr * PageSize));
+                    FreePagePtr = raf.readInt();
+                }
+
+                // Now add the list in reverse order to the stack.
+                for (int i = FreePageList.size() - 1; i >= 0; i--) 
+                FreePages.add(FreePageList.get(i));
+            }
+
+            // And finally, load the catalog
+            LoadCatalog();
+        } else {
+            System.out.println("Database file not found. Creating new database...");
+            DBFile.createNewFile();
+
+            // Write DB params to top of the file
+            DBParams.putInt(0, page_size);
+            DBParams.putInt(Integer.BYTES, PageCount);
+            DBParams.putInt(Integer.BYTES * 2, 0); // No pages freed yet.
+
+            raf = new RandomAccessFile(DBFile, "rw");
+            raf.write(DBParameters);
+        }
+
+        raf.close();
+    }
+
+    public static int CreatePage() {
+        // Return a free page if available,
+        if (!FreePages.isEmpty()) return FreePages.pop();
+        // Otherwise make a new one.
+        return PageCount++;
+    }
+
+    public static void WritePage(Page P) throws Exception {
+        // Write the page to disk.
+        RandomAccessFile raf = new RandomAccessFile(Filename, "rw");
+        raf.seek(PageStart + (P.get_pageid() * PageSize));
+        raf.write(Encode(P));
+        raf.close();
+    }
+
+    public static Page ReadPageFromDisk(Schema S, int PageId) throws Exception {
+        // Read page from disk, and decode it to a page object.
+        RandomAccessFile raf = new RandomAccessFile(Filename, "rw");
+        raf.seek(PageStart + (PageId * PageSize));
+
+        byte[] PageData = new byte[PageSize];
+        raf.readFully(PageData);
+        raf.close();
+
+        return Decode(S, PageId, PageData);
+    }
+
+    public static void FreePage(Page P) {
+        // Add the page id to the free page stack, and empty its values.
+        FreePages.push(P.get_pageid());
+
+        P.get_data().clear();
+    }
+
+    public static void LoadCatalog() throws Exception {
+        ArrayList<ArrayList<Object>> Data = Catalog.AttributeTable.Select();
+
+        for (ArrayList<Object> Row : Data) {
+            Schema S;
+            String name = Row.get(0).toString();
+
+            // Create the schema in catalog if not created yet
+            if((S = Catalog.GetSchema(name)) == null) {
+                Catalog.Schemas.add(S = new Schema(name));
+
+                S.PageId = Integer.parseInt(Row.get(1).toString());
+            }
+
+            // Load the attributes from the schemas
+            Integer Size = (Integer) Row.get(4); 
+            Type T = Type.values()[(Integer) Row.get(3)];
+            Boolean NotNull = (Boolean)Row.get(5), Primary = (Boolean)Row.get(7), Unique = (Boolean)Row.get(6);
+            String AName = Row.get(2).toString();
+
+            // Recreate attributes
+            S.AddAttribute(AName, T, Size, NotNull, Primary, Unique, Row.get(8));
         }
     }
 
+
     /**
-     * Create page first checks if they're available free pages
-     * If there's no free pages we return a new page
-     * @return id
-     */
-    public static int create_page(){
-        if(!(freepages.isEmpty())){
-            return freepages.pop();
+     * 
+     * Page Encoding builds a byte array with this structure: 
+     * 
+     * [int nextpage][int num entries][fixed size row entries 1..n]
+     * [empty space]
+     * [empty space]
+     * [empty space]
+     * [varchar stacked]
+     * [varchar stacked]
+     * [varchar stacked]
+     * 
+     * varchar pointer and size will be encoded either as [int,short] or [short,short], depending on CanShort
+    */
+    public static byte[] Encode(Page P) throws Exception {
+        // Prepare byte array for writing the encoded page data.
+        byte[] Data = new byte[PageSize];
+
+        // Utilize a wrapper for ease of access, and writing.
+        ByteBuffer Wrapper = ByteBuffer.wrap(Data);
+
+        // Keep a pointer for variable length values
+        int VarPtr = PageSize, FixedPtr = Integer.BYTES*2;
+
+        // Write next page value,
+        Wrapper.putInt(0,P.get_next_pageid());
+
+        // Get rows,
+        ArrayList<ArrayList<Object>> Rows = P.get_data();
+
+        // Write number of rows,
+        Wrapper.putInt(Integer.BYTES, Rows.size());
+
+        // Grab Schema and Type array,
+        Schema S = P.get_schema();
+        Type[] Types = S.GetTypes();
+
+        // Define null byte size 
+        int NullByteSize = (Types.length + 7)/8;
+
+        // Write the rows,
+        for (ArrayList<Object> Row : Rows) {
+            // byte[] RowData = new byte[NullByteSize + FixedSize];
+            // ByteBuffer RowWrapper = ByteBuffer.wrap(RowData);
+            // Place header past Null bytes,
+            // RowWrapper.position(NullByteSize);
+            int NBPtr = FixedPtr; // NullBytePointer, cache at beginning so we can mark nulls even after some shifts
+            FixedPtr += NullByteSize;
+            for (int index = 0; index < Row.size(); index++) {
+                Object Value = Row.get(index);
+
+                // Null values get marked in the bitmap,
+                if (Value == null) Data[NBPtr + (index/8)] |= 1 << (index % 8);
+
+                // Otherwise switch through the types to handle writing the value
+                else switch(Types[index]) {
+                    case INT -> {Wrapper.putInt(FixedPtr,(int) Value); FixedPtr += Integer.BYTES;}
+                    
+                    case DOUBLE -> {Wrapper.putDouble(FixedPtr,(double) Value); FixedPtr += Double.BYTES;}
+                    case BOOLEAN -> {Wrapper.put(FixedPtr++, (byte) ((boolean) Value ? 1 : 0));}
+                    case CHAR -> {
+                        byte[] EncodedChar = Value.toString().getBytes(StandardCharsets.UTF_8);
+                        Wrapper.put(FixedPtr, EncodedChar);
+                        FixedPtr += EncodedChar.length;
+                    }
+                    case VARCHAR -> {
+                        byte[] VarLenBytes = Value.toString().getBytes(StandardCharsets.UTF_8);
+                        // Move VarPtr up the stack,
+                        VarPtr -= VarLenBytes.length;
+                        // Write varchar on the stack,
+                        Wrapper.put(VarPtr, VarLenBytes);
+                        // Write pointer to the varchar
+                        // Will use short if page size is small enough
+                        if (CanShort) {Wrapper.putShort(FixedPtr,(short) VarPtr); FixedPtr += Short.BYTES;}
+                        else {Wrapper.putInt(FixedPtr,VarPtr); FixedPtr += Integer.BYTES;}
+                        // And now put varchar length
+                        Wrapper.putShort(FixedPtr, (short) VarLenBytes.length);
+                        FixedPtr += Short.BYTES;
+                    }
+                }
+            }
+            // // Row completed, write the fixed data to the page (varchars already handled).
+            // Wrapper.put(FixedPtr, RowData);
+            // // Move the fixed pointer foward
+            // FixedPtr += RowData.length;
+
+            // Sanity check, if the pointers have inverted, this page has too many rows.
+            if (VarPtr < FixedPtr) throw new Exception("Too many rows in page.");
         }
-        return page_counter++;
-    }
-    /**
-     * Whenever we delete a page from memory instead of just removing and creating a hole in database we can just mark a pageid as free
-     * This way we can just replace it so we don't shift down <3
-     * @param pageId
-     */
-    public static void markfreepage(int pageId){
-        freepages.add(pageId);
+
+        return Data;
     }
 
+    public static Page Decode(Schema S, int PageId, byte[] Data) throws Exception {
+        // Prepare wrapper for reading the encoded page data.
+        ByteBuffer Wrapper = ByteBuffer.wrap(Data);
 
+        // Create page, grab its rows storage.
+        Page P = new Page(PageId, S);
+        ArrayList<ArrayList<Object>> Rows = P.get_data();
 
+        // Read next page value,
+        int Next = Wrapper.getInt(0);
+        if (Next > 0) P.set_nextpageid(Next);
 
-    /**
-     * WritePage writes the page into disk
-     * @param pageNumber what page
-     * @param objects list of objects
-     * @throws IOException self-explantory
-     */
-    // public static void writePage(int pageNumber, ArrayList<ArrayList<Object>> data) throws IOException {
-    //    try(RandomAccessFile file = new RandomAccessFile(filename, "rw")){
-    //        //Serialize it into bytes and then write it
-    //       //file.write(data, pageNumber * pageSize, pageSize);
-    //    }
-    // }
+        // Read total number of rows,
+        int RowCount = Wrapper.getInt(Integer.BYTES);
 
-    // === Getter Functions ===
+        // Grab Type and Attribute array from schema,
+        Type[] Types = S.GetTypes();
+        ArrayList<Attribute> Attributes = S.Attributes;
 
-    public static String getFilename() {
-        return filename;
-    }
-    public static int getPageSize() {
-        return pageSize;
-    }
-    public static void setPageSize(int newSize) {
-        pageSize = newSize;
-    }
+        // Define null byte size 
+        int NullByteSize = (Types.length + 7)/8;
+        // Define ptr for slots, and free ptr to track top of varchar stack
+        int FixedPtr = Integer.BYTES*2, FreePtr=PageSize;
 
+        // Use a nullmap to see which entries to skip,
+        boolean[] nullmap = new boolean[Types.length];
 
-    public static int getPageCounter() {
-        return page_counter;
-    }
+        // might make a lot of rows, so define variables here first
+        ArrayList<Object> Row = null;
+        Object Value = null;
+        int VarPtr = PageSize, Len; // for varchars
 
-    public static Stack<Integer> getFreePages() {
-        return freepages;
+        // Now start iterating the fixed size data,
+        for (int i = 0; i < RowCount; i++) {
+            // populate nullmap
+            // iterate through boolean array, setting bools from the nullbytes.
+            for (int i2 = 0; i2 < nullmap.length; i2++)
+            // Set true if bit is 1
+            nullmap[i2] = ((Data[FixedPtr + (i2/8)] >> (i2%8)) & 1) == 1;
+
+            // Now shift FixedPtr forward to the actual values
+            FixedPtr += NullByteSize;
+
+            // Create row,
+            Row = new ArrayList<>();
+
+            for (int i2 = 0; i2 < Types.length; i2++) {
+                // Skip null values,
+                if (nullmap[i2]) Value = null;
+                
+                // Otherwise switch and parse:
+                else switch(Types[i2]) {
+                    case INT -> {Value = Wrapper.getInt(FixedPtr); FixedPtr += Integer.BYTES;}
+                    case DOUBLE -> {Value = Wrapper.getDouble(FixedPtr); FixedPtr += Double.BYTES;}
+                    case BOOLEAN -> {Value = Data[FixedPtr] != 0; FixedPtr += 1;}
+                    case CHAR -> {
+                        Len = Attributes.get(i2).typeLength;
+                        Value = new String(Data, FixedPtr, Len, StandardCharsets.UTF_8);
+                        FixedPtr += Len;
+                    }
+                    case VARCHAR -> {
+                        // Parse varchar's location (short if CanShort)
+                        if (CanShort) {
+                            VarPtr = Short.toUnsignedInt(Wrapper.getShort(FixedPtr)); 
+                            FixedPtr += Short.BYTES;
+                        } else {
+                            VarPtr = Wrapper.getInt(FixedPtr); 
+                            FixedPtr += Integer.BYTES;
+                        }
+                        // Parse varchar's length
+                        Len = Short.toUnsignedInt(Wrapper.getShort(FixedPtr)); FixedPtr += Short.BYTES;
+                        // Now parse actual varchar
+                        Value = new String(Data, VarPtr, Len, StandardCharsets.UTF_8);
+
+                        if (VarPtr < FreePtr) FreePtr = VarPtr; // Update free ptr if we moved above it
+                    }
+                }
+                Row.add(Value);
+            }
+            Rows.add(Row);
+        }
+
+        // Set the freebytes of the page now that we have climbed the stack and traversed the slots.
+        P.set_freebytes(FreePtr - FixedPtr);
+
+        return P;
     }
 }

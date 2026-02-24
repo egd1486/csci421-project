@@ -75,21 +75,33 @@ public class Schema {
     }
 
     public Integer GetFixedSize() {
-        
+        int Size = 0;
+
+        for (Attribute A : Attributes) Size += A.GetFixedSize();
+
+        return Size;
     }
 
     // Returns the maximum size of the row data in bytes.
-    public Integer GetMaxRowSize() {
-        int Size = 0;
+    public Integer GetRowByteSize(ArrayList<Object> Row) {
+        int Size = ( (Attributes.size() + 7) / 8); // Null bitmap
 
-        for (Attribute A : Attributes) {
-            int s = A.GetByteSize();
-            Size += s;
+        for (int i = 0; i < Row.size(); i++) {
+            Attribute A = Attributes.get(i);
+            Object Value = Row.get(i);
 
+            if (Value == null) continue; // Skip nulls,
+
+            if (A.type == Type.VARCHAR) {
+                Size += Value.toString().getBytes(StandardCharsets.UTF_8).length; // Add varchar literal size
+                Size += A.GetFixedSize(); // Add fixed size of pointers
+            }
+                
+
+            else Size += A.GetFixedSize(); // Otherwise just fixed size.
         }
-            
         
-        return Size + ( (Attributes.size() + 7) / 8);
+        return Size;
     }
 
     public Type[] GetTypes() {
@@ -201,15 +213,16 @@ public class Schema {
             throw new Exception(A.name + " cannot be null.");
         }
 
-        
+        // Define row size for insertion validation,
+        int RowSize = this.GetRowByteSize(Row);
 
         Page P = BufferManager.getPage(this.PageId, this);
         int Next;
         // If there are no slots remaining, grab the next page until you find a spot.
-        while (P.get_slots_remaining() == 0)
+        while (P.freebytes <= RowSize)
         // If there is a next page, grab it
-        if ((Next = P.get_next_pageid()) > -1)        
-        P = BufferManager.getPage(P.get_next_pageid(), this);
+        if ((Next = P.get_next_pageid()) > 0)        
+        P = BufferManager.getPage(Next, this);
         // Otherwise grab a brand new page and make it the next page.
         else {
             Page newPage = BufferManager.getEmptyPage(this);
@@ -220,21 +233,7 @@ public class Schema {
         // Now that we have a page with room, insert into it.
         P.get_data().add(Row);
 
-        // Calculate freebytes lost when adding this row.
-        int spacelost = 8; // 8 bytes for the slot entry
-        for (int i=0; i<Row.size(); i++)
-        if (Row.get(i) == null) continue;
-        else switch (Attributes.get(i).type) {
-            case INT: spacelost += Integer.BYTES; break;
-                
-            case DOUBLE: spacelost += Double.BYTES; break;
-
-            case BOOLEAN: spacelost += 1; break;
-                
-            default: spacelost += Row.get(i).toString().getBytes(StandardCharsets.UTF_8).length + Integer.BYTES;
-        }
-
-        P.freebytes -= spacelost;
+        P.freebytes -= RowSize;
         P.set_isdirty(true);
     }
 

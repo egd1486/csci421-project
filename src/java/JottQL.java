@@ -31,7 +31,11 @@ public class JottQL{
         BufferManager.initialize(bufferSize);
 
         // Initialize database through Storage Manager,
-        StorageManager.initializeDatabaseFile(dbLocation, pageSize);
+        try {StorageManager.Init(dbLocation, pageSize);}
+        catch (Exception e) {
+            System.err.println(e);
+            return;
+        }
 
         // Entering infinite loop and prompting for JottQL commands
         Scanner scanner = new Scanner(System.in);

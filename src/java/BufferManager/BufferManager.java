@@ -2,11 +2,8 @@ package BufferManager;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Stack;
-import Common.Type;
 import Common.Page;
 import Common.Attribute;
 import Catalog.*;
@@ -41,7 +38,7 @@ public class BufferManager {
      * LRU remove the page who have the highest time and return the page to modify
      * @return page with the highest time to evict
      */
-    public static int lru() throws IOException {
+    public static int lru() throws Exception {
         long highest_time = Long.MAX_VALUE;
         int removal_page = -1;
         for(int i = 0; i < buffer.length; i++){
@@ -54,7 +51,7 @@ public class BufferManager {
         Page page_to_remove = buffer[removal_page];
 
         if(page_to_remove.check_dirty()){
-            StorageManager.writePage(page_to_remove);
+            StorageManager.WritePage(page_to_remove);
         }
         mapId.remove(page_to_remove.get_pageid());
         buffer[removal_page] = null;
@@ -68,7 +65,7 @@ public class BufferManager {
      * update map and return page
      * @return page
      */
-    public static Page getPage(int pageId, Schema schema) throws IOException {
+    public static Page getPage(int pageId, Schema schema) throws Exception {
 
         //If a map contains the page id then we return page
         Page return_page = mapId.get(pageId);
@@ -78,7 +75,7 @@ public class BufferManager {
         }
 
         // Get the page from disk
-        Page page_from_disk = StorageManager.decode(schema, pageId);
+        Page page_from_disk = StorageManager.ReadPageFromDisk(schema, pageId);
 
         //Else map doesn't contain id we find a free page considering at some point in random index a frame can be free
         // due to removal of the page so linear scan O(N) check every index if we have empty page
@@ -104,8 +101,8 @@ public class BufferManager {
      * check buffer for empty space, if none evict
      * @return empty page
      */
-    public static Page getEmptyPage(Schema schema) throws IOException {
-        int newPageId = StorageManager.create_page();
+    public static Page getEmptyPage(Schema schema) throws Exception {
+        int newPageId = StorageManager.CreatePage();
         //check if have empty slot in buffer to place new empty page
         for(int i = 0; i < buffer.length; i++){
             if(buffer[i] == null) {
@@ -130,12 +127,12 @@ public class BufferManager {
      * Flush all the dirty pages down into memory and evict them
      * @throws IOException
      */
-    public static void flush_all() throws IOException {
+    public static void flush_all() throws Exception {
         for(int i = 0; i<buffer.length; i++) {
             Page check_page = buffer[i];
             if (check_page != null) {
                 if (check_page.check_dirty()) {
-                    StorageManager.writePage(check_page);
+                    StorageManager.WritePage(check_page);
                     check_page.set_isdirty(false);
                     //evict
                     mapId.remove(check_page.get_pageid());
@@ -147,20 +144,7 @@ public class BufferManager {
 
       public static void writeSchemas(){
         try {
-            Page current = getPage(1, Catalog.AttributeTable);
-            Page next;
-            if (current.get_next_pageid() != -1){
-                next = getPage(current.get_next_pageid(), Catalog.AttributeTable); 
-            }
-            else{
-                next = getEmptyPage(Catalog.AttributeTable);
-                current.set_nextpageid(next.get_pageid());
-            }
-            current.set_isdirty(true);
-            current.set_freebytes(0);
-            current.set_data(new ArrayList<ArrayList<Object>>());
-
-            ArrayList<ArrayList<Object>> newTable = current.get_data();
+            ArrayList<ArrayList<Object>> newTable = new ArrayList<ArrayList<Object>>();
 
             for (Schema table : Catalog.Schemas){
                 for(Attribute attr : table.Attributes){
@@ -183,10 +167,10 @@ public class BufferManager {
             
             flush_all();
 
-            Page newEmptyPage = new Page(1, Catalog.AttributeTable);
+            Page newEmptyPage = new Page(0, Catalog.AttributeTable);
             buffer[0] = newEmptyPage;
-            mapId.put(1, newEmptyPage);
-            Catalog.AttributeTable.PageId = 1;
+            mapId.put(0, newEmptyPage);
+            Catalog.AttributeTable.PageId = 0;
             
             for (ArrayList<Object> row : newTable) Catalog.AttributeTable.Insert(row);
 

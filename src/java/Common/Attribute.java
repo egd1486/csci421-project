@@ -1,5 +1,7 @@
 package Common;
 
+import StorageManager.StorageManager;
+
 public class Attribute { //for one column
     public String name;
     public Type type; 
@@ -28,7 +30,7 @@ public class Attribute { //for one column
             case DOUBLE:
                 return Double.BYTES;
             case VARCHAR:
-                return this.typeLength + Integer.BYTES;
+                return (StorageManager.CanShort ? Short.BYTES:Integer.BYTES) + Short.BYTES; // Ptr and Size
             case BOOLEAN:
                 return 1;
             default:

@@ -38,7 +38,7 @@ public class Page {
         is_dirty = false;
         time = System.currentTimeMillis();
         next_page_id = -1;
-        freebytes = StorageManager.pageSize - 3 * Integer.BYTES; // next_page_id + num_slots + free_ptr
+        freebytes = StorageManager.PageSize - (2 * Integer.BYTES); // next_page_id + num_slots
     }
 
     /**
@@ -103,11 +103,6 @@ public class Page {
     }
 
     // === Getter Functions ===
-
-    public int get_slots_remaining() {
-        return (int) freebytes / (schema.GetMaxRowSize() + SLOT_ENTRY_SIZE);
-    }
-
     public ArrayList<ArrayList<Object>> get_data() {
         return data;
     }
