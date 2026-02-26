@@ -27,11 +27,8 @@ public class JottQL{
             return;
         }
 
-        // Initialize Buffer Manager with bufferSize
-        BufferManager.initialize(bufferSize);
-
         // Initialize database through Storage Manager,
-        try {StorageManager.Init(dbLocation, pageSize);}
+        try {StorageManager.Init(dbLocation, pageSize, bufferSize);}
         catch (Exception e) {
             System.err.println(e);
             return;
@@ -55,10 +52,10 @@ public class JottQL{
             System.out.println("Command: " + command);
             Parser.parse(command);
         }
-        try{
-            BufferManager.flush_all();
-            BufferManager.writeSchemas();
-        }
+
+        // Shutdown once the loop ends.
+        try {StorageManager.Shutdown();}
+
         catch (Exception e){
             System.err.println(e);
         }

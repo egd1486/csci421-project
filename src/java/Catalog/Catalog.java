@@ -47,7 +47,7 @@ public class Catalog {
         // Officially add it to the catalog
         Schemas.add(S = new Schema(Name));
         // Assign a free page into the buffer, and grab its id.
-        S.PageId = BufferManager.getEmptyPage(S).get_pageid();
+        S.PageId = BufferManager.getEmptyPage(S, null).get_pageid();
 
         System.out.println("Schema: " + Name + " created successfully");
 

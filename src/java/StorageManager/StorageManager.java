@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.*;
 
+import BufferManager.BufferManager;
 import Catalog.*;
 
 import java.nio.ByteBuffer;
@@ -23,15 +24,19 @@ public class StorageManager {
     // Save 3 integers for page size, page counter, and top free page.
     private static final int PageStart = Integer.BYTES * 3; 
 
-    public static void Init(String database_name, int page_size) throws Exception {
+    public static void Init(String db_name, int page_size, int buffer_size) throws Exception {
         PageCount = 1; // Assume page 0 is reserved for the catalog.
-        Filename = database_name;
+        Filename = db_name;
         FreePages = new Stack<>();
         PageSize = page_size;
         // Determine whether we can use short indexing from page size
         CanShort = page_size <= Short.MAX_VALUE;
         
-        File DBFile = new File(database_name);
+        // Initialize Buffer Manager with bufferSize
+        BufferManager.initialize(buffer_size);
+
+
+        File DBFile = new File(db_name);
         System.out.println("Accessing database location...");
 
         // Parse DB params, or prepare them for the new file
@@ -89,9 +94,40 @@ public class StorageManager {
 
             raf = new RandomAccessFile(DBFile, "rw");
             raf.write(DBParameters);
+
+            // Now handle the free pointer linked list if there are vacancies:
+            if (!FreePages.isEmpty()) {
+                // Make each node of the linked list point to each other,
+                int Current = FreePages.pop(), Next;
+                while (!FreePages.isEmpty()) {
+                    raf.seek(PageStart + (Current * PageSize));
+                    Next = FreePages.pop();
+                    raf.writeInt(Next);
+                    Current = Next;
+                }
+            }
         }
 
         raf.close();
+    }
+
+    public static void Shutdown() throws Exception{
+        // Write DB params to top of the file
+        RandomAccessFile raf = new RandomAccessFile(Filename, "rw");
+
+        byte[] DBParameters = new byte[PageStart];
+        ByteBuffer DBParams = ByteBuffer.wrap(DBParameters);
+
+        DBParams.putInt(0, PageSize);
+        DBParams.putInt(Integer.BYTES, PageCount);
+        DBParams.putInt(Integer.BYTES * 2, FreePages.isEmpty() ? -1 : FreePages.peek());
+
+        raf.seek(0);
+        raf.write(DBParameters);
+        raf.close();
+
+        BufferManager.flush_all();
+        BufferManager.writeSchemas();
     }
 
     public static int CreatePage() {
@@ -271,9 +307,6 @@ public class StorageManager {
         // Define ptr for slots, and free ptr to track top of varchar stack
         int FixedPtr = Integer.BYTES*2, FreePtr=PageSize;
 
-        // Use a nullmap to see which entries to skip,
-        boolean[] nullmap = new boolean[Types.length];
-
         // might make a lot of rows, so define variables here first
         ArrayList<Object> Row = null;
         Object Value = null;
@@ -281,7 +314,8 @@ public class StorageManager {
 
         // Now start iterating the fixed size data,
         for (int i = 0; i < RowCount; i++) {
-            // populate nullmap
+            // Use a nullmap to see which entries to skip,
+            boolean[] nullmap = new boolean[Types.length];
             // iterate through boolean array, setting bools from the nullbytes.
             for (int i2 = 0; i2 < nullmap.length; i2++)
             // Set true if bit is 1

@@ -50,9 +50,8 @@ public class BufferManager {
         }
         Page page_to_remove = buffer[removal_page];
 
-        if(page_to_remove.check_dirty()){
-            StorageManager.WritePage(page_to_remove);
-        }
+        if(page_to_remove.check_dirty()) StorageManager.WritePage(page_to_remove);
+
         mapId.remove(page_to_remove.get_pageid());
         buffer[removal_page] = null;
         return removal_page;
@@ -66,7 +65,6 @@ public class BufferManager {
      * @return page
      */
     public static Page getPage(int pageId, Schema schema) throws Exception {
-
         //If a map contains the page id then we return page
         Page return_page = mapId.get(pageId);
         if(return_page != null){
@@ -101,22 +99,23 @@ public class BufferManager {
      * check buffer for empty space, if none evict
      * @return empty page
      */
-    public static Page getEmptyPage(Schema schema) throws Exception {
-        int newPageId = StorageManager.CreatePage();
+    public static Page getEmptyPage(Schema schema, Integer pageId) throws Exception {
+        // If a pageid is provided, assume we can empty it. Otherwise, get an available one.
+        int newPageId = (pageId == null) ? StorageManager.CreatePage() : pageId;
         //check if have empty slot in buffer to place new empty page
         for(int i = 0; i < buffer.length; i++){
             if(buffer[i] == null) {
                 Page newEmptyPage = new Page(newPageId, schema);
+                newEmptyPage.set_isdirty(true);
                 buffer[i] = newEmptyPage;
                 mapId.put(newPageId, newEmptyPage);
                 return newEmptyPage;
             }
         }
 
-
-
         //no empty slot in buffer so evict one
         Page newEmptyPage = new Page(newPageId, schema);
+        newEmptyPage.set_isdirty(true);
         buffer[lru()] = newEmptyPage;
         mapId.put(newPageId, newEmptyPage);
 

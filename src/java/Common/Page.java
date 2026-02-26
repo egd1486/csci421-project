@@ -29,7 +29,6 @@ public class Page {
     private Schema schema;
 
     private static final int HEADER_SIZE = Integer.BYTES  * 2; //numslots (int = 4 bytes) + freeptr (int = 4 bytes) 
-    private static final int SLOT_ENTRY_SIZE = Integer.BYTES * 2; //offset size (int = 4 bytes) + length size (int = 4 bytes) 
 
     public Page(int pageID, Schema schema){
         this.pageId = pageID;
@@ -38,7 +37,7 @@ public class Page {
         is_dirty = false;
         time = System.currentTimeMillis();
         next_page_id = -1;
-        freebytes = StorageManager.PageSize - (2 * Integer.BYTES); // next_page_id + num_slots
+        freebytes = StorageManager.PageSize - HEADER_SIZE; // next_page_id + num_slots
     }
 
     /**

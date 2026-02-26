@@ -2,6 +2,7 @@ package Catalog;
 
 import BufferManager.BufferManager;
 import Common.*;
+import StorageManager.StorageManager;
 
 import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
@@ -92,13 +93,11 @@ public class Schema {
 
             if (Value == null) continue; // Skip nulls,
 
-            if (A.type == Type.VARCHAR) {
-                Size += Value.toString().getBytes(StandardCharsets.UTF_8).length; // Add varchar literal size
-                Size += A.GetFixedSize(); // Add fixed size of pointers
-            }
-                
+            // Add fixed size
+            Size += A.GetFixedSize();
 
-            else Size += A.GetFixedSize(); // Otherwise just fixed size.
+            // If varchar add literal size to stack, as fixed is just pointer and length
+            if (A.type == Type.VARCHAR) Size += Value.toString().getBytes(StandardCharsets.UTF_8).length;
         }
         
         return Size;
@@ -192,6 +191,7 @@ public class Schema {
             }
             System.out.println();
         }
+        System.out.println("Displaying " + rows.size() + " rows.");
     }
 
     public void Insert(ArrayList<Object> Row) throws Exception {
@@ -225,11 +225,18 @@ public class Schema {
         P = BufferManager.getPage(Next, this);
         // Otherwise grab a brand new page and make it the next page.
         else {
-            Page newPage = BufferManager.getEmptyPage(this);
-            P.set_nextpageid(newPage.get_pageid());
+            // Grab a new page id, set it as next
+            Next = StorageManager.CreatePage();
+            P.set_nextpageid(Next);
+
+            // Mark the page dirty so the updated next-page pointer is written to disk
+            P.set_isdirty(true);
+
+            // Now we can give it a page in the buffer
+            Page newPage = BufferManager.getEmptyPage(this, Next);
+            
             P = newPage;
         }
-
         // Now that we have a page with room, insert into it.
         P.get_data().add(Row);
 
