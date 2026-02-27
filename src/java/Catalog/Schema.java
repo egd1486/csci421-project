@@ -1,13 +1,12 @@
 package Catalog;
 
-import BufferManager.BufferManager;
 import Common.*;
+import BufferManager.BufferManager;
 import StorageManager.StorageManager;
 
-import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.List;
+
 
 public class Schema {
     public String Name;
@@ -22,6 +21,17 @@ public class Schema {
         // Otherwise, proceed.
         this.Attributes = new ArrayList<>();
         this.Name = Name;
+    }
+
+    // COPIES SCHEMA BUT NOT DATA
+    public Schema Copy() throws Exception {
+        Schema newSchema = new Schema(this.Name);
+        newSchema.Primary = this.Primary;
+        newSchema.PageId = BufferManager.getEmptyPage(newSchema, null).get_pageid();
+
+        for (Attribute A : this.Attributes) newSchema.Attributes.add(A);
+
+        return newSchema;
     }
 
     public Attribute AddAttribute(String Name, Type T, Integer Size, Boolean Nullable, Boolean Primary, Boolean Unique, Object Default) throws Exception {
@@ -46,6 +56,7 @@ public class Schema {
         boolean isPrimary  = Primary  != null && Primary;
         boolean isNullable = Nullable != null && Nullable;
         boolean isUnique   = Unique   != null && Unique;
+        
         Attribute A = new Attribute(Name, T, Size, isPrimary, isNullable, isUnique, Default);
         // Attribute A = new Attribute(Name, T, Size, Primary, Nullable, Unique, Default);
         Attributes.add(A);
@@ -67,6 +78,11 @@ public class Schema {
 
         // If we didn't find any matches..
         throw new Exception("Schema does not have an attribute named " + Name);
+    }
+
+    public void Validate() throws Exception {
+        if (this.Primary == null) // Force schema to have a primary key.
+        throw new Exception("Schema does not have a primary key");
     }
 
     private static boolean isAlphaNumeric(String S) {return S.matches("[a-zA-Z0-9]+");}
@@ -211,6 +227,12 @@ public class Schema {
 
             if (A.notNull && Row.get(i) == null)
             throw new Exception(A.name + " cannot be null.");
+        }
+
+        if (Primary != null) {
+            // TODO: implement sorted insertion with page splitting.
+            Object PKey = Row.get(Primary);
+
         }
 
         // Define row size for insertion validation,

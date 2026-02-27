@@ -72,6 +72,13 @@ public class Page {
 //        return data_return;
 //    }
 
+    public void split_page() {
+        // TODO: implement page splitting for schema.Insert to call. 
+        // Should create a new intermediate page between this and next,
+        // split data between, update freebytes for both instances.
+    }
+
+
     // === Setter Functions ===
 
     public void set_nextpageid(int num){
