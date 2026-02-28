@@ -81,4 +81,13 @@ public class Attribute { //for one column
 
         return O;
     }
+
+    public int Compare(Object O1, Object O2) {
+        switch (this.type) {
+            case INT: return Integer.compare((Integer)O1, (Integer)O2); 
+            case DOUBLE: return Double.compare((Double)O1, (Double)O2); 
+            case BOOLEAN: return Boolean.compare((Boolean)O1, (Boolean)O2); 
+            default: return O1.toString().compareTo(O2.toString()); 
+        }
+    }
 }

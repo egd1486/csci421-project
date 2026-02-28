@@ -34,7 +34,6 @@ public class StorageManager {
         // Initialize Buffer Manager with bufferSize
         BufferManager.initialize(buffer_size);
 
-
         File DBFile = new File(db_name);
         System.out.println("Accessing database location...");
 
@@ -45,7 +44,8 @@ public class StorageManager {
         // ByteBuffer for easy parsing,
         ByteBuffer DBParams = ByteBuffer.wrap(DBParameters); 
 
-        if (DBFile.exists()) {
+        // Validate that the db exists AND it has any data or schemas.
+        if (DBFile.exists() && DBFile.length() > PageStart) {
             System.out.println("Database found. Restarting database...");
 
             // DB exists, read params from the top,

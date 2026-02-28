@@ -1,9 +1,12 @@
 package Common;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import BufferManager.BufferManager;
 import Catalog.Schema;
 import StorageManager.StorageManager;
 
@@ -72,12 +75,40 @@ public class Page {
 //        return data_return;
 //    }
 
-    public void split_page() {
-        // TODO: implement page splitting for schema.Insert to call. 
-        // Should create a new intermediate page between this and next,
-        // split data between, update freebytes for both instances.
+    public void split_page() throws Exception {
+        // Define useful variables for iterating,
+        int size = this.data.size();
+        int half = size / 2;
+        int i;
+
+        ArrayList<Object>[] HalfData = new ArrayList[size-half];
+
+        // For each iteration, copy the value into the native array, decrement,
+        for (i=size-1; i>=half; HalfData[i] = this.data.get(i--))
+        // Then remove the row
+        this.data.remove(i);
+
+        // Mark page dirty now that it has lost rows,
+        this.set_isdirty(true);
+
+        // Get new page,
+        Page NewPage = BufferManager.getEmptyPage(this.schema, null);
+
+        // Add the values to the page.
+        for (i=0; i<HalfData.length; i++) NewPage.data.add(HalfData[i]);
+        // Mark new page dirty as it now has rows :)
+        NewPage.set_isdirty(true);
+
+        // Force freebyte recalculation for both pages now :)
+        this.recalculate_freebytes();
+        NewPage.recalculate_freebytes();
     }
 
+    public void recalculate_freebytes() throws Exception {
+        freebytes = StorageManager.PageSize - HEADER_SIZE;
+        
+        for (ArrayList<Object> row : data) freebytes -= this.schema.GetRowByteSize(row);
+    }
 
     // === Setter Functions ===
 

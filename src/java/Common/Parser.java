@@ -149,7 +149,7 @@ public class Parser {
                 if(!lastValue.isEmpty()){
                     row.add(lastValue);
                 }
-                rowsList.add(row);
+                if (row.size() > 0) rowsList.add(row);
 
                 insert(tableName, rowsList);
             }

@@ -215,28 +215,90 @@ public class Schema {
         if (Row.size() != Attributes.size())
         throw new Exception("Row must have " + Attributes.size() + " values");
 
-        // Check for uniqueness if needed.
-        for (int i=0; i<Row.size(); i++) {
-            Attribute A = Attributes.get(i);
-            if (A.unique || A.primaryKey) {
-                for (ArrayList<Object> R : this.Select()) {
-                    if (R.get(i).equals(Row.get(i)))
-                    throw new Exception(A.name + " must be unique.");
-                }
-            }
-
-            if (A.notNull && Row.get(i) == null)
-            throw new Exception(A.name + " cannot be null.");
-        }
-
-        if (Primary != null) {
-            // TODO: implement sorted insertion with page splitting.
-            Object PKey = Row.get(Primary);
-
-        }
-
         // Define row size for insertion validation,
         int RowSize = this.GetRowByteSize(Row);
+
+        // If this table has a primary key, the entries are required to be sorted,
+        // Meaning this row must go into its proper spot.
+        if (Primary != null) {
+            // Grab our row's pkey,
+            Object PKey = Row.get(Primary), PagePKey;
+            // Grab attribute for comparison functionality
+            Attribute A = Attributes.get(Primary);
+
+            Page P = BufferManager.getPage(this.PageId, this);
+            while (P != null) {
+                // Grab all data,
+                ArrayList<ArrayList<Object>> Data = P.get_data();
+
+                // If this page is empty, then we know we are at the tail, and this PKey is the biggest element.
+                if (Data.size() == 0) {
+                    Data.add(Row);
+                    P.set_isdirty(true);
+                    return;
+                }
+
+                // Otherwise, we need to parse to see if the key even belongs here.
+                // Grab the primary key of the last row to validate 
+                PagePKey = Data.get(Data.size()-1).get(Primary);
+
+                // Compare the keys
+                int C = A.Compare(PKey, PagePKey), Next;
+
+                // If pkey is equal then quit, that's not allowed.
+                if (C == 0) throw new Exception("Primary Key already in use.");
+
+                // If pkey is greater, we advance up a page.
+                if (C > 0) {
+                    // If there's a next page, advance
+                    if ((Next = P.get_next_pageid()) > 0) {
+                        P = BufferManager.getPage(Next, this);
+                        continue;
+                    }
+
+                    // Otherwise we need to toss a new page on the end.
+                    // Grab a new page id, set it as next
+                    Next = StorageManager.CreatePage();
+                    P.set_nextpageid(Next);
+
+                    // Mark the page dirty so the updated next-page pointer is written to disk
+                    P.set_isdirty(true);
+
+                    // Now we can give it a page in the buffer
+                    P = BufferManager.getEmptyPage(this, Next);
+                }
+
+                // If pkey is less, then we know that the row should go in this page.
+                if (C < 0) {
+                    // Now find what index to shove it in.
+                    // Binary search!
+                    int L=0, R=Data.size()-1, M=0;
+                    while (L < R) {
+                        // Get middle index,
+                        M = (L+R)/2;
+                        // Compare the keys,
+                        C = A.Compare(PKey, Data.get(M).get(Primary));
+
+                        // If C is 0, then the keys are equivalent, which is not allowed.
+                        if (C == 0) throw new Exception("Primary Key already in use.");
+                        // If the pkey is less than the middle pkey
+                        // Move the right bound down past it, as the true spot is left of it.
+                        if (C < 0) R = M-1;
+                        // Otherwise, we need to shift the left edge up, as the spot is right of it.
+                        else L = M+1;
+                    }
+                    // Insert at L, as it is now at the ideal index.
+                    Data.add(L, Row);
+                    // Make page dirty,
+                    P.set_isdirty(true);
+                    // Split page if it is now overfull.
+                    if (P.freebytes < RowSize) P.split_page();
+                    return;
+                }
+            }
+        }
+
+        // Otherwise, we are dealing with an unsorted table.
 
         Page P = BufferManager.getPage(this.PageId, this);
         int Next;
@@ -263,10 +325,11 @@ public class Schema {
         P.get_data().add(Row);
 
         P.freebytes -= RowSize;
+        
         P.set_isdirty(true);
     }
 
-     public void setPageId(int newPageId) {
+    public void setPageId(int newPageId) {
         this.PageId = newPageId;
     }
 
