@@ -309,8 +309,7 @@ public class Parser {
             return;
         }
 
-        ArrayList<ArrayList<Object>> Data = schema.Select();
-        schema.DisplayTable(Data);
+        schema.DisplayTable();
     }
 
     // Inserts a record into a table

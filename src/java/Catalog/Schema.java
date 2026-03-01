@@ -163,51 +163,83 @@ public class Schema {
     }
 
     // Displays a table in an easy to read format
-    public void DisplayTable(ArrayList<ArrayList<Object>> rows){
-        // Calculating width of each column
-        int numAttributes = this.Attributes.size();
-        int[] columnWidths = new int[numAttributes];
-        for(int i = 0; i < numAttributes; i++){
-            columnWidths[i] = this.Attributes.get(i).name.length();
-        }
-        for(ArrayList<Object> row : rows){
-            for(int i = 0; i < numAttributes; i++){
-                Object value = row.get(i);
-                String valueString;
-                if(value == null) valueString = "NULL";
-                else valueString = value.toString();
-                columnWidths[i] = Math.max(columnWidths[i], valueString.length());
+    public void DisplayTable(){
+        Object[] defaults = new Object[this.Attributes.size()];
+        for (int i=0; i<this.Attributes.size(); i++) 
+        if (this.Attributes.get(i).defaultVal != null)
+        defaults[i] = this.Attributes.get(i).defaultVal;
+
+        int RowCount = 0;
+        int PageCount = 1; // For printing each page title.
+
+        try{
+            // Getting first page where this schema's data is stored
+            int currPageId = this.PageId;
+            // Getting all row data from this schema starting from the first
+            // page and then any subsequent pages
+            while(currPageId != -1){
+                Page page = BufferManager.getPage(currPageId, this);
+                if(page == null) break;
+
+                // Grab the page data,
+                ArrayList<ArrayList<Object>> pageData = page.get_data();
+
+                // Define the column size for formating,
+                int numAttributes = this.Attributes.size();
+                int[] columnWidths = new int[numAttributes];
+                // Set minimum width as the length of the attribute name
+                for(int i = 0; i < numAttributes; i++) columnWidths[i] = this.Attributes.get(i).name.length();
+                // Then find the longest attribute there, and set its length instead.
+                for(ArrayList<Object> row : pageData)
+                for(int i = 0; i < numAttributes; i++){
+                    Object value = row.get(i);
+                    if(value == null) value = "NULL";
+                    columnWidths[i] = Math.max(columnWidths[i], value.toString().length());
+                }
+
+                // Printing header (page # + attribute names + separator)
+                // calculate total dash padding needed for the separator
+                int dashes = 1;
+                for(int width : columnWidths) dashes += width + 3;
+                // page # time
+                String Title = " [Page " + PageCount++ + "]";
+                for(int i = 0; i < dashes; i++) System.out.print("-");
+                System.out.print(Title);
+                System.out.println();
+                // names
+                System.out.print("|");
+                for(int i = 0; i < numAttributes; i++)
+                System.out.printf(" %-" + columnWidths[i] + "s |", this.Attributes.get(i).name);
+                System.out.println();
+                // separator
+                for(int i = 0; i < dashes; i++) System.out.print("-");
+                System.out.println();
+                // Increase row counter
+                RowCount += pageData.size();
+                // Now print the rows.
+                for (ArrayList<Object> row : pageData) {
+                    System.out.print("|");
+                    for (int i=0; i<row.size(); i++) {
+                        Object value = row.get(i);
+
+                        // If value is null,
+                        if(value == null) 
+                        // And there's a default, use it.
+                        if (defaults[i] != null) value = defaults[i]; 
+                        // Otherwise..
+                        else value = "NULL";
+
+                        System.out.printf(" %-" + columnWidths[i] + "s |", value.toString());
+                    }
+                    System.out.println();
+                }
+                currPageId = page.get_next_pageid();
             }
+        } catch (Exception e){
+            System.out.println("Error: " + e);
         }
 
-        // Printing header (attribute names + separator)
-        System.out.print("|");
-        for(int i = 0; i < numAttributes; i++){
-            System.out.printf(" %-" + columnWidths[i] + "s |", this.Attributes.get(i).name);
-        }
-        System.out.println();
-        System.out.print("-");
-        for(int width : columnWidths){
-            for(int i = 0; i < width + 2; i++){
-                System.out.print("-");
-            }
-            System.out.print("-");
-        }
-        System.out.println();
-
-        // Printing row data
-        for(ArrayList<Object> row : rows){
-            System.out.print("|");
-            for(int i = 0; i < numAttributes; i++){
-                Object value = row.get(i);
-                String valueString;
-                if(value == null) valueString = "NULL";
-                else valueString = value.toString();
-                System.out.printf(" %-" + columnWidths[i] + "s |", valueString);
-            }
-            System.out.println();
-        }
-        System.out.println("Displaying " + rows.size() + " rows.");
+        System.out.println("Displaying " + RowCount + " rows.");
     }
 
     public void Insert(ArrayList<Object> Row) throws Exception {
@@ -248,29 +280,18 @@ public class Schema {
                 // If pkey is equal then quit, that's not allowed.
                 if (C == 0) throw new Exception("Primary Key already in use.");
 
-                // If pkey is greater, we advance up a page.
-                if (C > 0) {
-                    // If there's a next page, advance
-                    if ((Next = P.get_next_pageid()) > 0) {
-                        P = BufferManager.getPage(Next, this);
-                        continue;
-                    }
-
-                    // Otherwise we need to toss a new page on the end.
-                    // Grab a new page id, set it as next
-                    Next = StorageManager.CreatePage();
-                    P.set_nextpageid(Next);
-
-                    // Mark the page dirty so the updated next-page pointer is written to disk
-                    P.set_isdirty(true);
-
-                    // Now we can give it a page in the buffer
-                    P = BufferManager.getEmptyPage(this, Next);
+                // If pkey is greater, we advance pages until we find the right one, or run out of spots.
+                boolean Greatest = C > 0;
+                if (Greatest && (Next = P.get_next_pageid()) > 0) {
+                    P = BufferManager.getPage(Next, this);
+                    continue;
                 }
 
-                // If pkey is less, then we know that the row should go in this page.
-                if (C < 0) {
-                    // Now find what index to shove it in.
+                // Otherwise we should fit this in the current page, and split if necessary.
+                // Now find what index to shove it in.
+                if (Greatest) Data.add(Row); // we know it goes at the end if it is greatest.
+                else {
+                    // If we dont know then we should...
                     // Binary search!
                     int L=0, R=Data.size()-1, M=0;
                     while (L < R) {
@@ -289,19 +310,18 @@ public class Schema {
                     }
                     // Insert at L, as it is now at the ideal index.
                     Data.add(L, Row);
-                    // Make page dirty,
-                    P.set_isdirty(true);
-                    // Split page if it is now overfull.
-                    if (P.freebytes < RowSize) P.split_page();
-                    // Otherwise, decrement freebytes as you should be doing.
-                    else P.freebytes -= RowSize;
-                    return;
                 }
+                // Make page dirty,
+                P.set_isdirty(true);
+                // Split page if it is now overfull.
+                if (P.freebytes < RowSize) P.split_page();
+                // Otherwise, decrement freebytes as you should be doing.
+                else P.freebytes -= RowSize;
+                return;
             }
         }
 
         // Otherwise, we are dealing with an unsorted table.
-
         Page P = BufferManager.getPage(this.PageId, this);
         int Next;
         // If there are no slots remaining, grab the next page until you find a spot.

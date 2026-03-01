@@ -12,13 +12,14 @@ public class Catalog {
     // Create the static Schema for reading the Catalog from the database.
     static {
         // This won't fail, but wrap it in a try catch so Java stops yelling at us.
+        // do not give this table a primary key, the attributes will get sorted and cause havoc :(
         try {
             AttributeTable = new Schema("ATTRIBUTETABLE");
             AttributeTable.PageId = 0;
 
             AttributeTable.AddAttribute("SchemaName", Type.VARCHAR, 50, false, false, false, null);
             AttributeTable.AddAttribute("StartPage", Type.INT, 50, false, false, false, null);
-            AttributeTable.AddAttribute("AttributeName", Type.VARCHAR, 50, false, true, false, null);
+            AttributeTable.AddAttribute("AttributeName", Type.VARCHAR, 50, false, false, false, null);
             AttributeTable.AddAttribute("Type", Type.INT, 50, false, false, false, null);
             AttributeTable.AddAttribute("Length", Type.INT, 50, false, false, false, null);
             AttributeTable.AddAttribute("NotNull", Type.BOOLEAN, 50, false, false, false, null);
