@@ -267,6 +267,7 @@ public class Schema {
                 if (Data.size() == 0) {
                     Data.add(Row);
                     P.set_isdirty(true);
+                    P.freebytes -= RowSize;
                     return;
                 }
 
@@ -293,7 +294,7 @@ public class Schema {
                 else {
                     // If we dont know then we should...
                     // Binary search!
-                    int L=0, R=Data.size()-1, M=0;
+                    int L=0, R=Data.size(), M=0;
                     while (L < R) {
                         // Get middle index,
                         M = (L+R)/2;
@@ -304,7 +305,7 @@ public class Schema {
                         if (C == 0) throw new Exception("Primary Key already in use.");
                         // If the pkey is less than the middle pkey
                         // Move the right bound down past it, as the true spot is left of it.
-                        if (C < 0) R = M-1;
+                        if (C < 0) R = M;
                         // Otherwise, we need to shift the left edge up, as the spot is right of it.
                         else L = M+1;
                     }
@@ -325,7 +326,7 @@ public class Schema {
         Page P = BufferManager.getPage(this.PageId, this);
         int Next;
         // If there are no slots remaining, grab the next page until you find a spot.
-        while (P.freebytes <= RowSize)
+        while (P.freebytes < RowSize)
         // If there is a next page, grab it
         if ((Next = P.get_next_pageid()) > 0)        
         P = BufferManager.getPage(Next, this);
