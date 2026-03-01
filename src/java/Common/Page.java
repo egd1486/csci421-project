@@ -83,20 +83,31 @@ public class Page {
 
         ArrayList<Object>[] HalfData = new ArrayList[size-half];
 
-        // For each iteration, copy the value into the native array, decrement,
-        for (i=size-1; i>=half; HalfData[i] = this.data.get(i--))
-        // Then remove the row
-        this.data.remove(i);
+        // For each iteration, do the following, then remove from the original list and decrement.
+        for (i=size-1; i>=half; this.data.remove(i--))
+        // Copying to the native array here first,
+        HalfData[i-half] = this.data.get(i);
+        // Then in the update piece of the for loop, removing it.
 
-        // Mark page dirty now that it has lost rows,
+        // Get the index of the new page, and of the current next page.
+        int OldNext = this.get_next_pageid(), Next = StorageManager.CreatePage();
+
+        // Point current to the new one,
+        this.set_nextpageid(Next);
+
+        // Mark page dirty now that it has lost rows, and now that it points to the new page.
         this.set_isdirty(true);
 
         // Get new page,
-        Page NewPage = BufferManager.getEmptyPage(this.schema, null);
+        Page NewPage = BufferManager.getEmptyPage(this.schema, Next);
 
         // Add the values to the page.
         for (i=0; i<HalfData.length; i++) NewPage.data.add(HalfData[i]);
-        // Mark new page dirty as it now has rows :)
+
+        // Set its next value to the old next,
+        NewPage.set_nextpageid(OldNext);
+
+        // Mark new page dirty as it now has rows and a new next :)
         NewPage.set_isdirty(true);
 
         // Force freebyte recalculation for both pages now :)

@@ -135,7 +135,13 @@ public class Parser {
                     }
                     else if(c == ',' && !inQuotes){
                         String value = valuesBuilder.toString().trim();
-                        if(!value.isEmpty()) row.add(value);
+                        if(!value.isEmpty()) {
+                            if (value.startsWith("\"") && value.endsWith("\"") && value.length() == 2) {
+                                row.add("");
+                            } else if (value.startsWith("\"") && value.endsWith("\"") && value.length() > 2) {
+                                row.add(value.substring(1, value.length() - 1));
+                            } else row.add(value);
+                        }
                         rowsList.add(row);
                         row = new ArrayList<>();
                         valuesBuilder.setLength(0);
@@ -147,7 +153,12 @@ public class Parser {
                 // Adding last value to list
                 String lastValue = valuesBuilder.toString().trim();
                 if(!lastValue.isEmpty()){
-                    row.add(lastValue);
+                    // We need to make sure that we remove the quotes if we receive a char type as our last value
+                    if(lastValue.startsWith("\"") && lastValue.endsWith("\""))
+                    row.add(lastValue.substring(1, lastValue.length()-1));
+
+                    // otherwise just add it
+                    else row.add(lastValue);
                 }
                 if (row.size() > 0) rowsList.add(row);
 

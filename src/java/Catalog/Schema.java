@@ -293,6 +293,8 @@ public class Schema {
                     P.set_isdirty(true);
                     // Split page if it is now overfull.
                     if (P.freebytes < RowSize) P.split_page();
+                    // Otherwise, decrement freebytes as you should be doing.
+                    else P.freebytes -= RowSize;
                     return;
                 }
             }
@@ -325,7 +327,7 @@ public class Schema {
         P.get_data().add(Row);
 
         P.freebytes -= RowSize;
-        
+
         P.set_isdirty(true);
     }
 
