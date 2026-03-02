@@ -363,7 +363,7 @@ public class Schema {
             PagePKey = Data.get(Data.size()-1).get(Primary);
 
             // Compare the keys
-            int C = A.Compare(PKey, PagePKey), Next;
+            int C = A.Compare(PKey, PagePKey);
 
             // If pkey is equal then quit, that's not allowed.
             if (C == 0) throw new Exception("Primary Key already in use.");
