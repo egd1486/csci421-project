@@ -250,102 +250,160 @@ public class Schema {
         // Define row size for insertion validation,
         int RowSize = this.GetRowByteSize(Row);
 
-        // If this table has a primary key, the entries are required to be sorted,
-        // Meaning this row must go into its proper spot.
+        // Define indices that must be unique
+        boolean[] Uniques = new boolean[Attributes.size()];
+        boolean HasUnique = false;
+        // Loop through and mark uniques, sets HasUnique to true if any are unique
+        for (int i = 0; i < Attributes.size(); HasUnique |= Uniques[i++])
+        Uniques[i] = Attributes.get(i).unique;
+
+        // Now the crux of inserting here is first finding the proper page to insert into
+        // If there is a unique attribute, we must check its uniqueness.
+        int Goal = -1; // So let's find our goal (page to insert into)
+
+        // Grab start page,
+        Page P = BufferManager.getPage(this.PageId, this);
+        // Iterate until we validate all uniques, or until we just find a goal page without any complication.
+        while ( (HasUnique && P != null) || (!HasUnique && Goal < 0) ) {
+            ArrayList<ArrayList<Object>> Data = P.get_data();
+            int Next = P.get_next_pageid();
+            // If there's a pkey, pages are sorted, so let's evaluate if this is the right page.
+            if (Primary != null) {
+                Object PKey = Row.get(Primary), PagePKey;
+                Attribute PAttr = Attributes.get(Primary);
+
+                // If empty, we at the tail. all other previous options were invalid.
+                if (Data.size() == 0) Goal = P.get_pageid();
+                // Otherwise, we have other values to consider:
+                else {
+                    // Grab the primary key of the last row to validate 
+                    PagePKey = Data.get(Data.size()-1).get(Primary);
+
+                    int C = PAttr.Compare(PKey, PagePKey);
+                    boolean Greatest = C > 0;
+                    // If PKey is the greatest in the page, either we need to place this row at the end, or move to the next page.
+                    if (Greatest)
+                    // If there is no next page, we are at the end.
+                    if (Next == -1) Goal = P.get_pageid();
+                    // Otherwise we gotta look at next instead.
+                    else P = BufferManager.getPage(Next, this);
+
+                    // If the pkey is less than page's last pkey is greater than the row's pkey, we are in the right place.
+                    if (C < 0) Goal = P.get_pageid();
+
+                    // If pkey is equal then quit, that's not allowed.
+                    if (C == 0) throw new Exception("Primary Key already in use.");
+                }
+            }
+
+            // If there's no primary key, we just find a page with an opening.
+            // If there's room here, we got a goal.
+            else if (P.freebytes >= RowSize) Goal = P.get_pageid();
+            // If theres not room. we either move forward, or create a new page if we exhausted em all
+            else if (Next > 0) {P = BufferManager.getPage(Next, this);}
+            else {                
+                // Grab a new page id, set it as next (we addin a page.)
+                Next = StorageManager.CreatePage();
+                P.set_nextpageid(Next);
+
+                // Mark the page dirty so the updated next-page pointer is written to disk
+                P.set_isdirty(true);
+
+                // Now we can give it a page in the buffer
+                Page newPage = BufferManager.getEmptyPage(this, Next);
+                
+                P = newPage;
+            }
+
+            // And after all cases of deciding where to insert, we need to check uniqueness if necessary
+            if (HasUnique) {
+                // Get the data,
+                Data = P.get_data();
+                // For each unique attribute,
+                for (int i=0; i<Attributes.size(); i++)
+                if (Uniques[i])
+                for (ArrayList<Object> row : Data)
+                // Given that the attributes are not null,
+                if (row.get(i) != null && Row.get(i) != null)
+                // If an equivalent value is found,
+                if (row.get(i).equals(Row.get(i)))
+                // raise hell
+                throw new Exception(Attributes.get(i).name + " must be unique.");
+
+                // If no exceptions are thrown, we are good to proceed
+                P = (Next > 0) ? BufferManager.getPage(Next, this) : null;
+            }       
+            
+        }
+
+        if (Goal == -1) throw new Exception("Could not find a page to insert into?");
+
+        // Grab page,
+        P = BufferManager.getPage(Goal, this);
+        // Grab its data,
+        ArrayList<ArrayList<Object>> Data = P.get_data();
+
+        // Regardless of sorted or not, inserting in an empty page always has the same approach:
+        if (Data.size() == 0) {
+            Data.add(Row);
+            P.set_isdirty(true);
+            P.freebytes -= RowSize;
+            return;
+        }
+
+        // Otherwise, with existing entries, if this table has a primary key, the entries are required to be sorted,
+        // Meaning this row must go into its proper spot in our found page.
         if (Primary != null) {
             // Grab our row's pkey,
             Object PKey = Row.get(Primary), PagePKey;
             // Grab attribute for comparison functionality
             Attribute A = Attributes.get(Primary);
 
-            Page P = BufferManager.getPage(this.PageId, this);
-            while (P != null) {
-                // Grab all data,
-                ArrayList<ArrayList<Object>> Data = P.get_data();
+            // Grab the primary key of the last row for validation (if we can just toss it on the end.)
+            PagePKey = Data.get(Data.size()-1).get(Primary);
 
-                // If this page is empty, then we know we are at the tail, and this PKey is the biggest element.
-                if (Data.size() == 0) {
-                    Data.add(Row);
-                    P.set_isdirty(true);
-                    P.freebytes -= RowSize;
-                    return;
+            // Compare the keys
+            int C = A.Compare(PKey, PagePKey), Next;
+
+            // If pkey is equal then quit, that's not allowed.
+            if (C == 0) throw new Exception("Primary Key already in use.");
+
+            if (C > 0) Data.add(Row); // If pkey is greater than the last pkey, we add it to the end.
+            // Otherwise, we know its somewhere in the middle
+            else {
+                // If we dont know where then we should...
+                // Binary search!
+                int L=0, R=Data.size(), M=0;
+                while (L < R) {
+                    // Get middle index,
+                    M = (L+R)/2;
+                    // Compare the keys,
+                    C = A.Compare(PKey, Data.get(M).get(Primary));
+
+                    // If C is 0, then the keys are equivalent, which is not allowed.
+                    if (C == 0) throw new Exception("Primary Key already in use.");
+                    // If the pkey is less than the middle pkey
+                    // Move the right bound down past it, as the true spot is left of it.
+                    if (C < 0) R = M;
+                    // Otherwise, we need to shift the left edge up, as the spot is right of it.
+                    else L = M+1;
                 }
-
-                // Otherwise, we need to parse to see if the key even belongs here.
-                // Grab the primary key of the last row to validate 
-                PagePKey = Data.get(Data.size()-1).get(Primary);
-
-                // Compare the keys
-                int C = A.Compare(PKey, PagePKey), Next;
-
-                // If pkey is equal then quit, that's not allowed.
-                if (C == 0) throw new Exception("Primary Key already in use.");
-
-                // If pkey is greater, we advance pages until we find the right one, or run out of spots.
-                boolean Greatest = C > 0;
-                if (Greatest && (Next = P.get_next_pageid()) > 0) {
-                    P = BufferManager.getPage(Next, this);
-                    continue;
-                }
-
-                // Otherwise we should fit this in the current page, and split if necessary.
-                // Now find what index to shove it in.
-                if (Greatest) Data.add(Row); // we know it goes at the end if it is greatest.
-                else {
-                    // If we dont know then we should...
-                    // Binary search!
-                    int L=0, R=Data.size(), M=0;
-                    while (L < R) {
-                        // Get middle index,
-                        M = (L+R)/2;
-                        // Compare the keys,
-                        C = A.Compare(PKey, Data.get(M).get(Primary));
-
-                        // If C is 0, then the keys are equivalent, which is not allowed.
-                        if (C == 0) throw new Exception("Primary Key already in use.");
-                        // If the pkey is less than the middle pkey
-                        // Move the right bound down past it, as the true spot is left of it.
-                        if (C < 0) R = M;
-                        // Otherwise, we need to shift the left edge up, as the spot is right of it.
-                        else L = M+1;
-                    }
-                    // Insert at L, as it is now at the ideal index.
-                    Data.add(L, Row);
-                }
-                // Make page dirty,
-                P.set_isdirty(true);
-                // Split page if it is now overfull.
-                if (P.freebytes < RowSize) P.split_page();
-                // Otherwise, decrement freebytes as you should be doing.
-                else P.freebytes -= RowSize;
-                return;
+                // Insert at L, as it is now at the ideal index.
+                Data.add(L, Row);
             }
-        }
 
-        // Otherwise, we are dealing with an unsorted table.
-        Page P = BufferManager.getPage(this.PageId, this);
-        int Next;
-        // If there are no slots remaining, grab the next page until you find a spot.
-        while (P.freebytes < RowSize)
-        // If there is a next page, grab it
-        if ((Next = P.get_next_pageid()) > 0)        
-        P = BufferManager.getPage(Next, this);
-        // Otherwise grab a brand new page and make it the next page.
-        else {
-            // Grab a new page id, set it as next
-            Next = StorageManager.CreatePage();
-            P.set_nextpageid(Next);
-
-            // Mark the page dirty so the updated next-page pointer is written to disk
+            // Mark page dirty,
             P.set_isdirty(true);
-
-            // Now we can give it a page in the buffer
-            Page newPage = BufferManager.getEmptyPage(this, Next);
-            
-            P = newPage;
+            // Split page if it is now overfull.
+            if (P.freebytes < RowSize) P.split_page();
+            // Otherwise, decrement freebytes as you should be doing.
+            else P.freebytes -= RowSize;
+            return;
         }
-        // Now that we have a page with room, insert into it.
-        P.get_data().add(Row);
+
+        // The final case is that our table is unsorted and we found a page with enough room.
+        // so... we just add it the normal way.
+        Data.add(Row);
 
         P.freebytes -= RowSize;
 
