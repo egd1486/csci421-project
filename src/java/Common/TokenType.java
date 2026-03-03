@@ -1,0 +1,28 @@
+package Common;
+
+public enum TokenType {
+    // Keywords
+    CREATE, TABLE, SELECT, FROM, WHERE,
+    INSERT, INTO, VALUES,
+    DELETE, UPDATE, SET,
+    DROP, ALTER, ADD,
+    PRIMARYKEY, NOTNULL, UNIQUE, DEFAULT,
+    ORDERBY,
+    AND, OR, IS, LIKE,
+
+    // Data Types
+    INTEGER, DOUBLE, VARCHAR, CHAR, BOOLEAN, NULL,
+
+    // Literals
+    NAME_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL, TRUE, FALSE,
+
+    // Symbols
+    LPAREN, RPAREN,
+    COMMA, SEMICOLON,
+    STAR, QUOTE, PERIOD,
+
+    // Operators
+    EQUAL, NOT_EQUAL,
+    LESS, GREATER,
+    LESS_EQUAL, GREATER_EQUAL,
+}

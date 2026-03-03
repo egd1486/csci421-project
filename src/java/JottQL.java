@@ -1,5 +1,7 @@
 import BufferManager.BufferManager;
 import Common.Parser;
+import Common.Tokenizer;
+import Common.NewParser;
 import StorageManager.StorageManager;
 import java.io.IOException;
 import java.util.Scanner;
@@ -50,7 +52,9 @@ public class JottQL{
             }
             String command = builder.toString().trim();
             System.out.println("Command: " + command);
-            Parser.parse(command);
+
+            try {NewParser.parse(Tokenizer.tokenize(command));}
+            catch (Exception e) {System.err.println(e);}
         }
 
         // Shutdown once the loop ends.
