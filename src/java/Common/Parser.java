@@ -1,395 +1,347 @@
 package Common;
-import Catalog.Catalog;
-import Catalog.Schema;
-
-import java.lang.reflect.Array;
+import Catalog.*;
+import static Common.TokenType.*;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 public class Parser {
-    public static void parse(String command){
-        if(command == null || command.isEmpty()){
-            System.out.println("Invalid command");
-            return;
+
+    private static int Create(int Index, Token[] Input) throws Exception {
+        // Validate syntax for "TABLE <name>"
+        Token T; 
+        Validate(Input[Index], TABLE);
+
+        // Grab and validate name,
+        Validate(T = Input[++Index], NAME_LITERAL);
+        String Name = T.Literal;
+
+        // Validate syntax for parenthesis
+        Validate(Input[++Index], LPAREN);
+
+        // Begin parsing attributes and their properties.
+        ArrayList<Attribute> Attributes = new ArrayList<>();
+
+        while (true) {
+            // Get name
+            Validate(T = Input[++Index], NAME_LITERAL);
+            String AttributeName = T.Literal;
+
+            // Get type
+            T = Input[++Index];
+            Type AType = null;
+            int Length = 0;
+            switch (T.Type) {
+                case BOOLEAN -> AType = Type.BOOLEAN;
+                case DOUBLE -> AType = Type.DOUBLE;
+                case INTEGER -> AType = Type.INT;
+                // Char types have a size provided, so must read that.
+                case CHAR, VARCHAR -> {
+                    AType = T.Type == CHAR ? Type.CHAR : Type.VARCHAR;
+
+                    Validate(Input[++Index], LPAREN); // Paren 1
+                    Validate(T = Input[++Index], INT_LITERAL); // Integer size,
+                    Length = Integer.parseInt(T.Literal);
+                    Validate(Input[++Index], RPAREN); // Paren 2
+                }
+
+                default -> throw new Exception("Unexpected token " + T.Type.toString() + ", expected column's type.");
+            }
+
+            // Create attribute object,
+            Attribute A = new Attribute(AttributeName, AType, Length, false, false, false, null);
+
+            // Now read tokens for qualifiers until comma or parenthesis is closed.
+            while ((T = Input[++Index]).Type != COMMA && T.Type != RPAREN)
+            switch (T.Type) {
+                case PRIMARYKEY -> A.primaryKey = true;
+                case NOTNULL -> A.notNull = true;
+                case UNIQUE -> A.unique = true;
+                case DEFAULT -> {
+                    // Grab the provided default value..?
+                    T = Input[++Index];
+                    if (T.Type!=STRING_LITERAL && T.Type!=INT_LITERAL && T.Type!=DOUBLE_LITERAL && T.Type!=TRUE && T.Type!=FALSE) 
+                    throw new Exception("Unexpected token " + T.Type.toString() + ", expected default value.");
+                    A.defaultVal = A.Parse(T.Literal);
+                }
+                default -> throw new Exception("Unexpected token " + T.Type.toString() + ", expected attribute qualifier.");
+            }    
+
+            Attributes.add(A);
+
+            if (T.Type == RPAREN) break; // Break once reached end of attributes (right paren)
         }
 
-        // Getting rid of leading/trailing white space and ending semicolon
-        command = command.trim().substring(0, command.length()-1);
-        String[] keywords = command.split(" ");
+        // Now that we have all the attributes and have readched the rparen, check for semicolon
+        Validate(Input[++Index], SEMICOLON);
+        // If we got here, great. Create the table.
+        Schema S = Catalog.AddSchema(Name);
 
+        // Loop through and call through AddAttribute for validation,
+        for (Attribute A : Attributes) 
+        S.AddAttribute(A.name, A.type, A.typeLength, A.notNull, A.primaryKey, A.unique, A.defaultVal);
+
+        // Return start of next command, which is past semicolon.
+        return ++Index;
+    }
+
+    private static int Select(int Index, Token[] Input) throws Exception {
+        boolean All = false;
+        ArrayList<String> Columns = new ArrayList<>();
+        ArrayList<String> Tables = new ArrayList<>();
+        Token T = Input[Index++];
+
+        // If star, do a normal display.
+        if (T.Type == STAR) All = true;
+        // Otherwise, read column names until we hit what's SUPPOSED to be from.
+        else if (T.Type == NAME_LITERAL) {
+            Columns.add(T.Literal);
+
+            while ((T = Input[Index]).Type == COMMA) {
+                Validate(T=Input[++Index], NAME_LITERAL);
+                Columns.add(T.Literal);
+                Index++;
+            }
+        } 
+        // Other token types are not valid here.
+        else throw new Exception("Unexpected token " + T.Type.toString() + ", expected * or column name(s).");
+
+        // Now we get the tables, validate from first.
+        Validate(Input[Index++], FROM);
+
+        // At least one table,
+        T = Input[Index++];
+        Validate(T, NAME_LITERAL);
+        Tables.add(T.Literal);
+
+        // Parse more if available
+        while (Input[Index].Type == COMMA) {
+            T = Input[++Index];
+            Validate(T, NAME_LITERAL);
+            Tables.add(T.Literal);
+            Index++;
+        }
+
+        // If we got here, great. Check for semicolon and complete the select.
+        Validate(Input[Index], SEMICOLON);
+
+        if (All && Tables.size() == 1) {
+            Schema S = Catalog.GetSchema(Tables.get(0));
+
+            if (S == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
+            
+            S.DisplayTable();
+        }
+
+        return ++Index;
+    }
+
+    private static TokenType[] Literals = {INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL, TRUE, FALSE, NULL};
+    private static int Insert(int Index, Token[] Input) throws Exception {
+        // Get table's name,
+        Token T = Input[Index]; 
+        Validate(T, NAME_LITERAL);
+        String TableName = T.Literal;
+
+        // Check for key word VALUES,
+        Validate(Input[++Index], VALUES);
+
+        // Check for left paren,
+        Validate(Input[++Index], LPAREN);
+
+        // Now we can parse rows.
+        ArrayList<ArrayList<Object>> Rows = new ArrayList<>();
+
+        // Grab schema for attribute length and type validation.
+        Schema S = Catalog.GetSchema(TableName);
+
+        if (S == null) throw new Exception("Table " + TableName + " does not exist.");
+
+        //Shift onto literal values,
+        Index++;
+
+        while (true) {
+            ArrayList<Object> Row = new ArrayList<>();
+
+            while ((T = Input[Index]).Type != RPAREN && T.Type != COMMA) {
+                // Check if any literal type
+                boolean Literal = false;
+                for (TokenType L : Literals) Literal |= T.Type == L;
+                if (!Literal) throw new Exception("Unexpected token " + T.Type.toString() + ", expected literal value.");
+                
+                // Otherwise, add literal
+                Row.add(T.Literal);
+                Index++;
+            }
+
+            if (Row.size() > 0) Rows.add(Row);
+
+            if (T.Type == RPAREN) break;
+            else Index++;
+        }
+
+        // Check for semicolon,
+        Validate(Input[++Index], SEMICOLON);
+
+        // Great! now we have all the rows to insert,
+        int count = 0;
         try {
-            if(command.startsWith("CREATE TABLE")){
-                int start = command.indexOf("(");
-                int end = command.length() - 1;
-                // Keywords = CREATE TABLE <tableName>
-                keywords = command.substring(0, start).trim().split(" ");
-
-                if(keywords.length != 3) throw new Exception("Invalid command");
-
-                // Values to pass to createTable
-                String tableName = keywords[2];
-                String[] attributes = command.substring(start+1, end).trim().split(",");
-                String[] attr = new String[attributes.length];
-                Type[] type = new Type[attributes.length];
-                int[] typeSize = new int[attributes.length];
-                String[] constraints = new String[attributes.length];
-                int index = 0;
-
-                // Iterating over given attributes and parsing into usable data
-                for(String a : attributes){
-                    String[] attrData = a.trim().split(" ");
-                    attr[index] = attrData[0];
-                    if(!attrData[1].equals(attrData[1].toUpperCase())){
-                        throw new Exception("Invalid attribute");
-                    }
-                    switch(attrData[1]){
-                        case "INTEGER":
-                            type[index] = Type.INT;
-                            typeSize[index] = Integer.BYTES;
-                            break;
-                        case "DOUBLE":
-                            type[index] = Type.DOUBLE;
-                            typeSize[index] = Double.BYTES;
-                            break;
-                        case "BOOLEAN":
-                            type[index] = Type.BOOLEAN;
-                            typeSize[index] = 1;
-                            break;
-                    }
-                    int left = attrData[1].indexOf("(");
-                    int right = attrData[1].indexOf(")");
-                    if(attrData[1].startsWith("CHAR")){
-                        type[index] = Type.CHAR;
-                        typeSize[index] = Integer.parseInt(attrData[1].substring(left+1, right));
-                    }
-                    else if(attrData[1].startsWith("VARCHAR")){
-                        type[index] = Type.VARCHAR;
-                        typeSize[index] = Integer.parseInt(attrData[1].substring(left+1, right));
-                    }
-                    StringBuilder c = new StringBuilder();
-                    for(int i = 2; i < attrData.length; i++){
-                        c.append(attrData[i]).append(" ");
-                    }
-                    constraints[index] = c.toString();
-                    index++;
-                }
-
-                createTable(tableName, attr, type, typeSize, constraints);
+            for (ArrayList<Object> Row : Rows) {
+                // Iterate through each column and parse into actual data type,
+                for (int i = 0; i < S.Attributes.size(); i++) 
+                Row.set(i, S.Attributes.get(i).Parse(Row.get(i)));
+                
+                // Then run insert.
+                S.Insert(Row);
+                count++;
             }
-            else if(command.startsWith("SELECT * FROM")){
-                // Only need to handle select all for first phase
-                if(keywords.length == 4){
-                    select(keywords[3]);
-                }
-            }
-            else if(command.startsWith("INSERT")){
-                int start = command.indexOf("(");
-                int end = command.length();
-                // Keywords = INSERT <tableName> VALUES
-                keywords = command.substring(0, start).trim().split(" ");
-                if(keywords.length != 3){
-                    throw new Exception("Invalid command");
-                }
-                if(!keywords[2].equals("VALUES")){
-                    throw new Exception("Invalid command");
-                }
+        } catch (Exception e) {
+            System.out.println("Inserted " + count + " rows.");
+            throw e;
+        } 
+        System.out.println("Inserted " + count + " rows.");
 
-                // Values to pass to insert
-                String tableName = keywords[1];
-                String values = command.substring(start, end).trim();
-                // Remove opening and closing parenthesis
-                if(values.startsWith("(") && values.endsWith(")")){
-                    values = values.substring(1, values.length()-1);
-                }
-                else{
-                    throw new Exception("Invalid command");
-                }
-                ArrayList<ArrayList<String>> rowsList = new ArrayList<>();
-                ArrayList<String> row = new ArrayList<>();
-                boolean inQuotes = false;
-                StringBuilder valuesBuilder = new StringBuilder();
-                // Iterating through input values
-                for(int i = 0; i < values.length(); i++){
-                    // Checks every character and adds it to the current value
-                    // Only splits when comma is found outside of quotes.
-                    char c = values.charAt(i);
-                    if(c == '"'){
-                        inQuotes = !inQuotes;
-                        valuesBuilder.append(c);
-                    }
-                    else if (c == ' ' && !inQuotes) {
-                        String value = valuesBuilder.toString().trim();
-                        if(!value.isEmpty()){
-                            if(value.startsWith("\"") && value.endsWith("\"") && value.length() == 2){
-                                row.add("");
-                            }
-                            else if(value.startsWith("\"") && value.endsWith("\"") && value.length() > 2){
-                                row.add(value.substring(1, value.length()-1));
-                            }
-                            else{
-                                row.add(value);
-                            }
-                        }
-                        valuesBuilder.setLength(0);
-                    }
-                    else if(c == ',' && !inQuotes){
-                        String value = valuesBuilder.toString().trim();
-                        if(!value.isEmpty()) {
-                            if (value.startsWith("\"") && value.endsWith("\"") && value.length() == 2) {
-                                row.add("");
-                            } else if (value.startsWith("\"") && value.endsWith("\"") && value.length() > 2) {
-                                row.add(value.substring(1, value.length() - 1));
-                            } else row.add(value);
-                        }
-                        rowsList.add(row);
-                        row = new ArrayList<>();
-                        valuesBuilder.setLength(0);
-                    }
-                    else{
-                        valuesBuilder.append(c);
-                    }
-                }
-                // Adding last value to list
-                String lastValue = valuesBuilder.toString().trim();
-                if(!lastValue.isEmpty()){
-                    // We need to make sure that we remove the quotes if we receive a char type as our last value
-                    if(lastValue.startsWith("\"") && lastValue.endsWith("\""))
-                    row.add(lastValue.substring(1, lastValue.length()-1));
-
-                    // otherwise just add it
-                    else row.add(lastValue);
-                }
-                if (row.size() > 0) rowsList.add(row);
-
-                insert(tableName, rowsList);
-            }
-            else if(command.startsWith("DROP TABLE")){
-                if(keywords.length == 3){
-                    dropTable(keywords[2]);
-                }
-            }
-            else if(command.startsWith("ALTER TABLE")){
-                keywords = command.split(" ");
-                if (keywords.length < 5 || !keywords[0].equals("ALTER") || !keywords[1].equals("TABLE")) {
-                    throw new Exception("Invalid command");
-                }
-
-                // Values to pass to createTable
-                String tableName = keywords[2];
-                String action = keywords[3];
-                String attrName = keywords[4];
-
-                // Checking if syntax is correct / calling drop command
-                if(!action.equals("ADD") && !action.equals("DROP")){
-                    throw new Exception("Invalid command");
-                }
-                if(action.equals("DROP")){
-                    alterDrop(tableName, attrName);
-                    return;
-                }
-                if(keywords.length < 6 || keywords.length > 9){
-                    throw new Exception("Invalid command");
-
-                }
-
-                // Getting type and type size for ADD command
-                Type type = null;
-                int typeSize = -1;
-                String typeString = keywords[5];
-                if(typeString.startsWith("CHAR(") || typeString.startsWith("VARCHAR(")){
-                    int left = typeString.indexOf("(");
-                    int right = typeString.indexOf(")");
-                    if(typeString.startsWith("CHAR")){
-                        type = Type.CHAR;
-                    }
-                    else{
-                        type = Type.VARCHAR;
-                    }
-                    typeSize = Integer.parseInt(typeString.substring(left+1, right));
-                }
-                else{
-                    switch(typeString){
-                        case "INTEGER":
-                            type = Type.INT;
-                            typeSize = Integer.BYTES;
-                            break;
-                        case "DOUBLE":
-                            type = Type.DOUBLE;
-                            typeSize = Double.BYTES;
-                            break;
-                        case "BOOLEAN":
-                            type = Type.BOOLEAN;
-                            typeSize = 1;
-                            break;
-                        default:
-                            throw new Exception("Invalid command");
-                    }
-                }
-
-                // Getting conditionals if needed
-                // Calling Add command once all data obtained
-                if(keywords.length == 6){
-                    alterAdd(tableName, attrName, type, typeSize, false, false, null);
-                }
-                else if(keywords.length == 8){
-                    String hasDefault = keywords[6];
-                    String defaultVal =  keywords[7];
-                    if(hasDefault.equals("DEFAULT")){
-                        if(defaultVal != null && defaultVal.charAt(0) == '"' && defaultVal.charAt(defaultVal.length() - 1) == '"'){
-                            String defaultNoQuotes = defaultVal.substring(1, defaultVal.length()-1);
-                            alterAdd(tableName, attrName, type, typeSize, false, true, defaultNoQuotes);
-                        }
-                    }
-                }
-                else if(keywords.length == 9){
-                    String condition1 = keywords[6];
-                    String condition2 = keywords[7];
-                    String defaultVal = keywords[8];
-                    if(!condition1.equals("NOTNULL") || !condition2.equals("DEFAULT")){
-                        throw new Exception("Invalid command");
-                    }
-                    if(defaultVal != null && defaultVal.charAt(0) == '"' && defaultVal.charAt(defaultVal.length() - 1) == '"'){
-                        String defaultNoQuotes = defaultVal.substring(1, defaultVal.length()-1);
-                        alterAdd(tableName, attrName, type, typeSize, true, true, defaultNoQuotes);
-                    }
-                    else{
-                        alterAdd(tableName, attrName, type, typeSize, true, true, defaultVal);
-                    }
-                }
-                else{
-                    throw new Exception("Invalid command");
-                }
-            }
-            else{
-                throw new Exception("Invalid command");
-            }
-        } catch(Exception e){
-            System.out.println("Error: " + e.getMessage());
-        }
+        return ++Index;
     }
 
-    // Creates a database schema in the catalog
-    public static void createTable(String tableName, String[] attr, Type[] type, int[] typeSize, String[] constraints){
-        try{
-            // Creating new table schema
-            Schema schema = Catalog.AddSchema(tableName);
-            // Populating table schema with attributes
-            for(int i = 0; i < attr.length; i++){
-                boolean nullable = false;
-                boolean primary = false;
-                boolean unique = false;
-                if(constraints != null && constraints[i] != null){
-                    for(String c : constraints[i].split(" ")){
-                        switch(c){
-                            case "NOTNULL":
-                                nullable = true;
-                                break;
-                            case "PRIMARYKEY":
-                                primary = true;
-                                break;
-                            case "UNIQUE":
-                                unique = true;
-                                break;
-                        }
-                    }
+    private static int Alter(int Index, Token[] Input) throws Exception {
+        // Validate syntax for "TABLE <name>"
+        Token T; 
+        Validate(Input[Index], TABLE);
+
+        // Get actual name,
+        Validate(T = Input[++Index], NAME_LITERAL);
+        String Name = T.Literal;
+
+        // Check for alter type,
+        T = Input[++Index];
+        boolean Add = T.Type == ADD;
+
+        // Throw if not add or drop,
+        if (!Add && T.Type != DROP) 
+        throw new Exception("Unexpected token " + T.Type.toString() + ", expected ADD or DROP.");
+
+        // Grab attribute name,
+        Validate(T = Input[++Index], NAME_LITERAL);
+        String AttributeName = T.Literal;
+
+        if (!Add) {
+            // Check for semicolon,
+            Validate(Input[++Index], SEMICOLON);
+
+            // Drop the attribute
+            Catalog.AttributeDrop(Name, AttributeName);
+        }
+        // Otherwise, this is add, and things get complicated..
+        else {
+            // Get type
+            T = Input[++Index];
+            Type AType = null;
+            int Length = 0;
+            switch (T.Type) {
+                case BOOLEAN -> AType = Type.BOOLEAN;
+                case DOUBLE -> AType = Type.DOUBLE;
+                case INTEGER -> AType = Type.INT;
+                // Char types have a size provided, so must read that.
+                case CHAR, VARCHAR -> {
+                    AType = T.Type == CHAR ? Type.CHAR : Type.VARCHAR;
+
+                    Validate(Input[++Index], LPAREN); // Paren 1
+                    Validate(T = Input[++Index], INT_LITERAL); // Integer size,
+                    Length = Integer.parseInt(T.Literal);
+                    Validate(Input[++Index], RPAREN); // Paren 2
                 }
-                schema.AddAttribute(attr[i], type[i], typeSize[i], nullable, primary, unique, null);
+
+                default -> throw new Exception("Unexpected token " + T.Type.toString() + ", expected column's type.");
             }
-        } catch(Exception e){
-            System.out.println("Error: " + e.getMessage());
-        }
-    }
 
-    // Selects and displays all data from a table
-    public static void select(String tableName){
-        Schema schema = Catalog.GetSchema(tableName);
-        if(schema == null){
-            System.out.println("Table: " + tableName + " does not exist");
-            return;
-        }
+            // Create attribute object,
+            Attribute A = new Attribute(AttributeName, AType, Length, false, false, false, null);
 
-        schema.DisplayTable();
-    }
-
-    // Inserts a record into a table
-    public static void insert(String tableName, ArrayList<ArrayList<String>> rows){
-        Schema schema = Catalog.GetSchema(tableName);
-        if(schema == null){
-            System.out.println("Table: " + tableName + " does not exist");
-            return;
-        }
-        int success = 0;
-        try{
-            for (ArrayList<String> S_Row : rows) {
-                ArrayList<Attribute> attributes = schema.Attributes;
-
-                // Checking if number of attributes match
-                if (attributes.size() != S_Row.size())
-                throw new Exception("Invalid number of attributes");
-
-
-                ArrayList<Object> Row = new ArrayList<>();
-                // Loop through row and parse strings via attribute method,
-                for (int i = 0; i < attributes.size(); i++)
-                Row.add(attributes.get(i).Parse(S_Row.get(i)));
-
-                schema.Insert(Row);
-                success++;
+            // Now read tokens for qualifiers until semicolon, or until it runs out of the domain and blows up (which is fine).
+            while ((T = Input[++Index]).Type != SEMICOLON)
+            switch (T.Type) {
+                case PRIMARYKEY -> A.primaryKey = true;
+                case NOTNULL -> A.notNull = true;
+                case UNIQUE -> A.unique = true;
+                case DEFAULT -> {
+                    // Grab the provided default value..?
+                    T = Input[++Index];
+                    if (T.Type!=STRING_LITERAL && T.Type!=INT_LITERAL && T.Type!=DOUBLE_LITERAL && T.Type!=TRUE && T.Type!=FALSE) 
+                    throw new Exception("Unexpected token " + T.Type.toString() + ", expected default value.");
+                    A.defaultVal = A.Parse(T.Literal);
+                }
+                default -> throw new Exception("Unexpected token " + T.Type.toString() + ", expected attribute qualifier.");
             }
-        } catch(Exception e){
-            System.out.println("Error: " + e.getMessage());
+
+            Catalog.AttributeAdd(Name, A.name, A.type, A.typeLength, A.primaryKey, A.notNull, A.unique, A.defaultVal);
         }
-        System.out.println(success + " rows inserted successfully");
+
+        return ++Index;
     }
 
-    // Removes table and all of its data from database, removes schema from catalog
-    public static void dropTable(String tableName){
-        try {Catalog.RemoveSchema(tableName);}
+    private static int Drop(int Index, Token[] Input) throws Exception {
+        // Validate syntax for "TABLE <name>"
+        Token T; 
+        Validate(Input[Index], TABLE);
 
-        catch (Exception e){
-            System.out.println("Error: " + e.getMessage());
-            return;
-        }
+        // Get actual name,
+        Validate(T = Input[++Index], NAME_LITERAL);
+        String Name = T.Literal;
 
-        System.out.println("Table: " + tableName + " dropped successfully");
+        // Check for semi colon,
+        Validate(Input[++Index], SEMICOLON);
+
+        // Drop the table.
+        Catalog.RemoveSchema(Name);
+
+        System.out.println("Table: " + Name + " dropped successfully");
+
+        return ++Index;
     }
 
-    // Adds an attribute to a table
-    public static void alterAdd(String tableName, String attrName, Type type, Integer typeSize, Boolean nullable, Boolean hasDefault, Object defaultVal){
-        // Get schema from catalog, add new attribute with specifications given
-        Schema schema = Catalog.GetSchema(tableName);
-        if(schema == null){
-            System.out.println("Table: " + tableName + " does not exist");
-            return;
-        }
-        try{
-            // Tries to add an attribute to the schema
-            Catalog.AttributeAdd(tableName, attrName, type, typeSize, nullable, false, false, defaultVal);
-        } catch(Exception e){
-            System.out.println("Error2: " + e.getMessage());
-            return;
-        }
+    private static int Delete(int Index, Token[] Input) throws Exception { 
+        // TODO
 
-        System.out.println("Attribute: " + attrName + " added successfully");
+        return Index; 
     }
 
-    // Removes an attribute from a table
-    public static void alterDrop(String tableName, String attrName){
-        // Get schema from catalog, delete attribute from it
-        Schema schema = Catalog.GetSchema(tableName);
-        if(schema == null){
-            System.out.println("Table: " + tableName + " does not exist");
-            return;
-        }
+    private static int Update(int Index, Token[] Input) throws Exception { 
+        // TODO
+        
+        return Index; 
+    }
 
-        try{
-            Catalog.AttributeDrop(tableName, attrName);
-        } catch(Exception e){
-            System.out.println("Error: " + e.getMessage());
-            return;
-        }
+    private static void Validate (Token Given, TokenType Expected) throws Exception {
+        if (Given.Type != Expected)
+        throw new Exception("Unexpected token " + Given.Type.toString() + ", expected " + Expected.toString());
+    }
 
-        System.out.println("Attribute: " + attrName + " dropped successfully");
+
+    // NOTE: Any parse functions must return the index position AFTER their semicolon.
+    // Parse functions also expect to be given the Index of the SECOND token they need to parse
+    // E.g. INSERT tablename expects to start on tablename.
+    public static void parse(Token[] Input) throws Exception {
+        int Index = 0;
+        // for (Token T : Input) System.out.println(T.Type.toString());
+        try {
+            while (Index < Input.length)
+            switch (Input[Index++].Type) {
+                // Key word and function associations here!!!
+                // Phase 1
+                case CREATE ->  Index = Create(Index, Input);
+                case SELECT ->  Index = Select(Index, Input);
+                case INSERT ->  Index = Insert(Index, Input);
+                case ALTER  ->  Index = Alter(Index, Input);
+                case DROP   ->  Index = Drop(Index, Input);
+                // Phase 2
+                case DELETE ->  Index = Delete(Index, Input);
+                case UPDATE ->  Index = Update(Index, Input);
+
+                default     ->  throw new Exception("Unexpected token " + Input[Index-1].Type.toString());
+            }
+        } catch (Exception e) {
+            if (e instanceof ArrayIndexOutOfBoundsException)
+            throw new Exception("Unexpected end of input");
+            else throw e;
+        }
     }
 }

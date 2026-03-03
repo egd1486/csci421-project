@@ -24,7 +24,7 @@ public class Tokenizer {
                 if (i >= len) throw new Exception("Malformed string literal.");
 
                 // Once string is closed, add the token
-                String word = Input.substring(start, i).toUpperCase();
+                String word = Input.substring(start, i);
                 Tokens.add(new Token(STRING_LITERAL, word));
                 i++; // landed on quote, move to next char
                 continue;
