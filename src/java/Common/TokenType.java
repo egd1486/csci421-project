@@ -25,4 +25,7 @@ public enum TokenType {
     EQUAL, NOT_EQUAL,
     LESS, GREATER,
     LESS_EQUAL, GREATER_EQUAL,
+    // Algebra!
+    PLUS, MINUS, MULT, DIV
+    
 }

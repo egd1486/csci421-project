@@ -1,8 +1,7 @@
 package Common;
-import Common.Type;
-import Common.Attribute;
-import java.util.ArrayList;
+import Catalog.*;
 import static Common.TokenType.*;
+import java.util.ArrayList;
 
 public class NewParser {
 
@@ -68,18 +67,71 @@ public class NewParser {
 
             Attributes.add(A);
 
-            if (T.Type == RPAREN) break;
+            if (T.Type == RPAREN) break; // Break once reached end of attributes (right paren)
         }
 
-        
+        // Now that we have all the attributes and have readched the rparen, check for semicolon
+        Validate(Input[++Index], SEMICOLON);
+        // If we got here, great. Create the table.
+        Schema S = Catalog.AddSchema(Name);
 
-        return Index;
+        // Loop through and call through AddAttribute for validation,
+        for (Attribute A : Attributes) 
+        S.AddAttribute(A.name, A.type, A.typeLength, A.primaryKey, A.notNull, A.unique, A.defaultVal);
+
+        // Return start of next command, which is past semicolon.
+        return ++Index;
     }
 
     private static int Select(int Index, Token[] Input) throws Exception {
+        boolean All = false;
+        ArrayList<String> Columns = new ArrayList<>();
+        ArrayList<String> Tables = new ArrayList<>();
+        Token T = Input[Index++];
 
+        // If star, do a normal display.
+        if (T.Type == STAR) All = true;
+        // Otherwise, read column names until we hit what's SUPPOSED to be from.
+        else if (T.Type == NAME_LITERAL) {
+            Columns.add(T.Literal);
 
-        return Index;
+            while ((T = Input[Index]).Type == COMMA) {
+                Validate(T=Input[++Index], NAME_LITERAL);
+                Columns.add(T.Literal);
+                Index++;
+            }
+        } 
+        // Other token types are not valid here.
+        else throw new Exception("Unexpected token " + T.Type.toString() + ", expected * or column name(s).");
+
+        // Now we get the tables, validate from first.
+        Validate(Input[Index++], FROM);
+
+        // At least one table,
+        T = Input[Index++];
+        Validate(T, NAME_LITERAL);
+        Tables.add(T.Literal);
+
+        // Parse more if available
+        while (Input[Index].Type == COMMA) {
+            T = Input[++Index];
+            Validate(T, NAME_LITERAL);
+            Tables.add(T.Literal);
+            Index++;
+        }
+
+        // If we got here, great. Check for semicolon and complete the select.
+        Validate(Input[Index], SEMICOLON);
+
+        if (All && Tables.size() == 1) {
+            Schema S = Catalog.GetSchema(Tables.get(0));
+
+            if (S == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
+            
+            S.DisplayTable();
+        }
+
+        return ++Index;
     }
 
     private static int Insert(int Index, Token[] Input) throws Exception {
@@ -101,15 +153,23 @@ public class NewParser {
 
     public static void parse(Token[] Input) throws Exception {
         int Index = 0;
-        while (Index < Input.length)
-        switch (Input[Index++].Type) {
-            case CREATE ->  Index = Create(Index, Input);
-            case SELECT ->  Index = Select(Index, Input);
-            case INSERT ->  Index = Insert(Index, Input);
-            case ALTER  ->  Index = Alter(Index, Input);
-            default     ->  throw new Exception("Unexpected token " + Input[Index].toString());
+        for (Token T : Input) System.out.println(T.Type.toString());
+        try {
+            while (Index < Input.length)
+            switch (Input[Index++].Type) {
+                case CREATE ->  Index = Create(Index, Input);
+                case SELECT ->  Index = Select(Index, Input);
+                case INSERT ->  Index = Insert(Index, Input);
+                case ALTER  ->  Index = Alter(Index, Input);
+                default     ->  throw new Exception("Unexpected token " + Input[Index-1].Type.toString());
+            }
+        } catch (Exception e) {
+            if (e instanceof ArrayIndexOutOfBoundsException)
+            throw new Exception("Unexpected end of input");
+            else throw e;
         }
 
-        // for (Token T : Input) System.out.println(T.Type.toString());
+
+        
     }
 }
