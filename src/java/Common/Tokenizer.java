@@ -54,10 +54,10 @@ public class Tokenizer {
                 int start = i;
                 i++;
                 while (i < len && (Character.isLetterOrDigit(c = Input.charAt(i)))) i++;
-                String word = Input.substring(start, i).toUpperCase();
+                String word = Input.substring(start, i);
                 TokenType T;
                 // Evaluate as enum, treat as name literal otherwise.
-                try {T = TokenType.valueOf(word);} catch (Exception E) {T = NAME_LITERAL;}
+                try {T = TokenType.valueOf(word.toUpperCase());} catch (Exception E) {T = NAME_LITERAL;}
                 Tokens.add(new Token(T, word));
                 continue;
             }

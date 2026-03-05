@@ -2,6 +2,8 @@ package Common;
 import Catalog.*;
 import static Common.TokenType.*;
 import java.util.ArrayList;
+import java.util.Objects;
+import java.util.Set;
 
 public class Parser {
 
@@ -120,16 +122,22 @@ public class Parser {
             Index++;
         }
 
-        // If we got here, great. Check for semicolon and complete the select.
-        Validate(Input[Index], SEMICOLON);
-
         if (All && Tables.size() == 1) {
             Schema S = Catalog.GetSchema(Tables.get(0));
 
+            ArrayList<ArrayList<Token>> Conditions = null;
+            if(Input[Index++].Type == WHERE){
+                Conditions = Where(Index, Input, S);
+                Index += Conditions.size() * 4 - 1; //Size * 4 (Column | Operation | Value | AND or OR) - 1 so if there's only one condition we remove AND or OR from size
+            }
+
+            Validate(Input[Index], SEMICOLON);
             if (S == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
-            
-            S.DisplayTable();
+
+            S.DisplayTable(Conditions);
         }
+
+        // If we got here, great. Check for semicolon and complete the select.
 
         return ++Index;
     }
@@ -315,6 +323,84 @@ public class Parser {
         throw new Exception("Unexpected token " + Given.Type.toString() + ", expected " + Expected.toString());
     }
 
+    private static Token checkOperator(Token Given, Type column_type) throws Exception {
+        //Operator tokens
+        Set<TokenType> Operator_Tokens = Set.of(EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL);
+
+        if(column_type.equals(Type.VARCHAR) || column_type.equals(Type.CHAR)) {
+            if(Given.Type != EQUAL && Given.Type != NOT_EQUAL){
+                throw new Exception("String can only be operated on Equal or No Equal (CheckOperator)");
+            }else{
+                return Given;
+            }
+        }
+
+        if(!(Operator_Tokens.contains(Given.Type))){
+            throw new Exception("Unexpected token " + Given.Type.toString());
+        }
+
+        return Given;
+    }
+
+    private static Token Check_COLUMN_AND_VALUE(Token given, Type columnType) throws Exception {
+
+        switch (given.Type) {
+
+            case INT_LITERAL -> {
+                if (columnType == Type.INT) return given;
+            }
+
+            case DOUBLE_LITERAL -> {
+                if (columnType == Type.DOUBLE) return given;
+            }
+
+            case STRING_LITERAL -> {
+                if (columnType == Type.VARCHAR || columnType == Type.CHAR) return given;
+            }
+
+            case TRUE, FALSE -> {
+                if (columnType == Type.BOOLEAN) return given;
+            }
+        }
+
+        throw new Exception("Type mismatch: column type " + columnType + " cannot accept token " + given.Type);
+    }
+
+    private static ArrayList<ArrayList<Token>> Where(int index, Token[] Input, Schema table) throws Exception {
+        //ArrayList Token where [Column | Operator | Value + (Relational Operator....)
+        ArrayList<ArrayList<Token>> Wheres = new ArrayList<>();
+
+        while(Input[index].Type != SEMICOLON){
+
+            if (Input[index].Type == TokenType.AND || Input[index].Type == TokenType.OR) {
+                index++;
+                continue;
+            }
+
+            ArrayList<Token> Operation = new ArrayList<>(3);
+            //Get Column Name
+            Token T = Input[index++]; //Post Increment Remember this jason
+            Validate(T, NAME_LITERAL);
+            String ColumnName = T.Literal;
+
+            //Check if the column even exist and return the attribute
+            Attribute column = Schema.GetAttribute(ColumnName, table);
+
+            //Pass in a Index to validate if its a operator as well as checking if the operator can be with column type can't do [>,<] on strings
+            Token Operator = checkOperator(Input[index++], column.type);
+
+            //This checks if the both column type and value type are the same we shouldn't compare different datatypes
+            //Also throws if its semicolon hopefully LOL
+            Token valueToken = Check_COLUMN_AND_VALUE(Input[index++], column.type);
+
+            Operation.add(T);
+            Operation.add(Operator);
+            Operation.add(valueToken);
+            Wheres.add(Operation);
+        }
+        return Wheres;
+    }
+
 
     // NOTE: Any parse functions must return the index position AFTER their semicolon.
     // Parse functions also expect to be given the Index of the SECOND token they need to parse
@@ -328,14 +414,13 @@ public class Parser {
                 // Key word and function associations here!!!
                 // Phase 1
                 case CREATE ->  Index = Create(Index, Input);
-                case SELECT ->  Index = Select(Index, Input);
+                case SELECT ->  Index = Select(Index, Input); //Can also Handle WHERE CLAUSE
                 case INSERT ->  Index = Insert(Index, Input);
                 case ALTER  ->  Index = Alter(Index, Input);
                 case DROP   ->  Index = Drop(Index, Input);
                 // Phase 2
                 case DELETE ->  Index = Delete(Index, Input);
                 case UPDATE ->  Index = Update(Index, Input);
-
                 default     ->  throw new Exception("Unexpected token " + Input[Index-1].Type.toString());
             }
         } catch (Exception e) {
