@@ -414,4 +414,17 @@ public class Schema {
         this.PageId = newPageId;
     }
 
+    public static Attribute getAttribute(String attributeName, Schema S) {
+        try{
+            for (Attribute attribute : S.Attributes) {
+                if (attribute.name.equals(attributeName.toUpperCase())){
+                    return attribute;
+                }
+            }
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+        return null;
+    }
+
 }

@@ -120,6 +120,12 @@ public class Parser {
             Index++;
         }
 
+        switch(Input[Index].Type) {
+            case SEMICOLON: break;
+            case WHERE:
+            case ORDERBY: break;
+        }
+
         // If we got here, great. Check for semicolon and complete the select.
         Validate(Input[Index], SEMICOLON);
 
