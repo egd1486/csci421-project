@@ -76,20 +76,28 @@ public class Tokenizer {
                 // multichar symbols
                 case '<', '>' -> {
                     boolean Equal = (++i < len && Input.charAt(i) == '=');
+                    boolean NotEqual = (i < len && Input.charAt(i) == '>');
                     boolean Less = (c == '<');
-                    String S = Input.substring(i-1, i + (Equal ? 1:0));
+                    String S = Input.substring(i-1, i + ((Equal||NotEqual) ? 1:0));
+                    Token T;
 
-                    if (!Equal) i--; // decrement i back if the lookahead did NOT show an equals.
+                    if (!Equal && !NotEqual) i--; // decrement i back if the lookahead did NOT show an equals.
 
-                    // If special,
-                    if (Equal) Tokens.add(new Token(Less ? LESS_EQUAL : GREATER_EQUAL, S));
+                    // Handle <>
+                    if (Less && NotEqual) 
+                    T = new Token(NOT_EQUAL, S);
+
+                    // Handle <= or >=,
+                    else if (Equal) 
+                    T = new Token(Less ? LESS_EQUAL : GREATER_EQUAL, S) ;
+                
                     // otherwise just add the normal ones.
-                    else Tokens.add(new Token(Less ? LESS : GREATER, S));
-                }
-                // quotes!
-                case '"' -> {
+                    else 
+                    T = new Token(Less ? LESS : GREATER, S);
 
+                    Tokens.add(T);
                 }
+
                 default -> throw new Exception("Unknown symbol "+ c);
             }
             i++;

@@ -2,6 +2,8 @@ package Common;
 import Catalog.*;
 import static Common.TokenType.*;
 import java.util.ArrayList;
+import java.util.Objects;
+import java.util.Set;
 
 public class Parser {
 
@@ -19,7 +21,6 @@ public class Parser {
 
         // Validate exactly 1 primary key
         int primary = 0;
-
         for (Token token : Input){
             if (token.Literal.equals("PRIMARYKEY"))
                 primary ++;
@@ -131,11 +132,6 @@ public class Parser {
             Index++;
         }
 
-        switch(Input[Index].Type) {
-            case SEMICOLON: break;
-            case WHERE:
-            case ORDERBY: break;
-        }
 
         // If we got here, great. Check for semicolon and complete the select.
         Validate(Input[Index], SEMICOLON);
@@ -144,7 +140,7 @@ public class Parser {
             Schema S = Catalog.GetSchema(Tables.get(0));
 
             if (S == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
-            
+
             S.DisplayTable();
         }
 
@@ -352,7 +348,6 @@ public class Parser {
                 // Phase 2
                 case DELETE ->  Index = Delete(Index, Input);
                 case UPDATE ->  Index = Update(Index, Input);
-
                 default     ->  throw new Exception("Unexpected token " + Input[Index-1].Type.toString());
             }
         } catch (Exception e) {
