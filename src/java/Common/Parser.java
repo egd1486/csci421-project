@@ -2,7 +2,6 @@ package Common;
 import Catalog.*;
 import static Common.TokenType.*;
 import java.util.ArrayList;
-import java.util.Objects;
 import java.util.Set;
 
 public class Parser {
@@ -18,6 +17,16 @@ public class Parser {
 
         // Validate syntax for parenthesis
         Validate(Input[++Index], LPAREN);
+        
+        // Validate exactly 1 primary key
+        int primary = 0;
+        for (Token token : Input){
+            if (token.Literal.equals("PRIMARYKEY"))
+                primary ++;
+        }
+        if (primary != 1){
+            throw new Exception("Table must contain exactly one PRIMARYKEY");
+        }
 
         // Begin parsing attributes and their properties.
         ArrayList<Attribute> Attributes = new ArrayList<>();
