@@ -289,7 +289,7 @@ public class Parser {
                 default -> throw new Exception("Unexpected token " + T.Type.toString() + ", expected attribute qualifier.");
             }
 
-            Catalog.AttributeAdd(Name, A.name, A.type, A.typeLength, A.primaryKey, A.notNull, A.unique, A.defaultVal);
+            Catalog.AttributeAdd(Name, A.name, A.type, A.typeLength, A.notNull, A.primaryKey, A.unique, A.defaultVal);
         }
 
         return ++Index;
