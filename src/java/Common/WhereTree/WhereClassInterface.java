@@ -1,4 +1,4 @@
-package Common;
+package Common.WhereTree;
 
 public interface WhereClassInterface {
 
