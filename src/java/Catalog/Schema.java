@@ -5,7 +5,6 @@ import BufferManager.BufferManager;
 import StorageManager.StorageManager;
 
 import java.nio.charset.StandardCharsets;
-import java.sql.SQLOutput;
 import java.util.ArrayList;
 
 
@@ -163,67 +162,8 @@ public class Schema {
         return entries;
     }
 
-    private boolean rowComparison(ArrayList<Object> row, ArrayList<ArrayList<Token>> Conditons) throws Exception {
-        for(ArrayList<Token> conditon : Conditons){
-            Token colTok = conditon.get(0);
-            Token opTok  = conditon.get(1);
-            Token valTok = conditon.get(2);
-
-            String colName = colTok.Literal;
-            Attribute attribute = GetAttribute(colName, this);
-            int column_index = this.Attributes.indexOf(attribute);
-            Object left = row.get(column_index);
-            if (!compare(left, attribute.type, opTok.Type, valTok)) {
-                return false; // AND logic
-            }
-        }
-        return true;
-    }
-
-    private static boolean compare(Object left, Type colType, TokenType op, Token valueTok) throws Exception {
-
-        // Parse right side from token
-        Object right = switch (valueTok.Type) {
-            case INT_LITERAL -> Integer.parseInt(valueTok.Literal);
-            case DOUBLE_LITERAL -> Double.parseDouble(valueTok.Literal);
-            case STRING_LITERAL -> valueTok.Literal;
-            case TRUE -> true;
-            case FALSE -> false;
-            case NULL -> null;
-            default -> throw new Exception("Invalid literal in WHERE: " + valueTok.Type);
-        };
-
-        // Handle NULL comparisons (SQL-like: only = and != make sense here)
-        if (left == null || right == null) {
-            return switch (op) {
-                case EQUAL -> left == null && right == null;
-                case NOT_EQUAL -> !(left == null && right == null);
-                default -> false;
-            };
-        }
-
-        //The value 0 if x == y; a value less than 0 if x < y; and a value greater than 0 if x > y
-        int cmp = switch (colType) {
-            case INT -> Integer.compare(((Number) left).intValue(), (Integer) right);
-            case DOUBLE  -> Double.compare(((Number) left).doubleValue(), (Double) right);
-            case VARCHAR, CHAR -> ((String) left).compareTo((String) right);
-            case BOOLEAN -> Boolean.compare((Boolean) left, (Boolean) right);
-        };
-
-        return switch (op) {
-            case EQUAL -> cmp == 0;
-            case NOT_EQUAL -> cmp != 0;
-            case LESS -> cmp < 0;
-            case GREATER -> cmp > 0;
-            case LESS_EQUAL -> cmp <= 0;
-            case GREATER_EQUAL -> cmp >= 0;
-            default -> throw new Exception("Unsupported operator in WHERE: " + op);
-        };
-    }
-
-
     // Displays a table in an easy to read format
-    public void DisplayTable(ArrayList<ArrayList<Token>> Conditions){
+    public void DisplayTable(){
         Object[] defaults = new Object[this.Attributes.size()];
         for (int i=0; i<this.Attributes.size(); i++) 
         if (this.Attributes.get(i).defaultVal != null)
@@ -275,44 +215,23 @@ public class Schema {
                 for(int i = 0; i < dashes; i++) System.out.print("-");
                 System.out.println();
                 // Increase row counter
-                RowCount = 0;
+                RowCount += pageData.size();
+                // Now print the rows.
+                for (ArrayList<Object> row : pageData) {
+                    System.out.print("|");
+                    for (int i=0; i<row.size(); i++) {
+                        Object value = row.get(i);
 
-                if(Conditions != null){
-                    for(ArrayList<Object> row : pageData){
-                        if(!rowComparison(row, Conditions)) continue;
-                        RowCount++;
-                        System.out.print("|");
-                        for (int i = 0; i < row.size(); i++) {
-                            Object value = row.get(i);
+                        // If value is null,
+                        if(value == null) 
+                        // And there's a default, use it.
+                        if (defaults[i] != null) value = defaults[i]; 
+                        // Otherwise..
+                        else value = "NULL";
 
-                            if (value == null) {
-                                if (defaults[i] != null) value = defaults[i];
-                                else value = "NULL";
-                            }
-
-                            System.out.printf(" %-" + columnWidths[i] + "s |", value.toString());
-                        }
-                        System.out.println();
+                        System.out.printf(" %-" + columnWidths[i] + "s |", value.toString());
                     }
-                }else{
-                    RowCount = pageData.size();
-                    // Now print the rows.
-                    for (ArrayList<Object> row : pageData) {
-                        System.out.print("|");
-                        for (int i=0; i<row.size(); i++) {
-                            Object value = row.get(i);
-
-                            // If value is null,
-                            if(value == null)
-                                // And there's a default, use it.
-                                if (defaults[i] != null) value = defaults[i];
-                                    // Otherwise..
-                                else value = "NULL";
-
-                            System.out.printf(" %-" + columnWidths[i] + "s |", value.toString());
-                        }
-                        System.out.println();
-                    }
+                    System.out.println();
                 }
                 currPageId = page.get_next_pageid();
             }
@@ -495,12 +414,4 @@ public class Schema {
         this.PageId = newPageId;
     }
 
-    public static Attribute GetAttribute(String attributeName, Schema S) throws Exception {
-        for (Attribute attribute : S.Attributes) {
-            if (attribute.name.equals(attributeName.toUpperCase())){
-                return attribute;
-            }
-        }
-        throw new Exception("Attribute doesn't exist " + attributeName);
-    }
 }
