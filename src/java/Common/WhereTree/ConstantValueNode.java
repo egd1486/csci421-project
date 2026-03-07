@@ -1,6 +1,7 @@
 package Common.WhereTree;
 
 import Common.Type;
+import java.util.ArrayList;
 
 public class ConstantValueNode implements InterfaceOperandNode {
 
@@ -13,7 +14,11 @@ public class ConstantValueNode implements InterfaceOperandNode {
         this.type = type;
     }
     @Override
-    public Type evalute(){
+    public Type getType(){
         return type;
+    }
+    @Override
+    public Object evaluate(ArrayList<Object> row){
+        return value;
     }
 }
