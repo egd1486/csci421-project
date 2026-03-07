@@ -10,8 +10,8 @@ public class OrNode implements WhereClassInterface {
     }
 
     @Override
-    public boolean evalute() {
-        return left.evalute() || right.evalute();
+    public boolean evaluate() {
+        return left.evaluate() || right.evaluate();
     }
 
     @Override

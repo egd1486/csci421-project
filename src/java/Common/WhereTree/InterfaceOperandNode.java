@@ -1,7 +1,9 @@
 package Common.WhereTree;
 
 import Common.Type;
+import java.util.ArrayList;
 
 public interface InterfaceOperandNode {
-    Type evalute();
+    Type getType();
+    Object evaluate(ArrayList<Object> row);
 }

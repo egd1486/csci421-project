@@ -3,7 +3,6 @@ package Common.WhereTree;
 import Catalog.Schema;
 import Common.Attribute;
 import Common.Type;
-
 import java.util.ArrayList;
 
 public class AttributeValueNode implements InterfaceOperandNode {
@@ -27,8 +26,13 @@ public class AttributeValueNode implements InterfaceOperandNode {
     }
 
     @Override
-    public Type evalute() {
+    public Type getType(){
         return attribute_node.type;
+    }
+
+    @Override
+    public Object evaluate(ArrayList<Object> row) {
+        return row.get(columnIndex);
     }
 
     public Object get_Object(ArrayList<Object> row){

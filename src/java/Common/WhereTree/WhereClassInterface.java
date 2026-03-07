@@ -2,7 +2,7 @@ package Common.WhereTree;
 
 public interface WhereClassInterface {
 
-        boolean evalute();
+        boolean evaluate();
 
         int getPrescendance();
 
