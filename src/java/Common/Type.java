@@ -5,5 +5,6 @@ public enum Type {
     CHAR,
     DOUBLE,
     VARCHAR,
-    BOOLEAN
+    BOOLEAN,
+    NULL
 }

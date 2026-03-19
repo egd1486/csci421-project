@@ -1,9 +1,13 @@
 package Common;
 import Catalog.*;
 import static Common.TokenType.*;
-import java.util.ArrayList;
-import java.util.Objects;
-import java.util.Set;
+
+import java.sql.SQLOutput;
+import java.util.*;
+
+import Common.WhereTree.*;
+
+import javax.print.DocFlavor;
 
 public class Parser {
 
@@ -328,6 +332,120 @@ public class Parser {
         throw new Exception("Unexpected token " + Given.Type.toString() + ", expected " + Expected.toString());
     }
 
+    private static final Set<TokenType> PossibleOps = Set.of(
+            EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL,
+            PLUS, MINUS, MULT, DIV, IS
+    );
+    private static final Set<TokenType> PossibleVals = Set.of(
+            NAME_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL,
+            TRUE, FALSE, NULL
+    );
+
+    // Compares the priority of the first token with the second token
+    // Returns true if second token has higher priority than first
+    private static boolean compareOperators(Token first, Token second){
+        if(second == null) return false;
+        else if(first.Type == OR) return true;
+        else if(first.Type == AND && PossibleOps.contains(second.Type)) return true;
+        else if(PossibleOps.contains(first.Type)) return false;
+        else return false;
+    }
+
+    private static BinaryOpNode createBinaryOpNode(Token leftToken, Token op, Token rightToken) throws Exception{
+        Token[] tokens = {leftToken, rightToken};
+        ArrayList<InterfaceOperandNode> IOPs = new ArrayList<>();
+        for(Token token : tokens){
+            // TODO: How to create AttributeValueNode? Have column name, but not schema
+            // Is plan to pass table names into Where and then pass here?
+            if(token.Type == NAME_LITERAL) IOPs.add(new AttributeValueNode(___, token.Literal));
+            else{
+                // ConstantValueNode requires Type, so parsing TokenType for Type
+                Type type;
+                switch (token.Type){
+                    case INT_LITERAL -> type = Type.INT;
+                    case DOUBLE_LITERAL -> type = Type.DOUBLE;
+                    case TRUE, FALSE -> type = Type.BOOLEAN;
+                    case NULL -> type = Type.NULL;
+                    // TODO: How to deal with STRING_LITERAL?
+                    // Need to find varchar/char, need schema
+                    default -> throw new Exception("Expected literal value but got value of type " + token.Type);
+                }
+                IOPs.add(new ConstantValueNode(token.Literal, type));
+            }
+        }
+        return new BinaryOpNode(IOPs.getFirst(), op.Type, IOPs.getLast());
+    }
+
+    private static WhereClassInterface Where(int Index, Token[] Input) throws Exception{
+        Deque<Token> vals = new ArrayDeque<>();
+        Deque<Token> ops = new ArrayDeque<>();
+        Deque<WhereClassInterface> whereTreeNodes = new ArrayDeque<>();
+        while(Input[Index].Type != SEMICOLON){
+            Token T = Input[Index++];
+            // Handling if token is AND/OR
+            if(T.Type == AND || T.Type == OR){
+                // while there are operators with higher priority on top of op stack
+                while(compareOperators(T, ops.peek())){
+                    Token op = ops.pop();
+                    if(PossibleOps.contains(op.Type)){
+                        Token right = vals.pop();
+                        Token left = vals.pop();
+                        whereTreeNodes.push(createBinaryOpNode(left, op, right));
+                        continue;
+                    }
+                    else if(op.Type != AND && op.Type != OR){
+                        throw new Exception("Unexpected token: " + op.Type.toString() + ", expected operator or AND/OR");
+                    }
+                    WhereClassInterface right = whereTreeNodes.pop();
+                    WhereClassInterface left = whereTreeNodes.pop();
+                    whereTreeNodes.push(op.Type == AND ? new AndNode(left, right) : new OrNode(left, right));
+                }
+                ops.push(T);
+            }
+            // Handling if token is a value
+            else if(!PossibleOps.contains(T.Type)){
+                if(T.Type == NAME_LITERAL){
+                    Token next = Input[Index];
+                    if(PossibleOps.contains(next.Type)) vals.push(T);
+                    else if(next.Type == PERIOD){
+                        Index++;
+                        Token attrName = Input[Index++];
+                        if(attrName.Type != NAME_LITERAL){
+                            throw new Exception("Unexpected tokens: " + T.Type + ", " + next.Type + ", " + attrName.Type.toString() + " | Expected tokens: NAME_LITERAL, PERIOD, NAME_LITERAL");
+                        }
+                        // TODO: Need to push attrName onto stack, but must retain table it belongs to
+
+                    }
+                    else throw new Exception("Unexpected tokens: " + T.Type + ", " + next.Type.toString() + " | Expected tokens: NAME_LITERAL, PERIOD or Operator");
+                }
+                else if(PossibleVals.contains(T.Type)) vals.push(T);
+                else throw new Exception("Unexpected token: " + T.Type.toString() + ", expected literal value");
+            }
+            // Handling if token is a relational operator
+            else ops.push(T);
+        }
+        // handling leftover operators
+        while(!ops.isEmpty()){
+            Token op = ops.pop();
+            if(PossibleOps.contains(op.Type)){
+                Token right = vals.pop();
+                Token left = vals.pop();
+                whereTreeNodes.push(createBinaryOpNode(left, op, right));
+            }
+            else if(op.Type == AND || op.Type == OR){
+                WhereClassInterface right = whereTreeNodes.pop();
+                WhereClassInterface left = whereTreeNodes.pop();
+                whereTreeNodes.push(op.Type == AND ? new AndNode(left, right) : new OrNode(left, right));
+            }
+            else{
+                throw new Exception("Unexpected token: " + op.Type + ", expected operator");
+            }
+        }
+        // All nodes should be a part of one main node at this point
+        if(whereTreeNodes.size() != 1)
+        throw new Exception("Error in parsing Where Tree, final size should be 1");
+        return whereTreeNodes.pop();
+    }
 
     // NOTE: Any parse functions must return the index position AFTER their semicolon.
     // Parse functions also expect to be given the Index of the SECOND token they need to parse
