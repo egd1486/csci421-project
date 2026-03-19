@@ -33,6 +33,7 @@ public class BinaryOpNode implements WhereClassInterface {
                     case LESS_EQUAL -> {return (int)Left.evaluate(row) <= (int)Right.evaluate(row);}
                     case GREATER ->  {return (int)Left.evaluate(row) > (int)Right.evaluate(row);}
                     case LESS ->  {return (int)Left.evaluate(row) < (int)Right.evaluate(row);}
+                    default ->  { }
                 }
             }
             case DOUBLE ->{
@@ -43,12 +44,14 @@ public class BinaryOpNode implements WhereClassInterface {
                     case LESS_EQUAL -> {return (double)Left.evaluate(row) <= (double)Right.evaluate(row);}
                     case GREATER ->  {return (double)Left.evaluate(row) > (double)Right.evaluate(row);}
                     case LESS ->  {return (double)Left.evaluate(row) < (double)Right.evaluate(row);}
+                    default ->  { }
                 }
             }
             case BOOLEAN ->{
                 switch(Operator) {
                     case EQUAL -> {return ((Boolean)Left.evaluate(row)).equals((Boolean)Right.evaluate(row));}
                     case NOT_EQUAL -> {return !(((Boolean)Left.evaluate(row)).equals((Boolean)Right.evaluate(row)));}
+                    default ->  { }
                 }
             }
             default ->{
