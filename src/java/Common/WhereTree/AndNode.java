@@ -1,4 +1,5 @@
 package Common.WhereTree;
+import java.util.ArrayList;
 
 public class AndNode implements WhereClassInterface {
     public WhereClassInterface left;
@@ -10,8 +11,8 @@ public class AndNode implements WhereClassInterface {
     }
 
     @Override
-    public boolean evaluate() {
-        return left.evaluate() && right.evaluate();
+    public boolean evaluate(ArrayList<Object> row) {
+        return left.evaluate(row) && right.evaluate(row);
     }
 
     @Override

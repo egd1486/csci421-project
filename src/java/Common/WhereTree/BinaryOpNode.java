@@ -9,8 +9,6 @@ public class BinaryOpNode implements WhereClassInterface {
     InterfaceOperandNode Left;
     InterfaceOperandNode Right;
     TokenType Operator;
-    //! Need to figure out where in tree row comes in
-    ArrayList<Object> row;
     public BinaryOpNode(InterfaceOperandNode left, TokenType Operator, InterfaceOperandNode right) {
         this.Left = left;
         this.Operator = Operator;
@@ -19,7 +17,7 @@ public class BinaryOpNode implements WhereClassInterface {
 
 
     @Override
-    public boolean evaluate(){
+    public boolean evaluate(ArrayList<Object> row){
         Type leftType = Left.getType();
         Type rightType = Right.getType();
         if (leftType != rightType){

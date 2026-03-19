@@ -1,5 +1,7 @@
 package Common.WhereTree;
 
+import java.util.ArrayList;
+
 public class OrNode implements WhereClassInterface {
     public WhereClassInterface left;
     public WhereClassInterface right;
@@ -10,8 +12,8 @@ public class OrNode implements WhereClassInterface {
     }
 
     @Override
-    public boolean evaluate() {
-        return left.evaluate() || right.evaluate();
+    public boolean evaluate(ArrayList<Object> row) {
+        return left.evaluate(row) || right.evaluate(row);
     }
 
     @Override
