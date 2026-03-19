@@ -25,9 +25,11 @@ public class Parser {
 
         // Validate exactly 1 primary key
         int primary = 0;
-        for (Token token : Input){
-            if (token.Literal.equals("PRIMARYKEY"))
+        for (int i = Index; i < Input.length; i++){
+            if (Input[i].Literal.equals("PRIMARYKEY"))
                 primary ++;
+            if (Input[i].Type == RPAREN)
+                break;
         }
         if (primary != 1){
             throw new Exception("Table must contain exactly one PRIMARYKEY");
