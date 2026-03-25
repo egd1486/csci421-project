@@ -87,7 +87,7 @@ public class Parser {
 
         // Loop through and call through AddAttribute for validation,
         for (Attribute A : Attributes) 
-        S.AddAttribute(A.name, A.type, A.typeLength, A.notNull, A.primaryKey, A.unique, A.defaultVal);
+        S.AddAttribute(A.name, A.type, A.typeLength, A.notNull, A.primaryKey, A.unique, A.defaultVal, false);
 
         // Return start of next command, which is past semicolon.
         return ++Index;
@@ -140,6 +140,15 @@ public class Parser {
             if (S == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
 
             S.DisplayTable();
+        } else if (All && Tables.size() >= 2) {
+            Schema combindSchema = Catalog.GetSchema(Tables.get(0));
+            if (combindSchema == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
+            for(int idx = 1; idx < Tables.size(); idx++) {
+                Schema sx = Catalog.GetSchema(Tables.get(idx));
+                if (sx == null) throw new Exception("Table " + Tables.get(idx) + " does not exist.");
+                combindSchema = combindSchema.cartesianJoin(combindSchema, sx);
+            }
+            combindSchema.DisplayTable();
         }
 
         return ++Index;

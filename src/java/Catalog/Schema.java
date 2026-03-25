@@ -4,6 +4,8 @@ import Common.*;
 import BufferManager.BufferManager;
 import StorageManager.StorageManager;
 
+import static Common.TokenType.TRUE;
+
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
@@ -34,7 +36,7 @@ public class Schema {
         return newSchema;
     }
 
-    public Attribute AddAttribute(String Name, Type T, Integer Size, Boolean Nullable, Boolean Primary, Boolean Unique, Object Default) throws Exception {
+    public Attribute AddAttribute(String Name, Type T, Integer Size, Boolean Nullable, Boolean Primary, Boolean Unique, Object Default, boolean Override) throws Exception {
         if (Primary != null && Primary) // If the attribute should be primary,
         // If we already have a primary key, throw.
         if (this.Primary != null) throw new Exception("Schema already has a primary key");
@@ -44,9 +46,12 @@ public class Schema {
         // Force uppercase
         Name = Name.toUpperCase();
 
-        // Check if Attribute is alphanumeric
-        if (!isAlphaNumeric(Name)) 
-        throw new Exception("Attribute name" + Name + " contains non-alphanumeric characters");
+        if (!Override) {
+            // Check if Attribute is alphanumeric
+            if (!isAlphaNumeric(Name)) 
+            throw new Exception("Attribute name " + Name + " contains non-alphanumeric characters");
+        } //else Override so skip check
+
 
         // Iterate over attributes to see if name is in use.
         for (Attribute A : Attributes) 
@@ -427,4 +432,47 @@ public class Schema {
         return null;
     }
 
+    // cartesian join in select for schema
+    // call and provide new schema 
+    // implement schema method - called from parser
+    // pass schema to schema
+    // creates new schema with new data joined
+    // display table 
+    // ellie
+    public Schema cartesianJoin(Schema schema1, Schema schema2) throws Exception {
+        Schema joinedSchema = new Schema(schema1.Name + "join" + schema2.Name); 
+        //create pageId
+        joinedSchema.PageId = BufferManager.getEmptyPage(joinedSchema, null).get_pageid(); 
+        // get attributes of both schemas
+        ArrayList<Attribute> schema1AttrLst = schema1.Attributes;
+        ArrayList<Attribute> schema2AttrLst = schema2.Attributes;
+        //loop through and add schema1 and schema2 attributes to joinedSchema
+        for (Attribute attr : schema1AttrLst) {
+            //Naming convention avoids name collisions 
+            // ! need table.col 
+            // ! SELECT t.a FROM t, r WHERE t.a = 5 AND r.a = b ORDERBY r.a;
+            joinedSchema.AddAttribute(schema1.Name + "." + attr.name, attr.type,
+                                     attr.typeLength, attr.notNull, null, attr.unique, attr.defaultVal, true);
+        }
+        for (Attribute attr : schema2AttrLst) {
+            joinedSchema.AddAttribute(schema2.Name + "." + attr.name, attr.type,
+                                     attr.typeLength, attr.notNull, null, attr.unique, attr.defaultVal, true);
+        }
+        //get all rows for each schema
+        ArrayList<ArrayList<Object>> schema1Rows = schema1.Select();
+        ArrayList<ArrayList<Object>> schema2Rows = schema2.Select();
+        // combind rows
+        for (ArrayList<Object> row1 : schema1Rows) {
+            //for each row in schema1, loop through every row in schema2
+            for (ArrayList<Object> row2: schema2Rows) {
+                //add all values from row 1
+                ArrayList<Object> joinedRow = new ArrayList<Object>(row1);
+                for (Object val: row2) {
+                    joinedRow.add(val);
+                }
+                joinedSchema.Insert(joinedRow);
+            }
+        }
+        return joinedSchema;
+    }
 }

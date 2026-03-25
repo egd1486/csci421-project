@@ -17,15 +17,15 @@ public class Catalog {
             AttributeTable = new Schema("ATTRIBUTETABLE");
             AttributeTable.PageId = 0;
 
-            AttributeTable.AddAttribute("SchemaName", Type.VARCHAR, 50, false, false, false, null);
-            AttributeTable.AddAttribute("StartPage", Type.INT, 50, false, false, false, null);
-            AttributeTable.AddAttribute("AttributeName", Type.VARCHAR, 50, false, false, false, null);
-            AttributeTable.AddAttribute("Type", Type.INT, 50, false, false, false, null);
-            AttributeTable.AddAttribute("Length", Type.INT, 50, false, false, false, null);
-            AttributeTable.AddAttribute("NotNull", Type.BOOLEAN, 50, false, false, false, null);
-            AttributeTable.AddAttribute("Unique", Type.BOOLEAN, 0, false, false, false, null);
-            AttributeTable.AddAttribute("Primary", Type.BOOLEAN, 0, false, false, false, null);
-            AttributeTable.AddAttribute("DefaultValue", Type.VARCHAR, 50, false, false, false, null);
+            AttributeTable.AddAttribute("SchemaName", Type.VARCHAR, 50, false, false, false, null, false);
+            AttributeTable.AddAttribute("StartPage", Type.INT, 50, false, false, false, null, false);
+            AttributeTable.AddAttribute("AttributeName", Type.VARCHAR, 50, false, false, false, null, false);
+            AttributeTable.AddAttribute("Type", Type.INT, 50, false, false, false, null, false);
+            AttributeTable.AddAttribute("Length", Type.INT, 50, false, false, false, null, false);
+            AttributeTable.AddAttribute("NotNull", Type.BOOLEAN, 50, false, false, false, null, false);
+            AttributeTable.AddAttribute("Unique", Type.BOOLEAN, 0, false, false, false, null,false);
+            AttributeTable.AddAttribute("Primary", Type.BOOLEAN, 0, false, false, false, null, false);
+            AttributeTable.AddAttribute("DefaultValue", Type.VARCHAR, 50, false, false, false, null, false);
             
         } catch (Exception e) {
             throw new ExceptionInInitializerError(e);
@@ -99,7 +99,7 @@ public class Catalog {
         Schema newSchema = oldSchema.Copy();
 
         // Add the new unique attribute,
-        newSchema.AddAttribute(attributeName, T, Size, Nullable, Primary, Unique, Default);
+        newSchema.AddAttribute(attributeName, T, Size, Nullable, Primary, Unique, Default, false);
 
         Page P = BufferManager.getPage(oldSchema.PageId, oldSchema);
         while (P != null) {
