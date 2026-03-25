@@ -2,12 +2,10 @@ package Common;
 import Catalog.*;
 import static Common.TokenType.*;
 
-import java.sql.SQLOutput;
 import java.util.*;
 
 import Common.WhereTree.*;
 
-import javax.print.DocFlavor;
 
 public class Parser {
 
@@ -147,7 +145,7 @@ public class Parser {
         return ++Index;
     }
 
-    private static TokenType[] Literals = {INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL, TRUE, FALSE, NULL};
+    private static final TokenType[] Literals = {INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL, TRUE, FALSE, NULL};
     private static int Insert(int Index, Token[] Input) throws Exception {
         // Get table's name,
         Token T = Input[Index]; 
@@ -332,10 +330,7 @@ public class Parser {
             EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL,
             PLUS, MINUS, MULT, DIV, IS
     );
-    private static final Set<TokenType> PossibleVals = Set.of(
-            NAME_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL,
-            TRUE, FALSE, NULL
-    );
+    private static final Set<TokenType> PossibleVals = Set.of(Literals);
 
     // Compares the priority of the first token with the second token
     // Returns true if second token has higher priority than first
