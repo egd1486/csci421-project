@@ -23,17 +23,8 @@ public class Parser {
         // Validate syntax for parenthesis
         Validate(Input[++Index], LPAREN);
 
-        // Validate exactly 1 primary key
-        int primary = 0;
-        for (int i = Index; i < Input.length; i++){
-            if (Input[i].Literal.equals("PRIMARYKEY"))
-                primary ++;
-            if (Input[i].Type == RPAREN)
-                break;
-        }
-        if (primary != 1){
-            throw new Exception("Table must contain exactly one PRIMARYKEY");
-        }
+        // Validate exactly 1 primary key, keep a count.
+        int Primary = 0;
 
         // Begin parsing attributes and their properties.
         ArrayList<Attribute> Attributes = new ArrayList<>();
@@ -70,9 +61,12 @@ public class Parser {
             // Now read tokens for qualifiers until comma or parenthesis is closed.
             while ((T = Input[++Index]).Type != COMMA && T.Type != RPAREN)
             switch (T.Type) {
-                case PRIMARYKEY -> A.primaryKey = true;
                 case NOTNULL -> A.notNull = true;
                 case UNIQUE -> A.unique = true;
+                case PRIMARYKEY -> {
+                    if (Primary++ > 0) throw new Exception("Table cannot have more than 1 primary key");
+                    else A.primaryKey = true;
+                }
                 case DEFAULT -> {
                     // Grab the provided default value..?
                     T = Input[++Index];
