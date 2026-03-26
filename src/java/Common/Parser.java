@@ -373,7 +373,7 @@ public class Parser {
 
     private static final Set<TokenType> PossibleOps = Set.of(
             EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL,
-            PLUS, MINUS, MULT, DIV, IS
+            PLUS, MINUS, MULT, DIV, IS, NOT
     );
     private static final Set<TokenType> PossibleVals = Set.of(
             NAME_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL,
@@ -389,31 +389,6 @@ public class Parser {
         else if(PossibleOps.contains(first.Type)) return false;
         else return false;
     }
-
-//    private static BinaryOpNode createBinaryOpNode(Token leftToken, Token op, Token rightToken) throws Exception{
-//        Token[] tokens = {leftToken, rightToken};
-//        ArrayList<InterfaceOperandNode> IOPs = new ArrayList<>();
-//        for(Token token : tokens){
-//            // TODO: How to create AttributeValueNode? Have column name, but not schema
-//            // Is plan to pass table names into Where and then pass here?
-//            if(token.Type == NAME_LITERAL) IOPs.add(new AttributeValueNode(___, token.Literal));
-//            else{
-//                // ConstantValueNode requires Type, so parsing TokenType for Type
-//                Type type;
-//                switch (token.Type){
-//                    case INT_LITERAL -> type = Type.INT;
-//                    case DOUBLE_LITERAL -> type = Type.DOUBLE;
-//                    case TRUE, FALSE -> type = Type.BOOLEAN;
-//                    case NULL -> type = Type.NULL;
-//                    // TODO: How to deal with STRING_LITERAL?
-//                    // Need to find varchar/char, need schema
-//                    default -> throw new Exception("Expected literal value but got value of type " + token.Type);
-//                }
-//                IOPs.add(new ConstantValueNode(token.Literal, type));
-//            }
-//        }
-//        return new BinaryOpNode(IOPs.getFirst(), op.Type, IOPs.getLast());
-//    }
 
     private static WhereResult Where(int Index, Token[] Input, ArrayList<String> table) throws Exception{
         Deque<InterfaceOperandNode> vals = new ArrayDeque<>();
@@ -444,7 +419,6 @@ public class Parser {
                 ops.push(T);
             }
 
-
             // Handling if token is a value
             else if(!PossibleOps.contains(T.Type)){
                 if(T.Type == NAME_LITERAL){
@@ -473,6 +447,17 @@ public class Parser {
                 else if(PossibleVals.contains(T.Type)) vals.push(new ConstantValueNode(T.Literal, T.Type));
                 else throw new Exception("Unexpected token: " + T.Type.toString() + ", expected literal value");
             }
+
+            // Handling if token is IS/IS NOT
+            else if(T.Type == IS){
+                Token next = Input[Index];
+                if(next.Type == NOT){
+                    ops.push(next);
+                    Index++;
+                }
+                else ops.push(T);
+            }
+
             // Handling if token is a relational operator
             else ops.push(T);
         }
