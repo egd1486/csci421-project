@@ -1,7 +1,5 @@
-import BufferManager.BufferManager;
 import Common.Parser;
 import Common.Tokenizer;
-import Common.Parser;
 import StorageManager.StorageManager;
 import java.io.IOException;
 import java.util.Scanner;
@@ -14,7 +12,7 @@ public class JottQL{
             System.out.println("Usage: java JottQL <dbLocation> <pageSize> <bufferSize> <indexing>");
             return;
         }
-        String dbLocation = args[0];
+        String dbLocation = args[0] + "/database.txt";
         int pageSize = Integer.parseInt(args[1]);
         int bufferSize = Integer.parseInt(args[2]);
         boolean indexing = true;

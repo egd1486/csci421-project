@@ -2,7 +2,6 @@ package Common;
 import Catalog.*;
 import static Common.TokenType.*;
 
-import java.sql.SQLOutput;
 import java.util.*;
 
 import Common.WhereTree.*;
@@ -424,7 +423,7 @@ public class Parser {
             else if(!PossibleOps.contains(T.Type)){
                 if(T.Type == NAME_LITERAL){
                     Token next = Input[Index];
-                    if(PossibleOps.contains(next.Type)) vals.push(new AttributeValueNode(table.get(0),T.Literal));
+                    if(PossibleOps.contains(next.Type)) vals.push(new AttributeValueNode(table.getFirst(),T.Literal));
                     else if(next.Type == PERIOD){
 
                         //Check if the NAME_LITERAL is actual in valid table
