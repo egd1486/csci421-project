@@ -2,6 +2,7 @@ package Common;
 import Catalog.*;
 import static Common.TokenType.*;
 
+import java.sql.SQLOutput;
 import java.util.*;
 
 import Common.WhereTree.*;
@@ -132,10 +133,13 @@ public class Parser {
 
 
         //Check the next Token for Where or Orderby
+        System.out.println("Index: \n" + Index);
         if(Input[Index++].Type == WHERE){
             WhereResult WhereRS = Where(Index, Input, Tables);
             WhereClassInterface WhereTree = WhereRS.WhereNode;
+            System.out.println(WhereTree.print());
             Index = WhereRS.Index;
+            System.out.println("Index: \n" + Index);
         }
 
         // If we got here, great. Check for semicolon and complete the select.
@@ -420,7 +424,7 @@ public class Parser {
             else if(!PossibleOps.contains(T.Type)){
                 if(T.Type == NAME_LITERAL){
                     Token next = Input[Index];
-                    if(PossibleOps.contains(next.Type)) vals.push(new AttributeValueNode(table.getFirst(),T.Literal));
+                    if(PossibleOps.contains(next.Type)) vals.push(new AttributeValueNode(table.get(0),T.Literal));
                     else if(next.Type == PERIOD){
 
                         //Check if the NAME_LITERAL is actual in valid table

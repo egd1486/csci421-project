@@ -19,4 +19,10 @@ public class AndNode implements WhereClassInterface {
     public int getPrescendance() {
         return 1;
     }
+
+    @Override
+    public String print() {
+        return "(" + left.print() + " AND " + right.print() + ")";
+    }
+
 }

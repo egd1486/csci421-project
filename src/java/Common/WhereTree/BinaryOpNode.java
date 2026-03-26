@@ -75,5 +75,10 @@ public class BinaryOpNode implements WhereClassInterface {
         return 0;
     }
 
+    @Override
+    public String print() {
+        return "(" + Left.print() + " " + Operator + " " + Right.print() + ")";
+    }
+
 
 }

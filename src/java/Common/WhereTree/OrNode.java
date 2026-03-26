@@ -20,4 +20,9 @@ public class OrNode implements WhereClassInterface {
     public int getPrescendance() {
         return 0;
     }
+
+    @Override
+    public String print() {
+        return "(" + left.print() + " OR " + right.print() + ")";
+    }
 }

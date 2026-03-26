@@ -4,6 +4,8 @@ import Common.TokenType;
 import Common.Type;
 import java.util.ArrayList;
 
+import static Common.TokenType.*;
+
 public class ConstantValueNode implements InterfaceOperandNode {
 
     //Idk if we rlly need this lol
@@ -32,5 +34,10 @@ public class ConstantValueNode implements InterfaceOperandNode {
     @Override
     public Object evaluate(ArrayList<Object> row){
         return value;
+    }
+
+    @Override
+    public String print() {
+        return value.toString();
     }
 }

@@ -42,6 +42,14 @@ public class AttributeValueNode implements InterfaceOperandNode {
         return row.get(columnIndex);
     }
 
+    @Override
+    public String print() {
+        if (S == null) {
+            return ColumnName;
+        }
+        return S.Name + "." + ColumnName;
+    }
+
     public Object get_Object(ArrayList<Object> row){
         return row.get(columnIndex);
     }
