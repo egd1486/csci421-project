@@ -133,8 +133,8 @@ public class Parser {
 
         //Check the next Token for Where or Orderby
         System.out.println("Index: \n" + Index);
-        if(Input[Index++].Type == WHERE){
-            WhereResult WhereRS = Where(Index, Input, Tables);
+        if(Input[Index].Type == WHERE){
+            WhereResult WhereRS = Where(++Index, Input, Tables);
             WhereClassInterface WhereTree = WhereRS.WhereNode;
             System.out.println(WhereTree.print());
             Index = WhereRS.Index;
