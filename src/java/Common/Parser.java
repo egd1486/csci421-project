@@ -101,11 +101,33 @@ public class Parser {
         if (T.Type == STAR) All = true;
         // Otherwise, read column names until we hit what's SUPPOSED to be from.
         else if (T.Type == NAME_LITERAL) {
-            Columns.add(T.Literal);
+            // Check if NAME_LITERAL DOT NAME_LITERAL (Table.Column)
+            if (Input[Index].Type == PERIOD) { 
+                String cartesianCol = T.Literal;
+                Index++; // consume PERIOD
+                cartesianCol = cartesianCol + ".";
+                Validate(Input[Index], NAME_LITERAL);  //consume column name
+                cartesianCol = cartesianCol + Input[Index].Literal;
+                Columns.add(cartesianCol);
+                Index++;
+            } else {
+                Columns.add(T.Literal);
+                // Index++;
+            }
 
             while ((T = Input[Index]).Type == COMMA) {
-                Validate(T=Input[++Index], NAME_LITERAL);
-                Columns.add(T.Literal);
+                T=Input[++Index];
+                Validate(T, NAME_LITERAL);
+                if (Input[Index + 1].Type == PERIOD) { //look ahead if period
+                    String cartesianCol = T.Literal;
+                    Index++; //consume period
+                    Index++; //consume column name
+                    Validate(Input[Index], NAME_LITERAL);
+                    cartesianCol = cartesianCol + "." + Input[Index].Literal;
+                    Columns.add(cartesianCol);
+                } else {
+                    Columns.add(T.Literal);
+                }
                 Index++;
             }
         } 
@@ -140,13 +162,13 @@ public class Parser {
         // If we got here, great. Check for semicolon and complete the select.
         Validate(Input[Index], SEMICOLON);
 
-        if (All && Tables.size() == 1) {
+        if (All && Tables.size() == 1) { //single table
             Schema S = Catalog.GetSchema(Tables.get(0));
 
             if (S == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
 
             S.DisplayTable(WhereTree);
-        } else if (All && Tables.size() >= 2) {
+        } else if (All && Tables.size() >= 2) { //multiple tables
             Schema combindSchema = Catalog.GetSchema(Tables.get(0));
             if (combindSchema == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
             for(int idx = 1; idx < Tables.size(); idx++) {
@@ -155,6 +177,20 @@ public class Parser {
                 combindSchema = combindSchema.cartesianJoin(combindSchema, sx);
             }
             combindSchema.DisplayTable(WhereTree);
+        } else if (!All && Tables.size() == 1) { //single table
+            Schema S = Catalog.GetSchema(Tables.get(0));
+            if (S == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
+            // keep only values in requested columns
+            S.DisplayTable(Columns);
+        } else if (!All && Tables.size() >= 2) { //multiple tables
+            Schema combindSchema = Catalog.GetSchema(Tables.get(0));
+            if (combindSchema == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
+            for(int idx = 1; idx < Tables.size(); idx++) {
+                Schema sx = Catalog.GetSchema(Tables.get(idx));
+                if (sx == null) throw new Exception("Table " + Tables.get(idx) + " does not exist.");
+                combindSchema = combindSchema.cartesianJoin(combindSchema, sx);
+            }
+            combindSchema.DisplayTable(Columns);
         }
 
         return ++Index;

@@ -250,6 +250,114 @@ public class Schema {
         System.out.println("Displaying " + RowCount + " rows.");
     }
 
+    //Same thing as above but prints out specific columns
+    // SELECT col1, col2 FROM table
+    // SELECT col1, col2 FROM table1, table2
+    public void DisplayTable(ArrayList<String> Columns) {
+        //get indices for the requested columns 
+        // store the position of each requested column in the schema, ex [0, 2]
+        ArrayList<Integer> ColIndices = new ArrayList<>(); 
+        for(String col : Columns) {
+            // loop through the schema's attributes to find where the column lives
+            for (int i = 0; i < this.Attributes.size(); i++) {
+                String attrName = this.Attributes.get(i).name;
+                String colName = "";
+                // check if attribute already has table prefix from cartesian
+                // if so match full name of TABLE.COL
+                if (attrName.contains(".")) { 
+                    colName = col;
+                } else { 
+                    //single table
+                    //strip table prefix if present ex "TABLE1.COL1" -> "COL1"
+                    colName = col.contains(".") ? col.split("\\.")[1] : col;
+                }
+
+                if (this.Attributes.get(i).name.equals(colName.toUpperCase())) {
+                    ColIndices.add(i);
+                    break; // found, stop loop
+                }
+            }
+        }
+
+        //print table with specified columns
+        //build look up array of default values for each column - use when value is null
+        Object[] defaults = new Object[this.Attributes.size()];
+        for (int i=0; i<this.Attributes.size(); i++) 
+        if (this.Attributes.get(i).defaultVal != null)
+        defaults[i] = this.Attributes.get(i).defaultVal;
+
+        int RowCount = 0;
+        int PageCount = 1; // For printing each page title.
+
+        try{
+            // Getting first page where this schema's data is stored
+            int currPageId = this.PageId;
+            // Getting all row data from this schema starting from the first
+            // page and then any subsequent pages
+            while(currPageId != -1){
+                Page page = BufferManager.getPage(currPageId, this);
+                if(page == null) break;
+
+                // Grab the page data,
+                ArrayList<ArrayList<Object>> pageData = page.get_data();
+
+                // Define the column size for formating,
+                int numAttributes = ColIndices.size(); //specific columns
+                int[] columnWidths = new int[numAttributes];
+                // Set minimum width as the length of the attribute name
+                for(int i = 0; i < numAttributes; i++) columnWidths[i] = this.Attributes.get(ColIndices.get(i)).name.length();
+                // Then find the longest attribute there, and set its length instead.
+                for(ArrayList<Object> row : pageData)
+                for(int i = 0; i < numAttributes; i++){
+                    Object value = row.get(ColIndices.get(i)); //specific columns
+                    if(value == null) value = "NULL";
+                    columnWidths[i] = Math.max(columnWidths[i], value.toString().length());
+                }
+
+                // Printing header (page # + attribute names + separator)
+                // calculate total dash padding needed for the separator
+                int dashes = 1;
+                for(int width : columnWidths) dashes += width + 3;
+                // page # time
+                String Title = " [Page " + PageCount++ + "]";
+                for(int i = 0; i < dashes; i++) System.out.print("-");
+                System.out.print(Title);
+                System.out.println();
+                // names
+                System.out.print("|");
+                for(int i = 0; i < numAttributes; i++)
+                System.out.printf(" %-" + columnWidths[i] + "s |", this.Attributes.get(ColIndices.get(i)).name);
+                System.out.println();
+                // separator
+                for(int i = 0; i < dashes; i++) System.out.print("-");
+                System.out.println();
+                // Increase row counter
+                RowCount += pageData.size();
+                // Now print the rows with specified attributes.
+                for (ArrayList<Object> row : pageData) {
+                    System.out.print("|");
+                    for (int i=0; i<ColIndices.size(); i++) { //specific columns
+                        Object value = row.get(ColIndices.get(i));
+
+                        // If value is null,
+                        if(value == null) 
+                        // And there's a default, use it.
+                        if (defaults[ColIndices.get(i)] != null) value = defaults[ColIndices.get(i)]; 
+                        // Otherwise..
+                        else value = "NULL";
+
+                        System.out.printf(" %-" + columnWidths[i] + "s |", value.toString());
+                    }
+                    System.out.println();
+                }
+                currPageId = page.get_next_pageid();//move to next page
+            }
+        } catch (Exception e){
+            System.out.println("Error: " + e);
+        }
+        System.out.println("Displaying " + RowCount + " rows.");   
+    }
+
     public void Insert(ArrayList<Object> Row) throws Exception {
         // First check if the row to be inserted is valid.
         if (Row.size() != Attributes.size())
