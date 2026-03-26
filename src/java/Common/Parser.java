@@ -423,16 +423,26 @@ public class Parser {
             else if(!PossibleOps.contains(T.Type)){
                 if(T.Type == NAME_LITERAL){
                     Token next = Input[Index];
-                    if(PossibleOps.contains(next.Type)) vals.push(new AttributeValueNode(table.get(0),T.Literal));
+                    if(PossibleOps.contains(next.Type)){
+                        //Check if the attribute exists in the table
+                        if(Schema.getAttribute(T.Literal, Catalog.GetSchema(table.get(0))) == null){
+                            throw new Exception("Attribute " + T.Literal + " does not exist in table: " + table.get(0));
+                        }
+                        vals.push(new AttributeValueNode(table.get(0),T.Literal));
+                    }
                     else if(next.Type == PERIOD){
 
-                        //Check if the NAME_LITERAL is actual in valid table
+                        //Check if the table is valid
                         if(!(table.contains(T.Literal))){
-                            throw new Exception("Table does not exist" + T.Literal + "Given Tables: " + table);
+                            throw new Exception("Table: " + T.Literal + " is not a valid table. Provided Tables: " + table);
                         }
 
                         Index++;
                         Token attrName = Input[Index++];
+                        //Check if the attribute exists in the table
+                        if(Schema.getAttribute(attrName.Literal, Catalog.GetSchema(T.Literal)) == null){
+                            throw new Exception("Attribute " + attrName.Literal + " does not exist in table: " + T.Literal);
+                        }
                         if(attrName.Type != NAME_LITERAL){
                             throw new Exception("Unexpected tokens: " + T.Type + ", " + T.Type + ", " + attrName.Type.toString() + " | Expected tokens: NAME_LITERAL, PERIOD, NAME_LITERAL");
                         }

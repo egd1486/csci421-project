@@ -30,7 +30,7 @@ public class JottQL{
         // Initialize database through Storage Manager,
         try {StorageManager.Init(dbLocation, pageSize, bufferSize);}
         catch (Exception e) {
-            System.err.println(e);
+            System.out.println(e);
             return;
         }
 
@@ -52,14 +52,14 @@ public class JottQL{
             System.out.println("Command: " + command);
 
             try {Parser.parse(Tokenizer.tokenize(command));}
-            catch (Exception e) {System.err.println(e);}
+            catch (Exception e) {System.out.println(e);}
         }
 
         // Shutdown once the loop ends.
         try {StorageManager.Shutdown();}
 
         catch (Exception e){
-            System.err.println(e);
+            System.out.println(e);
         }
     }
 }
