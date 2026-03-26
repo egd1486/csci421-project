@@ -339,7 +339,10 @@ public class Parser {
             EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL,
             PLUS, MINUS, MULT, DIV, IS
     );
-    private static final Set<TokenType> PossibleVals = Set.of(Literals);
+    private static final Set<TokenType> PossibleVals = Set.of(
+            NAME_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL,
+            TRUE, FALSE, NULL
+    );
 
     // Compares the priority of the first token with the second token
     // Returns true if second token has higher priority than first
