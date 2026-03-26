@@ -1,10 +1,8 @@
 package Common;
 import Catalog.*;
 import static Common.TokenType.*;
-
-import java.util.*;
-
 import Common.WhereTree.*;
+import java.util.*;
 
 
 public class Parser {
@@ -132,13 +130,11 @@ public class Parser {
 
         WhereClassInterface WhereTree = null;
         //Check the next Token for Where or Orderby
-        System.out.println("Index: \n" + Index);
         if(Input[Index].Type == WHERE){
             WhereResult WhereRS = Where(++Index, Input, Tables);
             WhereTree = WhereRS.WhereNode;
             System.out.println(WhereTree.print());
             Index = WhereRS.Index;
-            System.out.println("Index: \n" + Index);
         }
 
         // If we got here, great. Check for semicolon and complete the select.
@@ -331,7 +327,37 @@ public class Parser {
     private static int Delete(int Index, Token[] Input) throws Exception { 
         // TODO
 
-        return Index; 
+        // FROM
+        Validate(Input[Index++], FROM);
+        ArrayList<String> Tables = new ArrayList<>();
+
+        // <table>
+        Token T = Input[Index++];
+        Validate(T, NAME_LITERAL);
+        Tables.add(T.Literal);
+        String Name = T.Literal;
+
+        // WHERE <condition>
+        if(Input[Index].Type == WHERE){
+            WhereResult WhereRS = Where(++Index, Input, Tables);
+            WhereClassInterface WhereTree = WhereRS.WhereNode;
+            System.out.println(WhereTree.print());
+            Index = WhereRS.Index;
+            // Semicolon
+            Validate(Input[Index], SEMICOLON);
+            // TODO Make new table using schema of old table
+            Schema S = Catalog.GetSchema(Name).Copy();
+            // TODO Insert into new table rows where WHERE == FALSE
+            // TODO Delete old table
+        }
+        else{
+            // Semicolon
+            Validate(Input[Index], SEMICOLON);
+            
+            // TODO Delete all entries in table
+        }
+
+        return ++Index;
     }
 
     private static int Update(int Index, Token[] Input) throws Exception { 
