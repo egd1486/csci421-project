@@ -6,6 +6,6 @@ public interface WhereClassInterface {
 
         boolean evaluate(ArrayList<Object> row);
 
-        int getPrescendance();
 
+        int getPrescendance();
 }

@@ -1,6 +1,6 @@
 package Common.WhereTree;
 
-import Catalog.Schema;
+import Catalog.*;
 import Common.Attribute;
 import Common.Type;
 import java.util.ArrayList;
@@ -8,9 +8,13 @@ import java.util.ArrayList;
 public class AttributeValueNode implements InterfaceOperandNode {
     String ColumnName; // Good to have
     Attribute attribute_node;
+    Schema S;
     int columnIndex;
 
-    public AttributeValueNode(Schema S, String ColumnName) throws Exception {
+    public AttributeValueNode(String table_name, String ColumnName) throws Exception {
+
+        Schema S = Catalog.GetSchema(table_name);
+
         //We then get the Attribute_node by getting it form the Schema by column name
         attribute_node = Schema.getAttribute(ColumnName, S);
 
@@ -19,6 +23,9 @@ public class AttributeValueNode implements InterfaceOperandNode {
 
         //Geting a ColumnIndex of ArrayList<row>
         this.columnIndex = S.Attributes.indexOf(attribute_node);
+
+        //Saving what schema it belongs too
+        this.S = S;
     }
 
     public Attribute get_attribute_node() {

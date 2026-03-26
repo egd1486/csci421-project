@@ -72,9 +72,8 @@ public class BinaryOpNode implements WhereClassInterface {
 
     @Override
     public int getPrescendance() {
-        return 2;
+        return 0;
     }
-
 
 
 }
