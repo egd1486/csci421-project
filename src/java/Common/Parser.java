@@ -87,7 +87,7 @@ public class Parser {
 
         // Loop through and call through AddAttribute for validation,
         for (Attribute A : Attributes) 
-        S.AddAttribute(A.name, A.type, A.typeLength, A.notNull, A.primaryKey, A.unique, A.defaultVal);
+        S.AddAttribute(A.name, A.type, A.typeLength, A.notNull, A.primaryKey, A.unique, A.defaultVal, false);
 
         // Return start of next command, which is past semicolon.
         return ++Index;
@@ -147,6 +147,15 @@ public class Parser {
             if (S == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
 
             S.DisplayTable();
+        } else if (All && Tables.size() >= 2) {
+            Schema combindSchema = Catalog.GetSchema(Tables.get(0));
+            if (combindSchema == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
+            for(int idx = 1; idx < Tables.size(); idx++) {
+                Schema sx = Catalog.GetSchema(Tables.get(idx));
+                if (sx == null) throw new Exception("Table " + Tables.get(idx) + " does not exist.");
+                combindSchema = combindSchema.cartesianJoin(combindSchema, sx);
+            }
+            combindSchema.DisplayTable();
         }
 
         return ++Index;
@@ -337,7 +346,10 @@ public class Parser {
             EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL,
             PLUS, MINUS, MULT, DIV, IS
     );
-    private static final Set<TokenType> PossibleVals = Set.of(Literals);
+    private static final Set<TokenType> PossibleVals = Set.of(
+            NAME_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL,
+            TRUE, FALSE, NULL
+    );
 
     // Compares the priority of the first token with the second token
     // Returns true if second token has higher priority than first

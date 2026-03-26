@@ -184,7 +184,7 @@ public class StorageManager {
             String AName = Row.get(2).toString();
 
             // Recreate attributes
-            S.AddAttribute(AName, T, Size, NotNull, Primary, Unique, Row.get(8));
+            S.AddAttribute(AName, T, Size, NotNull, Primary, Unique, Row.get(8), false);
         }
     }
 
