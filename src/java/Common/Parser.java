@@ -424,18 +424,18 @@ public class Parser {
                     else if(next.Type == PERIOD){
 
                         //Check if the NAME_LITERAL is actual in valid table
-                        if(!(table.contains(next.Literal))){
+                        if(!(table.contains(T.Literal))){
                             throw new Exception("Table does not exist" + T.Literal + "Given Tables: " + table);
                         }
 
                         Index++;
                         Token attrName = Input[Index++];
                         if(attrName.Type != NAME_LITERAL){
-                            throw new Exception("Unexpected tokens: " + T.Type + ", " + next.Type + ", " + attrName.Type.toString() + " | Expected tokens: NAME_LITERAL, PERIOD, NAME_LITERAL");
+                            throw new Exception("Unexpected tokens: " + T.Type + ", " + T.Type + ", " + attrName.Type.toString() + " | Expected tokens: NAME_LITERAL, PERIOD, NAME_LITERAL");
                         }
 
                         //Create AttributeValueNode given Schema and Column and push it into vals
-                        AttributeValueNode attributeval = new AttributeValueNode(next.Literal, attrName.Literal);
+                        AttributeValueNode attributeval = new AttributeValueNode(T.Literal, attrName.Literal);
                         vals.push(attributeval);
 
                     }
