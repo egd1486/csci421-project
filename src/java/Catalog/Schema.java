@@ -449,13 +449,21 @@ public class Schema {
         //loop through and add schema1 and schema2 attributes to joinedSchema
         for (Attribute attr : schema1AttrLst) {
             //Naming convention avoids name collisions 
-            // ! need table.col 
-            // ! SELECT t.a FROM t, r WHERE t.a = 5 AND r.a = b ORDERBY r.a;
-            joinedSchema.AddAttribute(schema1.Name + "." + attr.name, attr.type,
+                //get rid of other schema named when joined
+            String columnName = attr.name;
+            if (!columnName.contains(".")) { //already has format of schema.attr
+                columnName = schema1.Name + "." + attr.name;
+            }
+            joinedSchema.AddAttribute(columnName, attr.type,
                                      attr.typeLength, attr.notNull, null, attr.unique, attr.defaultVal, true);
         }
         for (Attribute attr : schema2AttrLst) {
-            joinedSchema.AddAttribute(schema2.Name + "." + attr.name, attr.type,
+            //get rid of other schema named when joined
+            String columnName = attr.name;
+            if (!columnName.contains(".")) { //already has format of schema.attr
+                columnName = schema2.Name + "." + attr.name;
+            }
+            joinedSchema.AddAttribute(columnName, attr.type,
                                      attr.typeLength, attr.notNull, null, attr.unique, attr.defaultVal, true);
         }
         //get all rows for each schema
