@@ -253,7 +253,7 @@ public class Schema {
     //Same thing as above but prints out specific columns
     // SELECT col1, col2 FROM table
     // SELECT col1, col2 FROM table1, table2
-    public void DisplayTable(ArrayList<String> Columns) {
+    public void DisplayTableSomeCols(ArrayList<String> Columns) {
         //get indices for the requested columns 
         // store the position of each requested column in the schema, ex [0, 2]
         ArrayList<Integer> ColIndices = new ArrayList<>(); 

@@ -181,7 +181,7 @@ public class Parser {
             Schema S = Catalog.GetSchema(Tables.get(0));
             if (S == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
             // keep only values in requested columns
-            S.DisplayTable(Columns);
+            S.DisplayTableSomeCols(Columns);
         } else if (!All && Tables.size() >= 2) { //multiple tables
             Schema combindSchema = Catalog.GetSchema(Tables.get(0));
             if (combindSchema == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
@@ -190,7 +190,7 @@ public class Parser {
                 if (sx == null) throw new Exception("Table " + Tables.get(idx) + " does not exist.");
                 combindSchema = combindSchema.cartesianJoin(combindSchema, sx);
             }
-            combindSchema.DisplayTable(Columns);
+            combindSchema.DisplayTableSomeCols(Columns);
         }
 
         return ++Index;
