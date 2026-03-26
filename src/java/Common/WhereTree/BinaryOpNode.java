@@ -4,6 +4,8 @@ import Common.TokenType;
 import Common.Type;
 import java.util.ArrayList;
 
+import static Common.Type.*;
+
 public class BinaryOpNode implements WhereClassInterface {
 
     InterfaceOperandNode Left;
@@ -18,13 +20,13 @@ public class BinaryOpNode implements WhereClassInterface {
 
     @Override
     public boolean evaluate(ArrayList<Object> row){
-        Type leftType = Left.getType();
-        Type rightType = Right.getType();
-        if (leftType != rightType){
+        Object leftval = Left.evaluate(row);
+        Object rightval = Right.evaluate(row);
+        if (Left.getType() != Right.getType()){
             // Error message
             // throw new Exception("Unexpected " + rightType + ", expected " + leftType ".");
         }
-        switch(leftType){
+        switch(Left.getType()){
             case INT ->{
                 switch(Operator) {
                     case EQUAL -> {return (int)Left.evaluate(row) == (int)Right.evaluate(row);}

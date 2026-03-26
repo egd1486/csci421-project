@@ -13,8 +13,22 @@ public class ConstantValueNode implements InterfaceOperandNode {
     Type type;
 
     public ConstantValueNode(Object value, TokenType type) throws Exception {
-        this.value = value;
+        this.value = parseValue(value,type);
         this.type = fromTokenTypetoType(type);
+    }
+
+    private Object parseValue(Object value, TokenType tokenType) throws Exception {
+        if (value == null) return null;
+
+        return switch (tokenType) {
+            case INT_LITERAL -> Integer.parseInt(value.toString());
+            case DOUBLE_LITERAL -> Double.parseDouble(value.toString());
+            case STRING_LITERAL -> value.toString();
+            case TRUE -> true;
+            case FALSE -> false;
+            case NULL -> null;
+            default -> throw new Exception("Cannot parse token type " + tokenType);
+        };
     }
 
     private Type fromTokenTypetoType(TokenType tokenType) throws Exception {

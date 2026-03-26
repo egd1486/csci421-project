@@ -2,6 +2,7 @@ package Catalog;
 
 import Common.*;
 import BufferManager.BufferManager;
+import Common.WhereTree.WhereClassInterface;
 import StorageManager.StorageManager;
 
 import static Common.TokenType.TRUE;
@@ -168,7 +169,7 @@ public class Schema {
     }
 
     // Displays a table in an easy to read format
-    public void DisplayTable(){
+    public void DisplayTable(WhereClassInterface WhereTree){
         Object[] defaults = new Object[this.Attributes.size()];
         for (int i=0; i<this.Attributes.size(); i++) 
         if (this.Attributes.get(i).defaultVal != null)
@@ -222,23 +223,25 @@ public class Schema {
                 // Increase row counter
                 RowCount += pageData.size();
                 // Now print the rows.
-                for (ArrayList<Object> row : pageData) {
-                    System.out.print("|");
-                    for (int i=0; i<row.size(); i++) {
-                        Object value = row.get(i);
+                    for (ArrayList<Object> row : pageData) {
+                        if(WhereTree == null || WhereTree.evaluate(row)){
+                            System.out.print("|");
+                            for (int i=0; i<row.size(); i++) {
+                                Object value = row.get(i);
 
-                        // If value is null,
-                        if(value == null) 
-                        // And there's a default, use it.
-                        if (defaults[i] != null) value = defaults[i]; 
-                        // Otherwise..
-                        else value = "NULL";
+                                // If value is null,
+                                if(value == null)
+                                    // And there's a default, use it.
+                                    if (defaults[i] != null) value = defaults[i];
+                                        // Otherwise..
+                                    else value = "NULL";
 
-                        System.out.printf(" %-" + columnWidths[i] + "s |", value.toString());
+                                System.out.printf(" %-" + columnWidths[i] + "s |", value.toString());
+                            }
+                            System.out.println();
+                        }
                     }
-                    System.out.println();
-                }
-                currPageId = page.get_next_pageid();
+                    currPageId = page.get_next_pageid();
             }
         } catch (Exception e){
             System.out.println("Error: " + e);

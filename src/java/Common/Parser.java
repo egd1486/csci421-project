@@ -130,12 +130,12 @@ public class Parser {
             Index++;
         }
 
-
+        WhereClassInterface WhereTree = null;
         //Check the next Token for Where or Orderby
         System.out.println("Index: \n" + Index);
         if(Input[Index].Type == WHERE){
             WhereResult WhereRS = Where(++Index, Input, Tables);
-            WhereClassInterface WhereTree = WhereRS.WhereNode;
+            WhereTree = WhereRS.WhereNode;
             System.out.println(WhereTree.print());
             Index = WhereRS.Index;
             System.out.println("Index: \n" + Index);
@@ -149,7 +149,7 @@ public class Parser {
 
             if (S == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
 
-            S.DisplayTable();
+            S.DisplayTable(WhereTree);
         } else if (All && Tables.size() >= 2) {
             Schema combindSchema = Catalog.GetSchema(Tables.get(0));
             if (combindSchema == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
@@ -158,7 +158,7 @@ public class Parser {
                 if (sx == null) throw new Exception("Table " + Tables.get(idx) + " does not exist.");
                 combindSchema = combindSchema.cartesianJoin(combindSchema, sx);
             }
-            combindSchema.DisplayTable();
+            combindSchema.DisplayTable(WhereTree);
         }
 
         return ++Index;
@@ -395,7 +395,7 @@ public class Parser {
         Deque<WhereClassInterface> whereTreeNodes = new ArrayDeque<>();
 
 
-        while(Input[Index].Type != SEMICOLON){
+        while(Input[Index].Type != SEMICOLON && Input[Index].Type != ORDERBY){
             Token T = Input[Index++];
             // Handling if token is AND/OR
             if(T.Type == AND || T.Type == OR){
@@ -423,7 +423,7 @@ public class Parser {
             else if(!PossibleOps.contains(T.Type)){
                 if(T.Type == NAME_LITERAL){
                     Token next = Input[Index];
-                    if(PossibleOps.contains(next.Type)) vals.push(new AttributeValueNode(table.getFirst(),T.Literal));
+                    if(PossibleOps.contains(next.Type)) vals.push(new AttributeValueNode(table.get(0),T.Literal));
                     else if(next.Type == PERIOD){
 
                         //Check if the NAME_LITERAL is actual in valid table
