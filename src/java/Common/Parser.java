@@ -1,10 +1,8 @@
 package Common;
 import Catalog.*;
 import static Common.TokenType.*;
-
-import java.util.*;
-
 import Common.WhereTree.*;
+import java.util.*;
 
 
 public class Parser {
@@ -129,7 +127,7 @@ public class Parser {
             Tables.add(T.Literal);
             Index++;
         }
-
+        
 
         //Check the next Token for Where or Orderby
         if(Input[Index++].Type == WHERE){
@@ -137,10 +135,11 @@ public class Parser {
             WhereClassInterface WhereTree = WhereRS.WhereNode;
             Index = WhereRS.Index;
         }
+        else
+            Index--;
 
         // If we got here, great. Check for semicolon and complete the select.
         Validate(Input[Index], SEMICOLON);
-
         if (All && Tables.size() == 1) {
             Schema S = Catalog.GetSchema(Tables.get(0));
 
