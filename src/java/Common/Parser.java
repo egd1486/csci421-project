@@ -8,6 +8,23 @@ import java.util.*;
 
 public class Parser {
 
+    private static final Set<TokenType> PossibleOps = Set.of(
+            EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL,
+            IS
+    );
+    private static final Set<TokenType> PossibleVals = Set.of(
+            NAME_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL,
+            TRUE, FALSE, NULL
+    );
+
+    private static final Set<TokenType> PossibleMath = Set.of(
+            PLUS, MINUS, MULT, DIV
+    );
+
+    private static final Set<TokenType> Literals = Set.of(
+            INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL, TRUE, FALSE, NULL
+    );
+
     private static int Create(int Index, Token[] Input) throws Exception {
         // Validate syntax for "TABLE <name>"
         Token T; 
@@ -168,7 +185,7 @@ public class Parser {
 
             if (S == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
 
-            S.DisplayTable(WhereTree);
+            S.DisplayTable(WhereTree, new ArrayList<>());
         } else if (All && Tables.size() >= 2) {
             Schema combindSchema = Catalog.GetSchema(Tables.get(0));
             if (combindSchema == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
@@ -177,12 +194,12 @@ public class Parser {
                 if (sx == null) throw new Exception("Table " + Tables.get(idx) + " does not exist.");
                 combindSchema = combindSchema.cartesianJoin(combindSchema, sx);
             }
-            combindSchema.DisplayTable(WhereTree);
+            combindSchema.DisplayTable(WhereTree, new ArrayList<>());
         } else if (!All && Tables.size() == 1) { //single table
             Schema S = Catalog.GetSchema(Tables.get(0));
             if (S == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
             // keep only values in requested columns
-            S.DisplayTableSomeCols(Columns);
+            S.DisplayTable(WhereTree, Columns);
         } else if (!All && Tables.size() >= 2) { //multiple tables
             Schema combindSchema = Catalog.GetSchema(Tables.get(0));
             if (combindSchema == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
@@ -191,13 +208,12 @@ public class Parser {
                 if (sx == null) throw new Exception("Table " + Tables.get(idx) + " does not exist.");
                 combindSchema = combindSchema.cartesianJoin(combindSchema, sx);
             }
-            combindSchema.DisplayTableSomeCols(Columns);
+            combindSchema.DisplayTable(WhereTree, Columns);
         }
 
         return ++Index;
     }
 
-    private static final TokenType[] Literals = {INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL, TRUE, FALSE, NULL};
     private static int Insert(int Index, Token[] Input) throws Exception {
         // Get table's name,
         Token T = Input[Index]; 
@@ -427,7 +443,6 @@ public class Parser {
     // if make true dont add
     // drop OG table and rename new table
     private static int Update(int Index, Token[] Input) throws Exception {
-        // TODO
 
         //consume table name
         Validate(Input[Index], NAME_LITERAL);
@@ -438,51 +453,46 @@ public class Parser {
         Validate(Input[++Index], SET);
         ++Index;
 
-        //parse the column = val pairs
-        ArrayList<ArrayList<Token>> colValPairs = new ArrayList<>();
-        while(Input[Index].Type != WHERE && Input[Index].Type != SEMICOLON) {
-            ArrayList<Token> pair = new ArrayList<>();
-            //consume column
-            Token T = Input[Index];
-            Validate(T, NAME_LITERAL);
-            pair.add(T);
-            //consume =
-            T = Input[++Index];
-            Validate(T, EQUAL);
-            //consume value
-            T = Input[++Index];
-            boolean isLiteral = false;
-            for (TokenType L : Literals) isLiteral |= T.Type == L;
-            if (!isLiteral) throw new Exception("Expected literal value but got " + T.Type);
-            pair.add(T);
-            // consume comma if have
-            T = Input[++Index];
+        Token Column = Input[Index++];
+        Token Equal = Input[Index++];
+        Token Value = Input[Index++];
 
-            colValPairs.add(pair);
-            if (T.Type == COMMA) {
-                ++Index;
+        //Validation
+        Validate(Column, EQUAL);
+        Validate(Equal, EQUAL);
+        if(!(PossibleVals.contains(Value.Type))){
+            throw new Exception("Unexpected token " + Value.Type.toString() + ", expected PossibleVal type. In Update Function");
+        }
+
+        InterfaceOperandNode valueNode = null;
+        if(Literals.contains(Value.Type)){
+            valueNode = new ConstantValueNode(Value.Literal,Value.Type);
+        }else{
+            //Have to be Name-Literal
+            valueNode = new AttributeValueNode(tableName,Value.Literal,Tables);
+        }
+
+        //Look Ahead to check for mathematical expressions
+        if(PossibleMath.contains(Input[Index].Type)){
+            Token MathematicalOperator = Input[Index++];
+            Token Lookahead = Input[Index++];
+            //Check if next Value is Literal or Attribute
+            if(!(PossibleVals.contains(Lookahead.Type))){
+                throw new Exception("Unexpected token " + Value.Type.toString() + ", expected PossibleVal type. In Update Function");
+            }
+            if(Literals.contains(Lookahead.Type)){
+                valueNode = new ArithmeticOpNode(valueNode, MathematicalOperator.Type, new ConstantValueNode(Lookahead.Literal, Lookahead.Type));
+            }else{
+                valueNode = new ArithmeticOpNode(valueNode, MathematicalOperator.Type, new AttributeValueNode(tableName,Lookahead.Literal,Tables));
             }
         }
 
-         // WHERE
-        if(Input[Index].Type == WHERE){
-            WhereResult WhereRS = Where(++Index, Input, Tables);
-            WhereClassInterface WhereTree = WhereRS.WhereNode;
-            Index = WhereRS.Index;
-            // Semicolon
-            Validate(Input[Index], SEMICOLON);
-            // TODO Make new table using schema of old table
-            Schema S = Catalog.GetSchema(tableName).Copy();
-            // TODO WHERE is true = modify the row using colValPairs then insert into copy
-            //TODO WHERE is false = insert row unchanged into copy
-            // TODO Delete old table
-        }
-        else{
-            // Semicolon
-            Validate(Input[Index], SEMICOLON);
-
-            // TODO update all entries in table using colValPairs then insert into copy
-        }
+        //Need Where on SET
+        Validate(Input[Index], WHERE);
+        WhereResult WhereRS = Where(++Index, Input, Tables);
+        Index  = WhereRS.Index;
+        Schema newSchema = Catalog.GetSchema(tableName).UpdateSchema(Column.Literal, valueNode, WhereRS.WhereNode);
+        Validate(Input[Index], SEMICOLON);
 
         return ++Index;
     }
@@ -491,19 +501,6 @@ public class Parser {
         if (Given.Type != Expected)
         throw new Exception("Unexpected token " + Given.Type.toString() + ", expected " + Expected.toString());
     }
-
-    private static final Set<TokenType> PossibleOps = Set.of(
-            EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL,
-            IS
-    );
-    private static final Set<TokenType> PossibleVals = Set.of(
-            NAME_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL,
-            TRUE, FALSE, NULL
-    );
-
-    private static final Set<TokenType> PossibleMath = Set.of(
-            PLUS, MINUS, MULT, DIV
-    );
 
     // Compares the priority of the first token with the second token
     // Returns true if second token has higher priority than first

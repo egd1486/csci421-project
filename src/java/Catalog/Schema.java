@@ -2,6 +2,7 @@ package Catalog;
 
 import Common.*;
 import BufferManager.BufferManager;
+import Common.WhereTree.InterfaceOperandNode;
 import Common.WhereTree.WhereClassInterface;
 import StorageManager.StorageManager;
 
@@ -213,116 +214,38 @@ public class Schema {
     }
 
     // Displays a table in an easy to read format
-    public void DisplayTable(WhereClassInterface WhereTree){
-        Object[] defaults = new Object[this.Attributes.size()];
-        for (int i=0; i<this.Attributes.size(); i++) 
-        if (this.Attributes.get(i).defaultVal != null)
-        defaults[i] = this.Attributes.get(i).defaultVal;
-
-        int RowCount = 0;
-        int PageCount = 1; // For printing each page title.
-
-        try{
-            // Getting first page where this schema's data is stored
-            int currPageId = this.PageId;
-            // Getting all row data from this schema starting from the first
-            // page and then any subsequent pages
-            while(currPageId != -1){
-                Page page = BufferManager.getPage(currPageId, this);
-                if(page == null) break;
-
-                // Grab the page data,
-                ArrayList<ArrayList<Object>> pageData = page.get_data();
-
-                // Define the column size for formating,
-                int numAttributes = this.Attributes.size();
-                int[] columnWidths = new int[numAttributes];
-                // Set minimum width as the length of the attribute name
-                for(int i = 0; i < numAttributes; i++) columnWidths[i] = this.Attributes.get(i).name.length();
-                // Then find the longest attribute there, and set its length instead.
-                for(ArrayList<Object> row : pageData)
-                for(int i = 0; i < numAttributes; i++){
-                    Object value = row.get(i);
-                    if(value == null) value = "NULL";
-                    columnWidths[i] = Math.max(columnWidths[i], value.toString().length());
-                }
-
-                // Printing header (page # + attribute names + separator)
-                // calculate total dash padding needed for the separator
-                int dashes = 1;
-                for(int width : columnWidths) dashes += width + 3;
-                // page # time
-                String Title = " [Page " + PageCount++ + "]";
-                for(int i = 0; i < dashes; i++) System.out.print("-");
-                System.out.print(Title);
-                System.out.println();
-                // names
-                System.out.print("|");
-                for(int i = 0; i < numAttributes; i++)
-                System.out.printf(" %-" + columnWidths[i] + "s |", this.Attributes.get(i).name);
-                System.out.println();
-                // separator
-                for(int i = 0; i < dashes; i++) System.out.print("-");
-                System.out.println();
-                // Now print the rows.
-                    for (ArrayList<Object> row : pageData) {
-                        if(WhereTree == null || WhereTree.evaluate(row)){
-                            System.out.print("|");
-                            RowCount++;
-                            for (int i=0; i<row.size(); i++) {
-                                Object value = row.get(i);
-
-                                // If value is null,
-                                if(value == null)
-                                    // And there's a default, use it.
-                                    if (defaults[i] != null) value = defaults[i];
-                                        // Otherwise..
-                                    else value = "NULL";
-
-                                System.out.printf(" %-" + columnWidths[i] + "s |", value.toString());
-                            }
-                            System.out.println();
-                        }
-                    }
-                    currPageId = page.get_next_pageid();
-            }
-        } catch (Exception e){
-            System.out.println("Error: " + e);
-        }
-
-        System.out.println("Displaying " + RowCount + " rows.");
-    }
-
-    //Same thing as above but prints out specific columns
-    // SELECT col1, col2 FROM table
-    // SELECT col1, col2 FROM table1, table2
-    public void DisplayTableSomeCols(ArrayList<String> Columns) {
-        //get indices for the requested columns 
+    public void DisplayTable(WhereClassInterface WhereTree, ArrayList<String> Columns){
         // store the position of each requested column in the schema, ex [0, 2]
         ArrayList<Integer> ColIndices = new ArrayList<>(); 
-        for(String col : Columns) {
-            // loop through the schema's attributes to find where the column lives
-            for (int i = 0; i < this.Attributes.size(); i++) {
-                String attrName = this.Attributes.get(i).name;
-                String colName = "";
-                // check if attribute already has table prefix from cartesian
-                // if so match full name of TABLE.COL
-                if (attrName.contains(".")) { 
-                    colName = col;
-                } else { 
-                    //single table
-                    //strip table prefix if present ex "TABLE1.COL1" -> "COL1"
-                    colName = col.contains(".") ? col.split("\\.")[1] : col;
-                }
+        if (Columns.isEmpty()) { //All columns
+            for(int i = 0; i<Attributes.size(); i++) {
+                ColIndices.add(i);
+            }
+        } else { //Some Columns
+            //get indices for the requested columns 
+            for(String col : Columns) {
+                // loop through the schema's attributes to find where the column lives
+                for (int i = 0; i < this.Attributes.size(); i++) {
+                    String attrName = this.Attributes.get(i).name;
+                    String colName = "";
+                    // check if attribute already has table prefix from cartesian
+                    // if so match full name of TABLE.COL
+                    if (attrName.contains(".")) { 
+                        colName = col;
+                    } else { 
+                        //single table
+                        //strip table prefix if present ex "TABLE1.COL1" -> "COL1"
+                        colName = col.contains(".") ? col.split("\\.")[1] : col;
+                    }
 
-                if (this.Attributes.get(i).name.equals(colName.toUpperCase())) {
-                    ColIndices.add(i);
-                    break; // found, stop loop
+                    if (this.Attributes.get(i).name.equals(colName.toUpperCase())) {
+                        ColIndices.add(i);
+                        break; // found, stop loop
+                    }
                 }
             }
         }
 
-        //print table with specified columns
         //build look up array of default values for each column - use when value is null
         Object[] defaults = new Object[this.Attributes.size()];
         for (int i=0; i<this.Attributes.size(); i++) 
@@ -344,19 +267,31 @@ public class Schema {
                 // Grab the page data,
                 ArrayList<ArrayList<Object>> pageData = page.get_data();
 
+                // Filter the rows based on the Where 
+                ArrayList<ArrayList<Object>> filteredRows = new ArrayList<>(); 
+                for (ArrayList<Object> row : pageData) {
+                    if(WhereTree == null || WhereTree.evaluate(row)){
+                        filteredRows.add(row);
+                    }
+                }
+                if(filteredRows.isEmpty()) {
+                    currPageId = page.get_next_pageid();
+                    continue; //don't print header because it has no data to show
+                }
+                
                 // Define the column size for formating,
-                int numAttributes = ColIndices.size(); //specific columns
+                int numAttributes = ColIndices.size();
                 int[] columnWidths = new int[numAttributes];
                 // Set minimum width as the length of the attribute name
                 for(int i = 0; i < numAttributes; i++) columnWidths[i] = this.Attributes.get(ColIndices.get(i)).name.length();
                 // Then find the longest attribute there, and set its length instead.
-                for(ArrayList<Object> row : pageData)
+                for(ArrayList<Object> row : filteredRows)
                 for(int i = 0; i < numAttributes; i++){
-                    Object value = row.get(ColIndices.get(i)); //specific columns
+                    Object value = row.get(ColIndices.get(i));
                     if(value == null) value = "NULL";
                     columnWidths[i] = Math.max(columnWidths[i], value.toString().length());
                 }
-
+                
                 // Printing header (page # + attribute names + separator)
                 // calculate total dash padding needed for the separator
                 int dashes = 1;
@@ -374,32 +309,33 @@ public class Schema {
                 // separator
                 for(int i = 0; i < dashes; i++) System.out.print("-");
                 System.out.println();
-                // Increase row counter
-                RowCount += pageData.size();
-                // Now print the rows with specified attributes.
-                for (ArrayList<Object> row : pageData) {
+
+                // Now print the rows.
+                for (ArrayList<Object> row : filteredRows) {
                     System.out.print("|");
-                    for (int i=0; i<ColIndices.size(); i++) { //specific columns
+                    RowCount++;
+                    for (int i=0; i<ColIndices.size(); i++) {
                         Object value = row.get(ColIndices.get(i));
 
                         // If value is null,
-                        if(value == null) 
-                        // And there's a default, use it.
-                        if (defaults[ColIndices.get(i)] != null) value = defaults[ColIndices.get(i)]; 
-                        // Otherwise..
-                        else value = "NULL";
+                        if(value == null)
+                            // And there's a default, use it.
+                            if (defaults[ColIndices.get(i)] != null) value = defaults[ColIndices.get(i)];
+                                // Otherwise..
+                            else value = "NULL";
 
                         System.out.printf(" %-" + columnWidths[i] + "s |", value.toString());
                     }
                     System.out.println();
                 }
-                currPageId = page.get_next_pageid();//move to next page
+                currPageId = page.get_next_pageid();
             }
         } catch (Exception e){
             System.out.println("Error: " + e);
         }
-        System.out.println("Displaying " + RowCount + " rows.");   
+        System.out.println("Displaying " + RowCount + " rows.");
     }
+
 
     public void Insert(ArrayList<Object> Row) throws Exception {
         // First check if the row to be inserted is valid.
@@ -584,6 +520,22 @@ public class Schema {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public Schema UpdateSchema(String ColumnName, InterfaceOperandNode value, WhereClassInterface WhereTree) throws Exception {
+        ArrayList<ArrayList<Object>> SchemaInfo = this.Select();
+        Schema newSchema = this.Copy(); //Copies Schema but not the Data;
+        for(ArrayList<Object> row : SchemaInfo){
+            if(WhereTree.evaluate(row)){
+                for(int i=0; i<Attributes.size(); i++){
+                    if(Attributes.get(i).name.equals(ColumnName.toUpperCase())){
+                        row.set(i, value.evaluate(row));
+                    }
+                }
+                newSchema.Insert(row);
+            }
+        }
+        return newSchema;
     }
 
     // cartesian join in select for schema
