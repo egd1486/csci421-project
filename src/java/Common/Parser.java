@@ -1,8 +1,8 @@
 package Common;
+import BufferManager.BufferManager;
 import Catalog.*;
 import static Common.TokenType.*;
 import Common.WhereTree.*;
-
 import java.util.*;
 
 
@@ -375,25 +375,50 @@ public class Parser {
         String Name = T.Literal;
 
         // WHERE <condition>
+        WhereClassInterface WhereTree = null;
         if(Input[Index].Type == WHERE){
             WhereResult WhereRS = Where(++Index, Input, Tables);
-            WhereClassInterface WhereTree = WhereRS.WhereNode;
+            WhereTree = WhereRS.WhereNode;
             System.out.println(WhereTree.print());
             Index = WhereRS.Index;
-            // Semicolon
-            Validate(Input[Index], SEMICOLON);
-            // TODO Make new table using schema of old table
-            Schema S = Catalog.GetSchema(Name).Copy();
-            // TODO Insert into new table rows where WHERE == FALSE
-            // TODO Delete old table
-        }
-        else{
-            // Semicolon
-            Validate(Input[Index], SEMICOLON);
-            
-            // TODO Delete all entries in table
         }
 
+        // Semicolon
+        Validate(Input[Index], SEMICOLON);
+        // Make new table using schema of old table
+        Schema newS = Catalog.GetSchema(Name).Copy();
+        Schema oldS = Catalog.GetSchema(Name);
+        oldS.Name = "_" + Name;
+        Catalog.Schemas.add(newS);
+            
+        // Insert into new table rows where WHERE == FALSE
+        int RowCount = 0;
+            
+        try {
+            int currPageId = oldS.PageId;
+            while (currPageId != -1){
+                Page page = BufferManager.getPage(currPageId, oldS);
+                currPageId = page.get_next_pageid();
+                if(page == null) break;
+                    
+                // Grab the page data,
+                ArrayList<ArrayList<Object>> pageData = page.get_data();
+
+                for (ArrayList<Object> row : pageData) {
+                    if(WhereTree != null && !WhereTree.evaluate(row)){
+                        newS.Insert(row);
+                    }
+                    else{
+                        RowCount ++;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error: " + e);
+        }
+        //Delete old table
+        Catalog.RemoveSchema("_" + Name);
+        System.out.println("Deleted " + RowCount + " entries.");
         return ++Index;
     }
 
