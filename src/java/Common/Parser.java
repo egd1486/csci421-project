@@ -546,6 +546,13 @@ public class Parser {
 
                     //If it's only column name assume were working with singular table.
                     if(PossibleOps.contains(next.Type)){
+                        if(table.size() != 1){
+                            int sameAttrName = 0;
+                            for(String tableName : table){
+                                if(Schema.getAttribute(T.Literal, Catalog.GetSchema(tableName)) != null) sameAttrName++;
+                                if(sameAttrName > 1) throw new Exception("Ambiguous, unqualified attribute name: " + T.Literal + ". Must specify table.");
+                            }
+                        }
                         //Check if the attribute exists in the table
                         if(Schema.getAttribute(T.Literal, Catalog.GetSchema(table.get(0))) == null){
                             throw new Exception("Attribute " + T.Literal + " does not exist in table: " + table.get(0));
