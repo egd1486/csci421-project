@@ -185,7 +185,7 @@ public class Parser {
 
             if (S == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
 
-            S.DisplayTable(WhereTree);
+            S.DisplayTable(WhereTree, new ArrayList<>());
         } else if (All && Tables.size() >= 2) {
             Schema combindSchema = Catalog.GetSchema(Tables.get(0));
             if (combindSchema == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
@@ -194,12 +194,12 @@ public class Parser {
                 if (sx == null) throw new Exception("Table " + Tables.get(idx) + " does not exist.");
                 combindSchema = combindSchema.cartesianJoin(combindSchema, sx);
             }
-            combindSchema.DisplayTable(WhereTree);
+            combindSchema.DisplayTable(WhereTree, new ArrayList<>());
         } else if (!All && Tables.size() == 1) { //single table
             Schema S = Catalog.GetSchema(Tables.get(0));
             if (S == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
             // keep only values in requested columns
-            S.DisplayTableSomeCols(Columns);
+            S.DisplayTable(WhereTree, Columns);
         } else if (!All && Tables.size() >= 2) { //multiple tables
             Schema combindSchema = Catalog.GetSchema(Tables.get(0));
             if (combindSchema == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
@@ -208,7 +208,7 @@ public class Parser {
                 if (sx == null) throw new Exception("Table " + Tables.get(idx) + " does not exist.");
                 combindSchema = combindSchema.cartesianJoin(combindSchema, sx);
             }
-            combindSchema.DisplayTableSomeCols(Columns);
+            combindSchema.DisplayTable(WhereTree, Columns);
         }
 
         return ++Index;
