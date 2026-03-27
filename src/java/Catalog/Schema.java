@@ -234,7 +234,7 @@ public class Schema {
                         colName = col.contains(".") ? col.split("\\.")[1] : col;
                     }
 
-                    if (this.Attributes.get(i).name.equals(colName.toUpperCase())) {
+                    if (this.Attributes.get(i).name.contains(colName.toUpperCase())) {
                         ColIndices.add(i);
                         break; // found, stop loop
                     }

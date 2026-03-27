@@ -168,6 +168,30 @@ public class Parser {
             Index++;
         }
 
+        // Check if all schemas exist
+        // and if the column names are valid, and not ambiguous.
+        Map<String, Integer> NameCount = new HashMap<>();
+        for(String tableName : Tables){
+            Schema S = Catalog.GetSchema(tableName);
+
+            if (S == null) throw new Exception("Table " + tableName + " does not exist.");
+
+            for (Attribute A : S.Attributes) {
+                if (NameCount.containsKey(A.name)) 
+                NameCount.put(A.name, NameCount.get(A.name) + 1);
+                else NameCount.put(A.name, 1);
+                // Handle checking for qualified column names
+                NameCount.put(tableName+"."+A.name, 1);
+            }
+        }
+
+        // Throw exception of ambiguous column name if found in more than one table
+        for (String C : Columns)            
+        if (NameCount.containsKey(C)) {
+            if (NameCount.get(C) > 1)
+            throw new Exception("Column " + C + " is ambiguous.");
+        } else throw new Exception("Column " + C + " does not exist.");
+        
         WhereClassInterface WhereTree = null;
         //Check the next Token for Where or Orderby
         if(Input[Index].Type == WHERE){
