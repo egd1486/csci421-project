@@ -216,7 +216,12 @@ public class Parser {
             for(int idx = 1; idx < Tables.size(); idx++) {
                 Schema sx = Catalog.GetSchema(Tables.get(idx));
                 if (sx == null) throw new Exception("Table " + Tables.get(idx) + " does not exist.");
-                combindSchema = combindSchema.cartesianJoin(combindSchema, sx);
+
+                Schema newJoin = combindSchema.cartesianJoin(combindSchema, sx);
+                // if combindSchema is not an original table discard it
+                if (idx > 1) Catalog.RemoveSchema(combindSchema.Name);
+                combindSchema = newJoin;
+                Catalog.Schemas.add(combindSchema); // track it so it can be removed next iteration
             }
             combindSchema.DisplayTable(WhereTree, new ArrayList<>());
         } else if (!All && Tables.size() == 1) { //single table
@@ -230,9 +235,15 @@ public class Parser {
             for(int idx = 1; idx < Tables.size(); idx++) {
                 Schema sx = Catalog.GetSchema(Tables.get(idx));
                 if (sx == null) throw new Exception("Table " + Tables.get(idx) + " does not exist.");
-                combindSchema = combindSchema.cartesianJoin(combindSchema, sx);
+
+                Schema newJoin = combindSchema.cartesianJoin(combindSchema, sx);
+                // if combindSchema is not an original table discard it
+                if (idx > 1) Catalog.RemoveSchema(combindSchema.Name);
+                combindSchema = newJoin;
+                Catalog.Schemas.add(combindSchema); // track it so it can be removed next iteration
             }
             combindSchema.DisplayTable(WhereTree, Columns);
+            Catalog.RemoveSchema(combindSchema.Name);
         }
 
         return ++Index;
