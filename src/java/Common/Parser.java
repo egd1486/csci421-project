@@ -253,19 +253,31 @@ public class Parser {
         }
 
         if (OrderBy != null) {
-            Schema Temp = S.Copy(null, null, null);
-            Attribute A;
-            // Mark all attributes as not primary, and our orderby as the primary.
-            for (int i=0; i<Temp.Attributes.size(); i++)
-            // Primarys are now false,
-            if ((A = Temp.Attributes.get(i)).primaryKey) 
-            A.primaryKey = false;
-            // The one matching is now the primary, and we mark it in the schema.
-            else if (A.name.contains(OrderBy)) {
-                A.primaryKey = true;
-                Temp.Primary = i;
-            } 
-            // Now swap S out for this one.
+            // Okay so to do this, we have to be tricky
+            // We have to temporarily alter the primary key of the old schema, and set it back to what it was when we're done
+            Integer OldPrimary = S.Primary;
+            Boolean OldDuplicateKeys = S.DuplicateKeys;
+
+            for (int i=0; i<S.Attributes.size(); i++)
+            if (S.Attributes.get(i).name.contains(OrderBy)) {
+                S.Primary = i;
+                break;
+            }
+
+            // Allow duplicate keys, (orderby might have those.)
+            S.DuplicateKeys = true;
+
+            // Now we do a "Delete" where none of the conditions pass.
+            ConstantValueNode AlwaysFalse = new ConstantValueNode(false, FALSE);
+            WhereClassInterface AlsoFalse = new BinaryOpNode(AlwaysFalse, AND, AlwaysFalse);
+            // Now copy >:)
+            Schema Temp = S.Copy(new WhereResult(AlsoFalse, 0), null, null);
+            
+            // Swap configs back.
+            S.Primary = OldPrimary;
+            S.DuplicateKeys = OldDuplicateKeys;
+
+            // Now swap S out for this temporary one.
             // If S is the same as the original, we know it is not a cartesian join, so we don't have to clean it up.
             if (S != Original) {
                 S.Name = "_";
