@@ -156,7 +156,7 @@ public class Parser {
         if(Input[Index].Type == WHERE){
             WhereResult WhereRS = Where(++Index, Input, Tables);
             WhereTree = WhereRS.WhereNode;
-            System.out.println(WhereTree.print());
+            System.out.println("Where Tree: " + WhereTree.print());
             Index = WhereRS.Index;
         }
 
@@ -616,28 +616,20 @@ public class Parser {
         // handling leftover operators
         while(!ops.isEmpty()){
             Token op = ops.pop();
-            if(PossibleOps.contains(op.Type)){
-                InterfaceOperandNode right = vals.pop();
-                InterfaceOperandNode left = vals.pop();
-                whereTreeNodes.push(new BinaryOpNode(left, op.Type, right));
-            }else if(PossibleMath.contains(op.Type)){
-                InterfaceOperandNode Right = vals.pop();
-                InterfaceOperandNode Left = vals.pop();
-                Token MathOperation = ops.pop();
-                vals.push(new ArithmeticOpNode(Left, MathOperation.Type, Right));
-            }
-            else if(op.Type == AND || op.Type == OR){
-                WhereClassInterface right = whereTreeNodes.pop();
-                WhereClassInterface left = whereTreeNodes.pop();
-                whereTreeNodes.push(op.Type == AND ? new AndNode(left, right) : new OrNode(left, right));
-            }
-            else if(op.Type == NOT){
-                InterfaceOperandNode right = vals.pop();
-                InterfaceOperandNode left = vals.pop();
-                whereTreeNodes.push(new BinaryOpNode(left, NOT, right));
-            }
-            else{
-                throw new Exception("Unexpected token: " + op.Type + ", expected operator");
+            switch(op.Type){
+                case EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL, NOT -> {
+                    InterfaceOperandNode right = vals.pop();
+                    InterfaceOperandNode left = vals.pop();
+                    whereTreeNodes.push(new BinaryOpNode(left, op.Type, right));
+                }
+                case AND, OR -> {
+                    WhereClassInterface right = whereTreeNodes.pop();
+                    WhereClassInterface left = whereTreeNodes.pop();
+                    whereTreeNodes.push(op.Type == AND ? new AndNode(left, right) : new OrNode(left, right));
+                }
+                default -> {
+                    throw new Exception("Unexpected token: " + op.Type.toString() + " expected literal value");
+                }
             }
         }
         // All nodes should be a part of one main node at this point
