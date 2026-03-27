@@ -181,14 +181,14 @@ public class Parser {
                 NameCount.put(A.name, NameCount.get(A.name) + 1);
                 else NameCount.put(A.name, 1);
                 // Handle checking for qualified column names
-                NameCount.put(tableName+"."+A.name, 1);
+                NameCount.put(tableName.toUpperCase()+"."+A.name, 1);
             }
         }
 
         // Throw exception of ambiguous column name if found in more than one table
         for (String C : Columns)            
-        if (NameCount.containsKey(C)) {
-            if (NameCount.get(C) > 1)
+        if (NameCount.containsKey(C.toUpperCase())) {
+            if (NameCount.get(C.toUpperCase()) > 1)
             throw new Exception("Column " + C + " is ambiguous.");
         } else throw new Exception("Column " + C + " does not exist.");
         
