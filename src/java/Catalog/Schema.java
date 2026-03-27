@@ -220,12 +220,11 @@ public class Schema {
                 // separator
                 for(int i = 0; i < dashes; i++) System.out.print("-");
                 System.out.println();
-                // Increase row counter
-                RowCount += pageData.size();
                 // Now print the rows.
                     for (ArrayList<Object> row : pageData) {
                         if(WhereTree == null || WhereTree.evaluate(row)){
                             System.out.print("|");
+                            RowCount++;
                             for (int i=0; i<row.size(); i++) {
                                 Object value = row.get(i);
 
