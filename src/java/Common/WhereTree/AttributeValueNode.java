@@ -15,7 +15,7 @@ public class AttributeValueNode implements InterfaceOperandNode {
 
         Schema S = Catalog.GetSchema(table_name);
 
-        //We then get the Attribute_node by getting it form the Schema by column name
+        //We then get the Attribute_node by getting it from the Schema by column name
         attribute_node = Schema.getAttribute(ColumnName, S);
 
         //For safe measures

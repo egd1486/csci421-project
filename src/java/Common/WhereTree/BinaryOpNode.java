@@ -28,6 +28,9 @@ public class BinaryOpNode implements WhereClassInterface {
         }
         if(Operator == TokenType.IS) return Right.evaluate(row) == null && Left.evaluate(row) == null;
         if(Operator == TokenType.NOT) return !(Right.evaluate(row) == null && Left.evaluate(row) == null);
+        if(leftval == null || rightval == null){
+            return false;
+        }
         switch(Left.getType()){
             case INT ->{
                 switch(Operator) {

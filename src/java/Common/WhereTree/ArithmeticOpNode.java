@@ -33,7 +33,7 @@ public class ArithmeticOpNode implements InterfaceOperandNode {
         switch (Left.getType()) {
             case INT -> {
                 switch (AlgebraOperator) {
-                    case ADD -> {
+                    case PLUS -> {
                         return (int) Left.evaluate(row) + (int) Right.evaluate(row);
                     }
                     case MINUS -> {
@@ -49,7 +49,7 @@ public class ArithmeticOpNode implements InterfaceOperandNode {
             }
             case DOUBLE -> {
                 switch (AlgebraOperator) {
-                    case ADD -> {
+                    case PLUS -> {
                         return (double) Left.evaluate(row) + (double) Right.evaluate(row);
                     }
                     case MINUS -> {

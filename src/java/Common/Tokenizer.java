@@ -71,6 +71,9 @@ public class Tokenizer {
                 case ',' -> Tokens.add(new Token(COMMA, ","));
                 case '=' -> Tokens.add(new Token(EQUAL, "="));
                 case '*' -> Tokens.add(new Token(STAR, "*"));
+                case '+' -> Tokens.add(new Token(PLUS, "+"));
+                case '-' -> Tokens.add(new Token(MINUS, "-"));
+                case '/' -> Tokens.add(new Token(DIV, "/"));
 
                 // multichar symbols
                 case '<', '>' -> {
