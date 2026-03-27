@@ -560,20 +560,43 @@ public class Schema {
             joinedSchema.AddAttribute(columnName, attr.type,
                                      attr.typeLength, attr.notNull, null, attr.unique, attr.defaultVal, true);
         }
-        //get all rows for each schema
-        ArrayList<ArrayList<Object>> schema1Rows = schema1.Select();
-        ArrayList<ArrayList<Object>> schema2Rows = schema2.Select();
-        // combind rows
-        for (ArrayList<Object> row1 : schema1Rows) {
-            //for each row in schema1, loop through every row in schema2
-            for (ArrayList<Object> row2: schema2Rows) {
-                //add all values from row 1
-                ArrayList<Object> joinedRow = new ArrayList<Object>(row1);
-                for (Object val: row2) {
-                    joinedRow.add(val);
+
+        // Getting first page where this schema's data is stored
+        int currPageId1 = schema1.PageId;
+        // Getting all row data from schema 1 starting from the first
+        // page and then any subsequent pages
+        while(currPageId1 != -1){
+            Page page1 = BufferManager.getPage(currPageId1, schema1);
+            if(page1 == null) break;
+
+            // Grab the page data
+            ArrayList<ArrayList<Object>> pageData1 = page1.get_data();
+            for (ArrayList<Object> row1 : pageData1) {
+
+                // Getting first page where this schema's data is stored
+                int currPageId2 = schema2.PageId;
+                // Getting all row data from schema 2 starting from the first
+                // page and then any subsequent pages
+                while(currPageId2 != -1){ 
+                Page page2 = BufferManager.getPage(currPageId2, schema2);
+                    if(page2 == null) break;
+                    
+                    // Grab the page data
+                    ArrayList<ArrayList<Object>> pageData2 = page2.get_data();
+                    for (ArrayList<Object> row2 : pageData2) {
+                        //join
+                        ArrayList<Object> joinedRow = new ArrayList<Object>(row1);
+                        for (Object val: row2) {
+                            joinedRow.add(val);
+                        }
+                        joinedSchema.Insert(joinedRow);
+                    }
+
+                    currPageId2 = page2.get_next_pageid();
                 }
-                joinedSchema.Insert(joinedRow);
             }
+
+            currPageId1 = page1.get_next_pageid();
         }
         return joinedSchema;
     }
