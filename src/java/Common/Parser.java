@@ -373,11 +373,14 @@ public class Parser {
 
     private static final Set<TokenType> PossibleOps = Set.of(
             EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL,
-            PLUS, MINUS, MULT, DIV, IS
+            IS
     );
     private static final Set<TokenType> PossibleVals = Set.of(
             NAME_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL,
             TRUE, FALSE, NULL
+    );
+    private static final Set<TokenType> ArithmeticOps = Set.of(
+            PLUS, MINUS, MULT, DIV
     );
 
     // Compares the priority of the first token with the second token
@@ -470,7 +473,13 @@ public class Parser {
                     }
                     else throw new Exception("Unexpected tokens: " + T.Type + ", " + next.Type.toString() + " | Expected tokens: NAME_LITERAL, PERIOD or Operator");
                 }
-                else if(PossibleVals.contains(T.Type)) vals.push(new ConstantValueNode(T.Literal, T.Type));
+                else if(PossibleVals.contains(T.Type)){
+                    Token next = Input[Index];
+                    if(ArithmeticOps.contains(next.Type)){
+
+                    }
+                    vals.push(new ConstantValueNode(T.Literal, T.Type));
+                }
                 else throw new Exception("Unexpected token: " + T.Type.toString() + ", expected literal value");
             }
             // Handling if token is a relational operator
