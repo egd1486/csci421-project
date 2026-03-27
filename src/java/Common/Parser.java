@@ -550,7 +550,7 @@ public class Parser {
                         if(Schema.getAttribute(T.Literal, Catalog.GetSchema(table.get(0))) == null){
                             throw new Exception("Attribute " + T.Literal + " does not exist in table: " + table.get(0));
                         }
-                        vals.push(new AttributeValueNode(table.get(0),T.Literal));
+                        vals.push(new AttributeValueNode(table.get(0), T.Literal, table));
                     }
 
                     //Else were working with multiple tables
@@ -573,7 +573,7 @@ public class Parser {
                         }
 
                         //Create AttributeValueNode given Schema and Column and push it into vals
-                        AttributeValueNode attributeval = new AttributeValueNode(T.Literal, attrName.Literal);
+                        AttributeValueNode attributeval = new AttributeValueNode(T.Literal, attrName.Literal, table);
 
                         vals.push(attributeval);
 
@@ -623,6 +623,11 @@ public class Parser {
                 WhereClassInterface right = whereTreeNodes.pop();
                 WhereClassInterface left = whereTreeNodes.pop();
                 whereTreeNodes.push(op.Type == AND ? new AndNode(left, right) : new OrNode(left, right));
+            }
+            else if(op.Type == NOT){
+                InterfaceOperandNode right = vals.pop();
+                InterfaceOperandNode left = vals.pop();
+                whereTreeNodes.push(new BinaryOpNode(left, NOT, right));
             }
             else{
                 throw new Exception("Unexpected token: " + op.Type + ", expected operator");
