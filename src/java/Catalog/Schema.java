@@ -11,6 +11,7 @@ import static Common.TokenType.TRUE;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 
 
 public class Schema {
@@ -29,7 +30,7 @@ public class Schema {
     }
 
     // COPIES SCHEMA BUT NOT DATA
-    public Schema Copy(WhereResult Where, WhereClassInterface Update, String ColumnName) throws Exception {
+    public Schema Copy(WhereResult Where, InterfaceOperandNode Update, String ColumnName) throws Exception {
         Schema newSchema = new Schema(this.Name);
         newSchema.Primary = this.Primary;
         newSchema.PageId = BufferManager.getEmptyPage(newSchema, null).get_pageid();
@@ -60,17 +61,20 @@ public class Schema {
 
                     else // Otherwise, when we are updating, and every row gets inserted, but those who pass get altered,
                     if (Updating) {
-                        if (Passes) row.set(Where.Index, Update.evaluate(row, this));
+                        if (Passes) row.set(Where.Index, Update.evaluate(row));
                         newSchema.Insert(row);
                     }
                 } // We also need to consider updating with no condition,
                 else if (Updating) {
-                    row.set(Where.Index, Update.evaluate(row, this)); // Everything gets altered.
+                    int UpdateIndex = -1;
+                    for (int i = 0; i < this.Attributes.size(); i++)
+                        if (this.Attributes.get(i).name.equals(ColumnName.toUpperCase())) UpdateIndex = i;
+                    if (UpdateIndex == -1) throw new Exception("Schema does not have column named " + ColumnName);
+                    row.set(UpdateIndex, Update.evaluate(row)); // Everything gets altered.
                     newSchema.Insert(row);
                 }
             }
         }
-
         return newSchema;
     }
 

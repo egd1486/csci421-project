@@ -424,21 +424,20 @@ public class Parser {
         Validate(Input[Index], NAME_LITERAL);
         ArrayList<String> Tables = new ArrayList<>();
         Tables.add(Input[Index].Literal);
-        String tableName = Input[Index].Literal;
+        String tableName = Input[Index++].Literal;
         Schema oldSchema = Catalog.GetSchema(tableName);
 
         if (oldSchema == null) 
         throw new Exception("Table " + tableName + " does not exist.");
 
-        Validate(Input[++Index], SET);
-        ++Index;
+        Validate(Input[Index++], SET);
 
         Token Column = Input[Index++];
         Token Equal = Input[Index++];
         Token Value = Input[Index++];
 
         //Validation
-        Validate(Column, EQUAL);
+        Validate(Column, NAME_LITERAL);
         Validate(Equal, EQUAL);
         if(!(PossibleVals.contains(Value.Type))){
             throw new Exception("Unexpected token " + Value.Type.toString() + ", expected PossibleVal type. In Update Function");
@@ -471,11 +470,11 @@ public class Parser {
         WhereResult WhereRS = null;
         if (Input[Index].Type == WHERE) {
             WhereRS = Where(++Index, Input, Tables);
-            Index  = WhereRS.Index;
+            Index = WhereRS.Index;
         }
         Validate(Input[Index], SEMICOLON);
 
-        Schema newSchema = oldSchema.Copy(WhereRS, (WhereClassInterface) valueNode, Column.Literal);
+        Schema newSchema = oldSchema.Copy(WhereRS, valueNode, Column.Literal);
         // Remove old table and pages,
         Catalog.RemoveSchema(tableName);
         // Swap it with our new copy.
