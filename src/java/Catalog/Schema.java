@@ -43,6 +43,14 @@ public class Schema {
         boolean Updating = Update != null;
         boolean Condition = Where != null;
         if (Condition || Updating) {
+            // Let's grab what index we're updating first, (if we are updating)
+            int UpdateIndex = -1;
+            if (Updating) {
+                for (int i = 0; i < this.Attributes.size(); i++)
+                if (this.Attributes.get(i).name.equals(ColumnName.toUpperCase())) UpdateIndex = i;
+
+                if (UpdateIndex == -1) throw new Exception("Schema does not have column named " + ColumnName);
+            }
             // Getting first page where this schema's data is stored
             int currPageId = this.PageId;
             // Getting all row data from this schema starting from the first
@@ -55,24 +63,24 @@ public class Schema {
                 for (ArrayList<Object> row : page.get_data())
                 // If there is a condition, 
                 if (Condition) {
+                    // Define if the row passes the condition
+                    Passes = Where.WhereNode.evaluate(row, this);
                     // And we are not updating, we know we delete. If not passing the condition, we wont delete it, so insert.
-                    if (!Updating && !(Passes = Where.WhereNode.evaluate(row, this))) 
+                    if (!Updating && !Passes) 
                     newSchema.Insert(row);
 
                     else // Otherwise, when we are updating, and every row gets inserted, but those who pass get altered,
                     if (Updating) {
-                        if (Passes) row.set(Where.Index, Update.evaluate(row));
+                        if (Passes) row.set(UpdateIndex, Update.evaluate(row));
                         newSchema.Insert(row);
                     }
                 } // We also need to consider updating with no condition,
                 else if (Updating) {
-                    int UpdateIndex = -1;
-                    for (int i = 0; i < this.Attributes.size(); i++)
-                        if (this.Attributes.get(i).name.equals(ColumnName.toUpperCase())) UpdateIndex = i;
-                    if (UpdateIndex == -1) throw new Exception("Schema does not have column named " + ColumnName);
                     row.set(UpdateIndex, Update.evaluate(row)); // Everything gets altered.
                     newSchema.Insert(row);
                 }
+
+                currPageId = page.get_next_pageid();
             }
         }
         return newSchema;
