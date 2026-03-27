@@ -193,7 +193,7 @@ public class Parser {
         } else throw new Exception("Column " + C + " does not exist.");
         
         WhereClassInterface WhereTree = null;
-        //Check the next Token for Where or Orderby
+        //Check the next Token for Where and/or Orderby
         if(Input[Index].Type == WHERE){
             WhereResult WhereRS = Where(++Index, Input, Tables);
             WhereTree = WhereRS.WhereNode;
@@ -201,39 +201,81 @@ public class Parser {
             Index = WhereRS.Index;
         }
 
+        String OrderBy = null;
+        if (Input[Index].Type == ORDERBY){
+            T=Input[++Index];
+            Validate(T, NAME_LITERAL);
+            if (Input[Index + 1].Type == PERIOD) { //look ahead if period
+                String cartesianCol = T.Literal;
+                Index++; //consume period
+                Index++; //consume column name
+                Validate(Input[Index], NAME_LITERAL);
+                cartesianCol = cartesianCol + "." + Input[Index].Literal;
+                OrderBy = cartesianCol;
+            } else {
+                OrderBy = T.Literal;
+            }
+            Index++;
+
+            // Force uppercase,
+            OrderBy = OrderBy.toUpperCase();
+            // Now check if orderby column is valid
+            if (NameCount.containsKey(OrderBy)) {
+                if (NameCount.get(OrderBy) > 1)
+                throw new Exception("Column " + OrderBy + " is ambiguous.");
+            } else throw new Exception("Column " + OrderBy + " does not exist.");
+        }
+
         // If we got here, great. Check for semicolon and complete the select.
         Validate(Input[Index], SEMICOLON);
 
-        if (All && Tables.size() == 1) {
-            Schema S = Catalog.GetSchema(Tables.get(0));
+        Schema S=null, S2=null, Original=null; // Old, New, and starting table.
 
-            if (S == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
-
-            S.DisplayTable(WhereTree, new ArrayList<>());
-        } else if (All && Tables.size() >= 2) {
-            Schema combindSchema = Catalog.GetSchema(Tables.get(0));
-            if (combindSchema == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
-            for(int idx = 1; idx < Tables.size(); idx++) {
-                Schema sx = Catalog.GetSchema(Tables.get(idx));
-                if (sx == null) throw new Exception("Table " + Tables.get(idx) + " does not exist.");
-                combindSchema = combindSchema.cartesianJoin(combindSchema, sx);
+        for (String Name : Tables) {
+            S2 = Catalog.GetSchema(Name);
+            // If not existing, throw.
+            if (S2 == null) 
+            throw new Exception("Table " + Name + " does not exist.");
+            // If no previous table, set it as previous, and mark as "original".
+            if (S == null) {S = S2; Original = S2;}
+            // Otherwise, join the two, and cleanup if old table is a join.
+            else {
+                S2 = S2.cartesianJoin(S,S2);
+                // If the old table is not an original table, e.g. a temporary one, clean its pages up.
+                if (S != Original) {
+                    S.Name = "_";
+                    Catalog.Schemas.add(S);
+                    Catalog.RemoveSchema("_");
+                }
+                // Now mark S2 as the old.
+                S = S2;
             }
-            combindSchema.DisplayTable(WhereTree, new ArrayList<>());
-        } else if (!All && Tables.size() == 1) { //single table
-            Schema S = Catalog.GetSchema(Tables.get(0));
-            if (S == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
-            // keep only values in requested columns
-            S.DisplayTable(WhereTree, Columns);
-        } else if (!All && Tables.size() >= 2) { //multiple tables
-            Schema combindSchema = Catalog.GetSchema(Tables.get(0));
-            if (combindSchema == null) throw new Exception("Table " + Tables.get(0) + " does not exist.");
-            for(int idx = 1; idx < Tables.size(); idx++) {
-                Schema sx = Catalog.GetSchema(Tables.get(idx));
-                if (sx == null) throw new Exception("Table " + Tables.get(idx) + " does not exist.");
-                combindSchema = combindSchema.cartesianJoin(combindSchema, sx);
-            }
-            combindSchema.DisplayTable(WhereTree, Columns);
         }
+
+        if (OrderBy != null) {
+            Schema Temp = S.Copy(null, null, null);
+            Attribute A;
+            // Mark all attributes as not primary, and our orderby as the primary.
+            for (int i=0; i<Temp.Attributes.size(); i++)
+            // Primarys are now false,
+            if ((A = Temp.Attributes.get(i)).primaryKey) 
+            A.primaryKey = false;
+            // The one matching is now the primary, and we mark it in the schema.
+            else if (A.name.contains(OrderBy)) {
+                A.primaryKey = true;
+                Temp.Primary = i;
+            } 
+            // Now swap S out for this one.
+            // If S is the same as the original, we know it is not a cartesian join, so we don't have to clean it up.
+            if (S != Original) {
+                S.Name = "_";
+                Catalog.Schemas.add(S);
+                Catalog.RemoveSchema("_");
+            }
+            S = Temp;
+        }
+
+        S.DisplayTable(WhereTree, (All) ? new ArrayList<>() : Columns);
 
         return ++Index;
     }
@@ -288,6 +330,8 @@ public class Parser {
         int count = 0;
         try {
             for (ArrayList<Object> Row : Rows) {
+                if (Row.size() != S.Attributes.size()) 
+                throw new Exception(TableName + " expects " + S.Attributes.size() + " value(s), got " + Row.size() + " value(s).");
                 // Iterate through each column and parse into actual data type,
                 for (int i = 0; i < S.Attributes.size(); i++) 
                 Row.set(i, S.Attributes.get(i).Parse(Row.get(i)));
@@ -489,6 +533,29 @@ public class Parser {
                 valueNode = new ArithmeticOpNode(valueNode, MathematicalOperator.Type, new AttributeValueNode(tableName,Lookahead.Literal,Tables));
             }
         }
+
+        // Check if updated type is same as original type
+        for (Attribute A : oldSchema.Attributes) 
+        if (A.name.equals(Column.Literal.toUpperCase())) {
+            // uses contains cause of char vs varchar
+            if (!valueNode.getType().name().contains(A.type.name())) // types must be equal,
+            throw new Exception("Type of attribute " + A.name + " does not match type of updated value.");
+
+            switch (A.type) {
+                case CHAR -> {
+                    if (Value.Literal.length() != A.typeLength)
+                    throw new Exception("Updated CHAR Value must be " + A.typeLength + " characters.");
+                }
+                case VARCHAR -> {
+                    if (Value.Literal.length() > A.typeLength)
+                    throw new Exception("Updated VARCHAR Value can be at most " + A.typeLength + " characters.");
+                }
+
+                default -> { }
+            }
+        }
+        
+
 
         //Need Where on SET (If provided)
         WhereResult WhereRS = null;
