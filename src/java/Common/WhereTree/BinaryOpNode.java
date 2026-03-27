@@ -3,6 +3,7 @@ package Common.WhereTree;
 import Common.TokenType;
 import Common.Type;
 import java.util.ArrayList;
+import Catalog.Schema;
 
 import static Common.Type.*;
 
@@ -19,7 +20,7 @@ public class BinaryOpNode implements WhereClassInterface {
 
 
     @Override
-    public boolean evaluate(ArrayList<Object> row){
+    public boolean evaluate(ArrayList<Object> row, Schema S){
         Object leftval = Left.evaluate(row);
         Object rightval = Right.evaluate(row);
         if (Left.getType() != Right.getType()){

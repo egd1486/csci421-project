@@ -4,6 +4,7 @@ import Common.*;
 import BufferManager.BufferManager;
 import Common.WhereTree.InterfaceOperandNode;
 import Common.WhereTree.WhereClassInterface;
+import Common.WhereTree.WhereResult;
 import StorageManager.StorageManager;
 
 import static Common.TokenType.TRUE;
@@ -28,7 +29,7 @@ public class Schema {
     }
 
     // COPIES SCHEMA BUT NOT DATA
-    public Schema Copy(WhereClassInterface Where, WhereClassInterface Update, String ColumnName) throws Exception {
+    public Schema Copy(WhereResult Where, WhereClassInterface Update, String ColumnName) throws Exception {
         Schema newSchema = new Schema(this.Name);
         newSchema.Primary = this.Primary;
         newSchema.PageId = BufferManager.getEmptyPage(newSchema, null).get_pageid();
@@ -41,15 +42,6 @@ public class Schema {
         boolean Updating = Update != null;
         boolean Condition = Where != null;
         if (Condition || Updating) {
-            // Let's grab what index we're updating first, (if we are updating)
-            int UpdateIndex = -1;
-            if (Updating) {
-                for (int i = 0; i < this.Attributes.size(); i++)
-                if (this.Attributes.get(i).name.equals(ColumnName.toUpperCase())) UpdateIndex = i;
-
-                if (UpdateIndex == -1) throw new Exception("Schema does not have column named " + ColumnName);
-            }
-
             // Getting first page where this schema's data is stored
             int currPageId = this.PageId;
             // Getting all row data from this schema starting from the first
@@ -63,17 +55,17 @@ public class Schema {
                 // If there is a condition, 
                 if (Condition) {
                     // And we are not updating, we know we delete. If not passing the condition, we wont delete it, so insert.
-                    if (!Updating && !(Passes = Where.evaluate(row, this))) 
+                    if (!Updating && !(Passes = Where.WhereNode.evaluate(row, this))) 
                     newSchema.Insert(row);
 
                     else // Otherwise, when we are updating, and every row gets inserted, but those who pass get altered,
                     if (Updating) {
-                        if (Passes) row.set(UpdateIndex, Update.evaluate(row, this));
+                        if (Passes) row.set(Where.Index, Update.evaluate(row, this));
                         newSchema.Insert(row);
                     }
                 } // We also need to consider updating with no condition,
                 else if (Updating) {
-                    row.set(UpdateIndex, Update.evaluate(row, this)); // Everything gets altered.
+                    row.set(Where.Index, Update.evaluate(row, this)); // Everything gets altered.
                     newSchema.Insert(row);
                 }
             }
@@ -270,7 +262,7 @@ public class Schema {
                 // Filter the rows based on the Where 
                 ArrayList<ArrayList<Object>> filteredRows = new ArrayList<>(); 
                 for (ArrayList<Object> row : pageData) {
-                    if(WhereTree == null || WhereTree.evaluate(row)){
+                    if(WhereTree == null || WhereTree.evaluate(row, this)){
                         filteredRows.add(row);
                     }
                 }
@@ -520,22 +512,6 @@ public class Schema {
             e.printStackTrace();
         }
         return null;
-    }
-
-    public Schema UpdateSchema(String ColumnName, InterfaceOperandNode value, WhereClassInterface WhereTree) throws Exception {
-        ArrayList<ArrayList<Object>> SchemaInfo = this.Select();
-        Schema newSchema = this.Copy(); //Copies Schema but not the Data;
-        for(ArrayList<Object> row : SchemaInfo){
-            if(WhereTree.evaluate(row)){
-                for(int i=0; i<Attributes.size(); i++){
-                    if(Attributes.get(i).name.equals(ColumnName.toUpperCase())){
-                        row.set(i, value.evaluate(row));
-                    }
-                }
-                newSchema.Insert(row);
-            }
-        }
-        return newSchema;
     }
 
     // cartesian join in select for schema

@@ -390,51 +390,27 @@ public class Parser {
         Tables.add(T.Literal);
         String Name = T.Literal;
 
+        Schema oldSchema = Catalog.GetSchema(Name), newSchema;
+        if (oldSchema == null)
+        throw new Exception("Table " + Name + " does not exist.");
+
         // WHERE <condition>
-        WhereClassInterface WhereTree = null;
+        WhereResult WhereRS = null;
         if(Input[Index].Type == WHERE){
-            WhereResult WhereRS = Where(++Index, Input, Tables);
-            WhereTree = WhereRS.WhereNode;
-            System.out.println(WhereTree.print());
+            WhereRS = Where(++Index, Input, Tables);
             Index = WhereRS.Index;
         }
 
         // Semicolon
         Validate(Input[Index], SEMICOLON);
         // Make new table using schema of old table
-        Schema newS = Catalog.GetSchema(Name).Copy();
-        Schema oldS = Catalog.GetSchema(Name);
-        oldS.Name = "_" + Name;
-        Catalog.Schemas.add(newS);
-            
-        // Insert into new table rows where WHERE == FALSE
-        int RowCount = 0;
-            
-        try {
-            int currPageId = oldS.PageId;
-            while (currPageId != -1){
-                Page page = BufferManager.getPage(currPageId, oldS);
-                currPageId = page.get_next_pageid();
-                if(page == null) break;
-                    
-                // Grab the page data,
-                ArrayList<ArrayList<Object>> pageData = page.get_data();
 
-                for (ArrayList<Object> row : pageData) {
-                    if(WhereTree != null && !WhereTree.evaluate(row)){
-                        newS.Insert(row);
-                    }
-                    else{
-                        RowCount ++;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Error: " + e);
-        }
-        //Delete old table
-        Catalog.RemoveSchema("_" + Name);
-        System.out.println("Deleted " + RowCount + " entries.");
+        newSchema = oldSchema.Copy(WhereRS, null, null);
+        // Drop old schema,
+        Catalog.RemoveSchema(Name);
+        // Swap with the new one.
+        Catalog.Schemas.add(newSchema);
+ 
         return ++Index;
     }
 
@@ -449,6 +425,10 @@ public class Parser {
         ArrayList<String> Tables = new ArrayList<>();
         Tables.add(Input[Index].Literal);
         String tableName = Input[Index].Literal;
+        Schema oldSchema = Catalog.GetSchema(tableName);
+
+        if (oldSchema == null) 
+        throw new Exception("Table " + tableName + " does not exist.");
 
         Validate(Input[++Index], SET);
         ++Index;
@@ -487,12 +467,19 @@ public class Parser {
             }
         }
 
-        //Need Where on SET
-        Validate(Input[Index], WHERE);
-        WhereResult WhereRS = Where(++Index, Input, Tables);
-        Index  = WhereRS.Index;
-        Schema newSchema = Catalog.GetSchema(tableName).UpdateSchema(Column.Literal, valueNode, WhereRS.WhereNode);
+        //Need Where on SET (If provided)
+        WhereResult WhereRS = null;
+        if (Input[Index].Type == WHERE) {
+            WhereRS = Where(++Index, Input, Tables);
+            Index  = WhereRS.Index;
+        }
         Validate(Input[Index], SEMICOLON);
+
+        Schema newSchema = oldSchema.Copy(WhereRS, (WhereClassInterface) valueNode, Column.Literal);
+        // Remove old table and pages,
+        Catalog.RemoveSchema(tableName);
+        // Swap it with our new copy.
+        Catalog.Schemas.add(newSchema);
 
         return ++Index;
     }

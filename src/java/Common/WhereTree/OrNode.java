@@ -2,6 +2,8 @@ package Common.WhereTree;
 
 import java.util.ArrayList;
 
+import Catalog.Schema;
+
 public class OrNode implements WhereClassInterface {
     public WhereClassInterface left;
     public WhereClassInterface right;
@@ -12,8 +14,8 @@ public class OrNode implements WhereClassInterface {
     }
 
     @Override
-    public boolean evaluate(ArrayList<Object> row) {
-        return left.evaluate(row) || right.evaluate(row);
+    public boolean evaluate(ArrayList<Object> row, Schema S) {
+        return left.evaluate(row, S) || right.evaluate(row, S);
     }
 
     @Override
