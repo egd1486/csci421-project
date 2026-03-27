@@ -2,6 +2,7 @@ package Catalog;
 
 import Common.*;
 import BufferManager.BufferManager;
+import Common.WhereTree.InterfaceOperandNode;
 import Common.WhereTree.WhereClassInterface;
 import StorageManager.StorageManager;
 
@@ -540,6 +541,22 @@ public class Schema {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public Schema UpdateSchema(String ColumnName, InterfaceOperandNode value, WhereClassInterface WhereTree) throws Exception {
+        ArrayList<ArrayList<Object>> SchemaInfo = this.Select();
+        Schema newSchema = this.Copy(); //Copies Schema but not the Data;
+        for(ArrayList<Object> row : SchemaInfo){
+            if(WhereTree.evaluate(row)){
+                for(int i=0; i<Attributes.size(); i++){
+                    if(Attributes.get(i).name.equals(ColumnName.toUpperCase())){
+                        row.set(i, value.evaluate(row));
+                    }
+                }
+                newSchema.Insert(row);
+            }
+        }
+        return newSchema;
     }
 
     // cartesian join in select for schema
