@@ -2,6 +2,8 @@ package Common;
 import Catalog.*;
 import static Common.TokenType.*;
 import Common.WhereTree.*;
+
+import java.lang.reflect.Array;
 import java.util.*;
 
 
@@ -396,10 +398,69 @@ public class Parser {
         return ++Index;
     }
 
+    // make copy of OG table schema
+    // make new table, loop through everything in original table, if it makes the where tree false add to table 
+    // if make true dont add
+    // drop OG table and rename new table
     private static int Update(int Index, Token[] Input) throws Exception { 
         // TODO
-        
-        return Index; 
+
+        //consume table name
+        Validate(Input[Index], NAME_LITERAL); 
+        ArrayList<String> Tables = new ArrayList<>();
+        Tables.add(Input[Index].Literal);
+        String tableName = Input[Index].Literal;
+
+        Validate(Input[++Index], SET);
+        ++Index;
+
+        //parse the column = val pairs
+        ArrayList<ArrayList<Token>> colValPairs = new ArrayList<>();
+        while(Input[Index].Type != WHERE && Input[Index].Type != SEMICOLON) {
+            ArrayList<Token> pair = new ArrayList<>();
+            //consume column
+            Token T = Input[Index];
+            Validate(T, NAME_LITERAL);
+            pair.add(T); 
+            //consume =
+            T = Input[++Index];
+            Validate(T, EQUAL);
+            //consume value
+            T = Input[++Index];
+            boolean isLiteral = false;
+            for (TokenType L : Literals) isLiteral |= T.Type == L;
+            if (!isLiteral) throw new Exception("Expected literal value but got " + T.Type);
+            pair.add(T);
+            // consume comma if have
+            T = Input[++Index];
+
+            colValPairs.add(pair);
+            if (T.Type == COMMA) {
+                ++Index;
+            } 
+        }
+
+         // WHERE
+        if(Input[Index].Type == WHERE){
+            WhereResult WhereRS = Where(++Index, Input, Tables);
+            WhereClassInterface WhereTree = WhereRS.WhereNode;
+            Index = WhereRS.Index;
+            // Semicolon
+            Validate(Input[Index], SEMICOLON);
+            // TODO Make new table using schema of old table
+            Schema S = Catalog.GetSchema(tableName).Copy();
+            // TODO WHERE is true = modify the row using colValPairs then insert into copy
+            //TODO WHERE is false = insert row unchanged into copy
+            // TODO Delete old table
+        }
+        else{
+            // Semicolon
+            Validate(Input[Index], SEMICOLON);
+            
+            // TODO update all entries in table using colValPairs then insert into copy
+        }
+
+        return ++Index; 
     }
 
     private static void Validate (Token Given, TokenType Expected) throws Exception {
