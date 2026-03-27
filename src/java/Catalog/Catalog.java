@@ -96,7 +96,7 @@ public class Catalog {
         attributeName = attributeName.toUpperCase();
 
         // Copy the old to a new schema under an unused name,
-        Schema newSchema = oldSchema.Copy();
+        Schema newSchema = oldSchema.Copy(null,null,null);
 
         // Add the new unique attribute,
         newSchema.AddAttribute(attributeName, T, Size, Nullable, Primary, Unique, Default, false);
@@ -126,7 +126,7 @@ public class Catalog {
         attributeName = attributeName.toUpperCase();
 
         // Make the new schema :)
-        Schema newSchema = oldSchema.Copy();
+        Schema newSchema = oldSchema.Copy(null,null,null);
         // Remove attribute from it,
         newSchema.RemoveAttribute(attributeName);
 
