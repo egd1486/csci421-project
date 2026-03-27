@@ -490,18 +490,34 @@ public class Parser {
         else return false;
     }
 
+    /**
+     * Makes a Where Tree
+     * @param Index Current Index
+     * @param Input Token List
+     * @param table What tables were working with
+     * @return WhereResult an Object that returns (WhereTree and Index)
+     * @throws Exception
+     */
     private static WhereResult Where(int Index, Token[] Input, ArrayList<String> table) throws Exception{
-        Deque<InterfaceOperandNode> vals = new ArrayDeque<>();
-        Deque<Token> ops = new ArrayDeque<>();
-        Deque<WhereClassInterface> whereTreeNodes = new ArrayDeque<>();
-        boolean simplifyMathOperation = false;
+        Deque<InterfaceOperandNode> vals = new ArrayDeque<>(); // For Values
+        Deque<Token> ops = new ArrayDeque<>(); // For Operators
+        Deque<WhereClassInterface> whereTreeNodes = new ArrayDeque<>(); // WhereTree
+        boolean simplifyMathOperation = false; // If we need to reduce a math expression
 
+        // Loop Through TokenList until we hit either SEMICOLON or ORDERBY
         while(Input[Index].Type != SEMICOLON && Input[Index].Type != ORDERBY){
-            Token T = Input[Index++];
+
+            Token T = Input[Index++]; //Current Index | Index get added
+
+            //If Token is one of the mathematical operation signal to reduce math expression
             if(PossibleMath.contains(T.Type)){
                 ops.push(T);
+                if(simplifyMathOperation){
+                    throw new Exception("Repeated Mathematical Expression Detected"); //Detects if we have + + or - - by accident
+                }
                 simplifyMathOperation = true;
             }
+
             // Handling if token is AND/OR
             else if(T.Type == AND || T.Type == OR){
                 // while there are operators with higher priority on top of op stack
@@ -522,10 +538,13 @@ public class Parser {
                 }
                 ops.push(T);
             }
+
             // Handling if token is a value
             else if(!PossibleOps.contains(T.Type)){
                 if(T.Type == NAME_LITERAL){
                     Token next = Input[Index];
+
+                    //If it's only column name assume were working with singular table.
                     if(PossibleOps.contains(next.Type)){
                         //Check if the attribute exists in the table
                         if(Schema.getAttribute(T.Literal, Catalog.GetSchema(table.get(0))) == null){
@@ -533,6 +552,8 @@ public class Parser {
                         }
                         vals.push(new AttributeValueNode(table.get(0),T.Literal));
                     }
+
+                    //Else were working with multiple tables
                     else if(next.Type == PERIOD){
 
                         //Check if the table is valid
@@ -540,8 +561,9 @@ public class Parser {
                             throw new Exception("Table: " + T.Literal + " is not a valid table. Provided Tables: " + table);
                         }
 
-                        Index++;
+                        Index++; // Move on from period
                         Token attrName = Input[Index++];
+
                         //Check if the attribute exists in the table
                         if(Schema.getAttribute(attrName.Literal, Catalog.GetSchema(T.Literal)) == null){
                             throw new Exception("Attribute " + attrName.Literal + " does not exist in table: " + T.Literal);
@@ -558,14 +580,16 @@ public class Parser {
                     }
                     else throw new Exception("Unexpected tokens: " + T.Type + ", " + next.Type.toString() + " | Expected tokens: NAME_LITERAL, PERIOD or Operator");
                 }
-                else if(PossibleVals.contains(T.Type)) vals.push(new ConstantValueNode(T.Literal, T.Type));
+                else if(PossibleVals.contains(T.Type)) vals.push(new ConstantValueNode(T.Literal, T.Type)); //Working with Constant Values
                 else throw new Exception("Unexpected token: " + T.Type.toString() + " expected literal value");
+
+                //If there's a mathematical operation we reduce the expression first and turn it into ArithemeticOpNode
                 if(simplifyMathOperation){
                     InterfaceOperandNode Right  = vals.pop();
                     InterfaceOperandNode Left = vals.pop();
                     Token MathOperation = ops.pop();
                     vals.push(new ArithmeticOpNode(Left, MathOperation.Type, Right));
-                    simplifyMathOperation = false;
+                    simplifyMathOperation = false; //We finish working with mathematical operation
                 }
             }
 
@@ -581,8 +605,6 @@ public class Parser {
             // Handling if token is a relational operator
             else ops.push(T);
         }
-
-
 
         // handling leftover operators
         while(!ops.isEmpty()){
