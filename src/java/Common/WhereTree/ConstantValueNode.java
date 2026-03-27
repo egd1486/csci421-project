@@ -52,6 +52,7 @@ public class ConstantValueNode implements InterfaceOperandNode {
 
     @Override
     public String print() {
+        if(value == null) return "null";
         return value.toString();
     }
 }

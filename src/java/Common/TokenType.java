@@ -8,7 +8,7 @@ public enum TokenType {
     DROP, ALTER, ADD,
     PRIMARYKEY, NOTNULL, UNIQUE, DEFAULT,
     ORDERBY,
-    AND, OR, IS, LIKE,
+    AND, OR, IS, NOT, LIKE,
 
     // Data Types
     INTEGER, DOUBLE, VARCHAR, CHAR, BOOLEAN, NULL,

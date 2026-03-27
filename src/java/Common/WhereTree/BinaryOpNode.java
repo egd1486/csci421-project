@@ -26,6 +26,8 @@ public class BinaryOpNode implements WhereClassInterface {
             // Error message
             // throw new Exception("Unexpected " + rightType + ", expected " + leftType ".");
         }
+        if(Operator == TokenType.IS) return Right.evaluate(row) == null && Left.evaluate(row) == null;
+        if(Operator == TokenType.NOT) return !(Right.evaluate(row) == null && Left.evaluate(row) == null);
         switch(Left.getType()){
             case INT ->{
                 switch(Operator) {
