@@ -549,8 +549,14 @@ public class Parser {
         // Check if updated type is same as original type
         for (Attribute A : oldSchema.Attributes) 
         if (A.name.equals(Column.Literal.toUpperCase())) {
+            if (valueNode.getType() == Type.NULL)
+            if (A.notNull) // If we are trying to set a not null attribute to null
+            throw new Exception("Attribute " + A.name + " can never be NULL.");
+
+            // In the case that valueNode WONT return null,
+            else // Check if the return types match up.
             // uses contains cause of char vs varchar
-            if (!valueNode.getType().name().contains(A.type.name())) // types must be equal,
+            if (valueNode.getType() != Type.NULL && !valueNode.getType().name().contains(A.type.name())) // types must be equal,
             throw new Exception("Type of attribute " + A.name + " does not match type of updated value.");
 
             switch (A.type) {
