@@ -57,6 +57,17 @@ public class BufferManager {
         return removal_page;
     }
 
+    public static Page PageFromBuffer(int pageId) {
+        Page return_page = null;
+
+        // If page is in buffer, update time.
+        if((return_page = mapId.get(pageId)) != null) 
+        return_page.set_newtime();
+
+        // return regardless
+        return return_page;
+    }
+
     /**
      * GetPage checks if page is already in buffer
      * if not find empty page or evict LRU page
@@ -66,14 +77,44 @@ public class BufferManager {
      */
     public static Page getPage(int pageId, Schema schema) throws Exception {
         //If a map contains the page id then we return page
-        Page return_page = mapId.get(pageId);
-        if(return_page != null){
-            return_page.set_newtime();
-            return return_page;
+        Page return_page = PageFromBuffer(pageId);
+
+        // If in buffer, return it normally.
+        if(return_page != null)
+        return return_page;
+
+        // Otherwise, Get the page from disk
+        Page page_from_disk = StorageManager.ReadPageFromDisk(schema, pageId);
+
+        //Else map doesn't contain id we find a free page considering at some point in random index a frame can be free
+        // due to removal of the page so linear scan O(N) check every index if we have empty page
+        for(int i = 0; i < buffer.length; i++){
+            if(buffer[i] == null){
+                buffer[i] = page_from_disk;
+                page_from_disk.set_newtime();
+                mapId.put(pageId, page_from_disk);
+                return page_from_disk;
+            }
         }
 
-        // Get the page from disk
-        Page page_from_disk = StorageManager.ReadPageFromDisk(schema, pageId);
+        //LRU method:
+        //Use System.time comparing the old time (least recently use) vs current time who ever have the largest is LRU
+        buffer[lru()] = page_from_disk;
+        page_from_disk.set_newtime();
+        mapId.put(pageId, page_from_disk);
+        return page_from_disk;
+    }
+
+    public static Page getBNode(int pageId, Attribute A) throws Exception {
+        //If a map contains the page id then we return page
+        Page return_page = PageFromBuffer(pageId);
+
+        // If in buffer, return it normally.
+        if(return_page != null)
+        return return_page;
+
+        // Otherwise, Get the page from disk
+        Page page_from_disk = StorageManager.GetBNode(pageId, A);
 
         //Else map doesn't contain id we find a free page considering at some point in random index a frame can be free
         // due to removal of the page so linear scan O(N) check every index if we have empty page

@@ -23,10 +23,13 @@ import StorageManager.StorageManager;
  *
  */
 public class Page {
-    private int pageId;
+    public int pageId;
     private ArrayList<ArrayList<Object>> data;
     private int next_page_id;
     public int freebytes;
+    public boolean bnode;
+    public boolean leafnode;
+    public Attribute attr;
     private boolean is_dirty;
     private long time;
     private Schema schema;

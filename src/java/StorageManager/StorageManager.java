@@ -140,7 +140,7 @@ public class StorageManager {
         // Write the page to disk.
         RandomAccessFile raf = new RandomAccessFile(Filename, "rw");
         raf.seek(PageStart + (P.get_pageid() * PageSize));
-        raf.write(Encode(P));
+        raf.write(P.bnode ? BNodeEncode(P) : Encode(P));
         raf.close();
     }
 
@@ -364,6 +364,116 @@ public class StorageManager {
 
         // Set the freebytes of the page now that we have climbed the stack and traversed the slots.
         P.set_freebytes(FreePtr - FixedPtr);
+
+        return P;
+    }
+
+    public static Page GetBNode(int PageId, Attribute A) throws Exception {
+        // Read page from disk, and decode it to a page object.
+        RandomAccessFile raf = new RandomAccessFile(Filename, "rw");
+        raf.seek(PageStart + (PageId * PageSize));
+
+        byte[] PageData = new byte[PageSize];
+        raf.readFully(PageData);
+        raf.close();
+
+        Page P = BNodeDecode(PageData, A);
+        P.pageId = PageId;
+
+        return BNodeDecode(PageData, A);
+    }
+
+    public static byte[] BNodeEncode(Page P) throws Exception {
+        // Prepare byte array for writing the encoded page data.
+        byte[] Data = new byte[PageSize];
+
+        // Utilize a wrapper for ease of access, and writing.
+        ByteBuffer Wrapper = ByteBuffer.wrap(Data);
+
+        // Record number of keys,
+        Wrapper.putInt(P.get_data().size());
+
+        // Record leaf status
+        Wrapper.put((byte) ((boolean) P.leafnode ? 1 : 0));
+
+        // Now write all of the pointer key pairs.
+        for (ArrayList<Object> Row : P.get_data()) {
+            // Pointer is always an int,
+            Wrapper.putInt((int) Row.get(0));
+
+            // Key can be different types, so switch and write accordingly.
+            Object Key = Row.get(1);
+            switch (P.attr.type) {
+                case INT -> Wrapper.putInt((int) Key);
+                case DOUBLE -> Wrapper.putDouble((double) Key);
+                case BOOLEAN -> Wrapper.put((byte) ((boolean) Key ? 1 : 0));
+                case CHAR,VARCHAR -> {
+                    byte[] EncodedChar = Key.toString().getBytes(StandardCharsets.UTF_8);
+                    Wrapper.putInt(EncodedChar.length); // Write length before the pointer
+                    Wrapper.put(EncodedChar);
+                }
+
+                default -> throw new Exception("Trouble encoding BNode");
+            }
+        }
+
+        return Data;
+    }
+
+    public static Page BNodeDecode(byte[] Data, Attribute A) throws Exception {
+        // Prepare wrapper for reading the encoded page data.
+        ByteBuffer Wrapper = ByteBuffer.wrap(Data);
+
+        // Create page, grab its rows storage.
+        Page P = new Page(-1, null);
+        ArrayList<ArrayList<Object>> Rows = P.get_data();
+
+        // Mark page as BNode
+        P.bnode = true;
+
+        // Now let's decode its contents
+        int Ptr = Integer.BYTES, Next = Wrapper.getInt(0);
+        
+        // Next node pointer,
+        P.set_nextpageid(Next);
+
+        // Mark whether this is a leaf or internal node,
+        P.leafnode = Wrapper.get(Ptr++) != 0;
+
+        // Mark the attribute this node is sorted on,
+        P.attr = A;
+    
+        // Number of entries,
+        int NumEntries = Wrapper.getInt(Ptr); 
+        Ptr += Integer.BYTES;
+
+        // Now decode the rest of the pointers and keys,
+        int KeySize = switch (A.type) { // Size of key
+            case INT -> Integer.BYTES;
+            case DOUBLE -> Double.BYTES;
+            case BOOLEAN -> 1;
+            case CHAR,VARCHAR -> Integer.BYTES + A.typeLength;
+
+            default -> throw new Exception("Trouble decoding BNode");
+        };
+
+        int SlotSize = KeySize + Integer.BYTES, Offset; // Size of each slot (pointer + key)
+        
+        for (int i = 0; i < NumEntries; i++) {
+            // Get pointer and key,
+            int Pointer = Wrapper.getInt(Ptr + (Offset = SlotSize * i)), KeyPtr = Ptr + Offset + Integer.BYTES;
+
+            Object Key = switch (A.type) {
+                case INT -> Wrapper.getInt(KeyPtr);
+                case DOUBLE -> Wrapper.getDouble(KeyPtr);
+                case BOOLEAN -> Wrapper.get(KeyPtr) != 0;
+                case CHAR,VARCHAR -> new String(Data, KeyPtr+Integer.BYTES, Wrapper.getInt(KeyPtr), StandardCharsets.UTF_8);
+                default -> throw new Exception("Trouble decoding BNode");
+            };
+
+            // Add key and pointer to rows
+            Rows.add(new ArrayList<Object>(){{add(Pointer);add(Key);}});
+        }
 
         return P;
     }
