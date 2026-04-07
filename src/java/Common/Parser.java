@@ -258,8 +258,9 @@ public class Parser {
             Integer OldPrimary = S.Primary;
             Boolean OldDuplicateKeys = S.DuplicateKeys;
 
+            String AName;
             for (int i=0; i<S.Attributes.size(); i++)
-            if (S.Attributes.get(i).name.contains(OrderBy)) {
+            if ((AName = S.Attributes.get(i).name).contains(OrderBy) || OrderBy.contains(AName)) {
                 S.Primary = i;
                 break;
             }
@@ -458,8 +459,6 @@ public class Parser {
     }
 
     private static int Delete(int Index, Token[] Input) throws Exception { 
-        // TODO
-
         // FROM
         Validate(Input[Index++], FROM);
         ArrayList<String> Tables = new ArrayList<>();
@@ -573,7 +572,6 @@ public class Parser {
             }
         }
         
-
 
         //Need Where on SET (If provided)
         WhereResult WhereRS = null;

@@ -83,6 +83,16 @@ public class Attribute { //for one column
     }
 
     public int Compare(Object O1, Object O2) {
+        boolean isnull = O1 == null;
+
+        // If o1 or o2 is null,
+        if (isnull || O2 == null)
+        if (O1 == O2) return 0; // if they are equal, they are both null
+
+        else // otherwise one value exists, if o1 doesnt exist assume lesser, otherwise greater
+        return (isnull) ? -1 : 1;
+
+        // If we get this far then neither are null and we must parse normally.
         switch (this.type) {
             case INT: return Integer.compare((Integer)O1, (Integer)O2); 
             case DOUBLE: return Double.compare((Double)O1, (Double)O2); 
