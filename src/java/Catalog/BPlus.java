@@ -1,11 +1,11 @@
 package Catalog;
 
 import Common.Page;
+import java.util.Stack;
 import Common.Attribute;
 import java.util.ArrayList;
 import BufferManager.BufferManager;
 import StorageManager.StorageManager;
-import java.lang.reflect.Array;
 
 public class BPlus {
     Schema Schema;
@@ -45,16 +45,50 @@ public class BPlus {
         return Current;
     }
 
-    public void Insert(Object Key) throws Exception {
+    public void Insert(Comparable<Object> Key, Integer Ptr) throws Exception {
+        Page Current = BufferManager.getBNode(Root, Attribute);
+
+        Stack<Integer> PageStack = new Stack<>();
+
+        // Traverse to the leaf node, noting all pages we traverse in the stack as we move.
+        while (!Current.leafnode) {
+            PageStack.push(Current.get_pageid());
+            ArrayList<ArrayList<Object>> Rows = Current.get_data();
+
+            boolean NotNext = false; // Mark if sub-page found, otherwise next page id used.
+            for (ArrayList<Object> Row : Rows) {
+                Comparable<Object> CKey = (Comparable<Object>) Row.get(1);
+
+                // Update the notnext flag, and check if we found the right child.
+                if (NotNext = Key.compareTo(CKey) >= 0) {
+                    Current = BufferManager.getBNode((Integer) Row.get(0), Attribute);
+                    break;
+                }
+            }
+
+            if (!NotNext) Current = BufferManager.getPage(Current.get_next_pageid(), this.Schema);
+        }
+
+        // Now that Current is on the relevant leaf node,
+        // We have to first validate if there is room:
+        int N = this.Attribute.GetBNodeN();
         
-        Page Leaf = FindLeaf((Comparable<Object>) Key);
+        ArrayList<ArrayList<Object>> Rows = Current.get_data();
 
-        // If key already in this leaf, throw.
-        if (this.Find((Comparable<Object>) Key, Leaf) != null) 
-        throw new Exception ("Key already exists in the tree.");
+        // First check if the key already exists in here.
+        for (ArrayList<Object> Row : Rows)
+        if (Row.get(1).equals(Key))
+        throw new Exception("Duplicate entry in B+ Tree, cannot insert.");
+        
+        // Now we know the insertion is unique, so let's insert here.
+        if (Rows.size() >= N - 1) {
+            // If there is no room, we need to split.
+            
+        } 
+        // Otherwise the leaf has room and we just need to drop it in.
+        else {
 
-        //Otherwise, handle insertion logic:
-
+        }
     }
 
     // Returns the page id containing the key. Null if not found.

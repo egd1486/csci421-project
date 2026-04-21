@@ -1,5 +1,7 @@
 package Common;
 
+import static Common.TokenType.DOUBLE;
+
 import StorageManager.StorageManager;
 
 public class Attribute { //for one column
@@ -36,6 +38,17 @@ public class Attribute { //for one column
             default:
                 return 0;
         }
+    }
+
+    // (Page size - (Leaf flag + Next page ptr + Num entries))/Size of entry
+    public Integer GetBNodeN() {
+        return (StorageManager.PageSize - (1 + (2 * Integer.BYTES))) / (Integer.BYTES + switch(this.type) {
+            case BOOLEAN -> 1;
+            case INT -> Integer.BYTES;
+            case DOUBLE -> Double.BYTES;
+            case CHAR,VARCHAR -> Integer.BYTES + this.typeLength; // Length padded as well as max size required
+            default -> 1;
+        });
     }
 
     // Parses string representation to actual type. 

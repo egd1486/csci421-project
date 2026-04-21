@@ -390,11 +390,14 @@ public class StorageManager {
         // Utilize a wrapper for ease of access, and writing.
         ByteBuffer Wrapper = ByteBuffer.wrap(Data);
 
+        // Record next page,
+        Wrapper.putInt(P.get_next_pageid());
+
         // Record number of keys,
         Wrapper.putInt(P.get_data().size());
 
         // Record leaf status
-        Wrapper.put((byte) ((boolean) P.leafnode ? 1 : 0));
+        Wrapper.put((byte) (P.leafnode ? 1 : 0));
 
         // Now write all of the pointer key pairs.
         for (ArrayList<Object> Row : P.get_data()) {
@@ -437,15 +440,15 @@ public class StorageManager {
         // Next node pointer,
         P.set_nextpageid(Next);
 
+        // Number of entries,
+        int NumEntries = Wrapper.getInt(Ptr); 
+        Ptr += Integer.BYTES;
+
         // Mark whether this is a leaf or internal node,
         P.leafnode = Wrapper.get(Ptr++) != 0;
 
         // Mark the attribute this node is sorted on,
         P.attr = A;
-    
-        // Number of entries,
-        int NumEntries = Wrapper.getInt(Ptr); 
-        Ptr += Integer.BYTES;
 
         // Now decode the rest of the pointers and keys,
         int KeySize = switch (A.type) { // Size of key
