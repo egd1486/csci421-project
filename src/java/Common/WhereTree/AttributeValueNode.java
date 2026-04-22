@@ -62,4 +62,8 @@ public class AttributeValueNode implements InterfaceOperandNode {
         return row.get(columnIndex);
     }
 
+    public Schema getSchema() {
+        return S;
+    }
+
 }
