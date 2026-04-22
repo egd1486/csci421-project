@@ -78,7 +78,7 @@ public class Page {
 //        return data_return;
 //    }
 
-    public void split_page() throws Exception {
+    public Page split_page(boolean count_freebytes) throws Exception {
         // Define useful variables for iterating,
         int size = this.data.size();
         int half = size / 2;
@@ -114,8 +114,12 @@ public class Page {
         NewPage.set_isdirty(true);
 
         // Force freebyte recalculation for both pages now :)
-        this.recalculate_freebytes();
-        NewPage.recalculate_freebytes();
+        if (count_freebytes) {
+            this.recalculate_freebytes();
+            NewPage.recalculate_freebytes();
+        }
+
+        return NewPage;
     }
 
     public void recalculate_freebytes() throws Exception {

@@ -498,7 +498,7 @@ public class Schema {
             // Mark page dirty,
             P.set_isdirty(true);
             // Split page if it is now overfull.
-            if (P.freebytes < RowSize) P.split_page();
+            if (P.freebytes < RowSize) P.split_page(true);
             // Otherwise, decrement freebytes as you should be doing.
             else P.freebytes -= RowSize;
             return;
