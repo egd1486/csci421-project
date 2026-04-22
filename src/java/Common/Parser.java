@@ -25,6 +25,8 @@ public class Parser {
             INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL, TRUE, FALSE, NULL
     );
 
+    public static boolean Indexing = false;
+
     private static int Create(int Index, Token[] Input) throws Exception {
         // Validate syntax for "TABLE <name>"
         Token T; 
@@ -614,6 +616,12 @@ public class Parser {
      * @throws Exception
      */
     private static WhereResult Where(int Index, Token[] Input, ArrayList<String> table) throws Exception{
+        if (Indexing) {
+
+        } else {
+            
+        }
+
         Deque<InterfaceOperandNode> vals = new ArrayDeque<>(); // For Values
         Deque<Token> ops = new ArrayDeque<>(); // For Operators
         Deque<WhereClassInterface> whereTreeNodes = new ArrayDeque<>(); // WhereTree

@@ -18,9 +18,11 @@ public class JottQL{
         boolean indexing = true;
         if(args[3].equalsIgnoreCase("true")){
             indexing = true;
+            Parser.Indexing = true;
         }
         else if(args[3].equalsIgnoreCase("false")){
             indexing = false;
+            Parser.Indexing = false;
         }
         else{
             System.out.println("<indexing> expected boolean value, got " + args[3]);
