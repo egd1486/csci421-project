@@ -115,7 +115,10 @@ public class BPlus {
 
     // Direction: 0 for equal, -1 for less than, 1 for greater than.
     public ArrayList<Integer> Filter(Object Key, int Direction) {
-        ArrayList<Integer> Result = new ArrayList<Integer>();
+        ArrayList<Integer> Result = new ArrayList<Integer>(); //PageIds
+// 0: The two values are equal.
+// Positive Integer (>0): The first value is greater than the second.
+// Negative Integer (<0): The first value is less than the second. 
 
 
 
