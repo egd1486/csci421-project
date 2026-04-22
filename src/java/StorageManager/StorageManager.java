@@ -380,7 +380,7 @@ public class StorageManager {
         Page P = BNodeDecode(PageData, A);
         P.pageId = PageId;
 
-        return BNodeDecode(PageData, A);
+        return P;
     }
 
     public static byte[] BNodeEncode(Page P) throws Exception {

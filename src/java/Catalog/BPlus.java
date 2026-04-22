@@ -87,13 +87,14 @@ public class BPlus {
             NewRow.add(Key);
 
             // Find where to insert it,
+            boolean found = false;
             int i = 0; 
-            for (;i++<Rows.size();)
-            if (((Comparable<Object>) Rows.get(i).get(1)).compareTo(Key) >= 0) break;
+            
+            for (;i<Rows.size(); i++)
+            if (found = (((Comparable<Object>) Rows.get(i).get(1)).compareTo(Key) >= 0)) break;
 
-            // In the case i is less than the size, we know it found an entry higher than it.
-            // Meaning, we can insert inside, instead of adjusting the next_page ptr.
-            if (i < Rows.size()) {
+            // if found a larger key inside, we insert behind it, and update the pointer ahead of it.
+            if (found) {
                 Rows.get(i).set(0, Ptr); // Replace pointer right of our insertion to be greater than
                 NewRow.set(0, (i>0) ? Rows.get(i-1).get(0) : 0); // Update left pointer of new insertion to be less, or 0 if n/a
                 Rows.add(i, NewRow); // Insert new entry.
@@ -109,6 +110,10 @@ public class BPlus {
                     NewRow.set(0, Current.get_next_pageid()); // Rightmost ptr is the next page id
                     Rows.add(NewRow); // Add our row at the end,
                     Current.set_nextpageid(Ptr); // Update next page id to have the new pointer to page (or other bnode)
+                } else {
+                    // Leaf: append new entry at end and set the left pointer to previous rightmost (or 0)
+                    NewRow.set(0, (Rows.size() > 0) ? Rows.get(Rows.size()-1).get(0) : 0);
+                    Rows.add(NewRow);
                 }
 
             }
@@ -161,8 +166,6 @@ public class BPlus {
             // Break out of the loop as our work is done.
             break;
         }
-
-
     }
 
     // Returns the page id containing the key. Null if not found.
@@ -188,18 +191,81 @@ public class BPlus {
     }
 
     // Direction: 0 for equal, -1 for less than, 1 for greater than.
-    public ArrayList<Integer> Filter(Object Key, int Direction) {
+    public ArrayList<Integer> Filter(Comparable<Object> Key, int Direction) throws Exception {
         ArrayList<Integer> Result = new ArrayList<Integer>(); //PageIds
-// 0: The two values are equal.
-// Positive Integer (>0): The first value is greater than the second.
-// Negative Integer (<0): The first value is less than the second. 
+        // 0: The two values are equal.
+        // Positive Integer (>0): The first value is greater than the second.
+        // Negative Integer (<0): The first value is less than the second. 
 
+        // Handle first leaf that we land on.
+        Page Leaf = FindLeaf(Key);
 
+        for (ArrayList<Object> Row : Leaf.get_data()) {
+            Comparable<Object> CKey = (Comparable<Object>) Row.get(1);
+            int C = CKey.compareTo(Key);
+
+            if (C == Direction) Result.add((Integer) Row.get(0));
+        }
+
+        // Now that we filtered on this leaf, we need to traverse the others.
+        if (Direction > 0) {
+            int Next = Leaf.get_next_pageid();
+            Leaf = (Next > 0) ? BufferManager.getBNode(Next, Attribute) : null;
+            while (Leaf != null) {
+                // Add all the pages of this leaf.
+                for (ArrayList<Object> Row : Leaf.get_data()) 
+                Result.add((Integer) Row.get(0));
+                // Determine if next leaf exists.
+                Next = Leaf.get_next_pageid();
+                Leaf = (Next > 0) ? BufferManager.getBNode(Next, Attribute) : null;
+            }
+        } else if (Direction < 0) {
+            // We need to find the leftmost leaf and traverse right until we hit the original leaf.
+            int Target = Leaf.get_pageid();
+
+            Leaf = BufferManager.getBNode(Root, Attribute);
+            while (!Leaf.leafnode) {
+                int Leftmost = (Integer) Leaf.get_data().get(0).get(0);
+                
+                // If the leftmost page is the target, we already did the bottomleft leaf, and can quit ahead.
+                if (Leftmost == Target) return Result; 
+
+                // Otherwise keep moving down.
+                Leaf = BufferManager.getBNode(Leftmost, Attribute);
+            }
+            // Now that we are the bottomleft leaf, we scan right, adding pages until we hit the original leaf.
+            int Next;
+            while (true) {
+                // Add all pages.
+                for (ArrayList<Object> Row : Leaf.get_data())
+                Result.add((Integer) Row.get(0));
+
+                Next = Leaf.get_next_pageid();
+                if (Next == Target) break; // Break if we are about to move into the original leaf.
+                // Otherwise, advance.
+                
+                Leaf = BufferManager.getBNode(Next, Attribute);
+            }
+        }
 
         return Result;
     }
 
-    public void Clear() {
-        // TODO, traverse all nodes and free their pages.
+    public void Clear() throws Exception {
+        Stack<Integer> PageStack = new Stack<>();
+
+        PageStack.push(Root);
+
+        while (!PageStack.isEmpty()) {
+            Page Current = BufferManager.getBNode(PageStack.pop(), Attribute);
+            StorageManager.FreePage(Current);
+
+            // Skip rest of entries here if leaf, since they are table pages.
+            if (Current.leafnode) continue;
+
+            // Otherwise, we need to add all child pages to the stack to be freed as well
+            for (ArrayList<Object> Row : Current.get_data())
+            PageStack.push((Integer) Row.get(0));
+        }
     }
 }
