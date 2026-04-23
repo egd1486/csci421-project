@@ -148,10 +148,16 @@ public class Schema {
         
         Attribute A = new Attribute(Name, T, Size, isPrimary, isNullable, isUnique, Default);
         // Attribute A = new Attribute(Name, T, Size, Primary, Nullable, Unique, Default);
-        if(!Primary && Unique) A.BPlusTree = new BPlus(this, A, null);
-        A.bTree = A.BPlusTree.Root;
-        Attributes.add(A);
+        if(!Primary && Unique && Parser.Indexing) {
+            A.BPlusTree = new BPlus(this, A, null);
+            A.bTree = A.BPlusTree.Root;  
+        }
+        else{
+            A.BPlusTree = null;
+            A.bTree = null;
+        }
 
+        Attributes.add(A);
         return A;
     }
 
