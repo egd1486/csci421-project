@@ -109,12 +109,13 @@ public class Parser {
         S.AddAttribute(A.name, A.type, A.typeLength, A.notNull, A.primaryKey, A.unique, A.defaultVal, false);
 
         // Configure a BTree for the primary key of this table.
-        if (S.Primary != null) {
+        if (S.Primary != null && Indexing) {
             Attribute PrimaryA = S.Attributes.get(S.Primary);
 
             // Set the bTree for the primary key.
             BPlus B = new BPlus(S, PrimaryA, null);
             PrimaryA.bTree = B.Root;
+            S.Index = B;
         }
 
         // Return start of next command, which is past semicolon.
@@ -663,22 +664,22 @@ public class Parser {
                         InterfaceOperandNode right = vals.pop();
                         InterfaceOperandNode left = vals.pop();
                         whereTreeNodes.push(new BinaryOpNode(left, op.Type, right));
-                        if (Indexing) {
-                            // find if left or right is attribute and primary
-                            if (left instanceof AttributeValueNode && right instanceof ConstantValueNode) {
-                                AttributeValueNode leftNode = (AttributeValueNode) left;
-                                String leftNodeName = leftNode.get_attribute_node().name;
-                                if (Schema.getAttribute(leftNodeName, leftNode.getSchema()).primaryKey) {
-                                    simplifiedTreeNodes.push(new BinaryOpNode(left, op.Type, right));
-                                }
-                            } else if (right instanceof AttributeValueNode && left instanceof ConstantValueNode) {
-                                AttributeValueNode rightNode = (AttributeValueNode) right;
-                                String rightNodeName = rightNode.get_attribute_node().name;
-                                if (Schema.getAttribute(rightNodeName, rightNode.getSchema()).primaryKey) {
-                                    simplifiedTreeNodes.push(new BinaryOpNode(left, op.Type, right));
-                                }
-                            }
-                        }
+                        // if (Indexing) {
+                        //     // find if left or right is attribute and primary
+                        //     if (left instanceof AttributeValueNode && right instanceof ConstantValueNode) {
+                        //         AttributeValueNode leftNode = (AttributeValueNode) left;
+                        //         String leftNodeName = leftNode.get_attribute_node().name;
+                        //         if (Schema.getAttribute(leftNodeName, leftNode.getSchema()).primaryKey) {
+                        //             simplifiedTreeNodes.push(new BinaryOpNode(left, op.Type, right));
+                        //         }
+                        //     } else if (right instanceof AttributeValueNode && left instanceof ConstantValueNode) {
+                        //         AttributeValueNode rightNode = (AttributeValueNode) right;
+                        //         String rightNodeName = rightNode.get_attribute_node().name;
+                        //         if (Schema.getAttribute(rightNodeName, rightNode.getSchema()).primaryKey) {
+                        //             simplifiedTreeNodes.push(new BinaryOpNode(left, op.Type, right));
+                        //         }
+                        //     }
+                        // }
                         continue;
                     }
                     else if(op.Type != AND && op.Type != OR){
@@ -688,11 +689,11 @@ public class Parser {
                     WhereClassInterface left = whereTreeNodes.pop();
                     whereTreeNodes.push(op.Type == AND ? new AndNode(left, right) : new OrNode(left, right));
 
-                    if (Indexing) {
-                        WhereClassInterface rightMini = simplifiedTreeNodes.pop();
-                        WhereClassInterface leftMini = simplifiedTreeNodes.pop();
-                        simplifiedTreeNodes.push(op.Type == AND ? new AndNode(leftMini, rightMini) : new OrNode(leftMini, rightMini));
-                    }
+                    // if (Indexing) {
+                    //     WhereClassInterface rightMini = simplifiedTreeNodes.pop();
+                    //     WhereClassInterface leftMini = simplifiedTreeNodes.pop();
+                    //     simplifiedTreeNodes.push(op.Type == AND ? new AndNode(leftMini, rightMini) : new OrNode(leftMini, rightMini));
+                    // }
                 }
                 ops.push(T);
             }
@@ -777,35 +778,35 @@ public class Parser {
                     InterfaceOperandNode left = vals.pop();
                     whereTreeNodes.push(new BinaryOpNode(left, op.Type, right));
 
-                    if (Indexing) {
-                         if (left instanceof AttributeValueNode && right instanceof ConstantValueNode) {
-                            AttributeValueNode leftNode = (AttributeValueNode) left;
-                            String leftNodeName = leftNode.get_attribute_node().name;
-                            if (Schema.getAttribute(leftNodeName, leftNode.getSchema()).primaryKey) {
-                                simplifiedTreeNodes.push(new BinaryOpNode(left, op.Type, right));
-                            }
-                        } else if (right instanceof AttributeValueNode && left instanceof ConstantValueNode) {
-                            AttributeValueNode rightNode = (AttributeValueNode) right;
-                            String rightNodeName = rightNode.get_attribute_node().name;
-                            if (Schema.getAttribute(rightNodeName, rightNode.getSchema()).primaryKey) {
-                                simplifiedTreeNodes.push(new BinaryOpNode(left, op.Type, right));
-                            }
-                        }
-                    }
+                    // if (Indexing) {
+                    //      if (left instanceof AttributeValueNode && right instanceof ConstantValueNode) {
+                    //         AttributeValueNode leftNode = (AttributeValueNode) left;
+                    //         String leftNodeName = leftNode.get_attribute_node().name;
+                    //         if (Schema.getAttribute(leftNodeName, leftNode.getSchema()).primaryKey) {
+                    //             simplifiedTreeNodes.push(new BinaryOpNode(left, op.Type, right));
+                    //         }
+                    //     } else if (right instanceof AttributeValueNode && left instanceof ConstantValueNode) {
+                    //         AttributeValueNode rightNode = (AttributeValueNode) right;
+                    //         String rightNodeName = rightNode.get_attribute_node().name;
+                    //         if (Schema.getAttribute(rightNodeName, rightNode.getSchema()).primaryKey) {
+                    //             simplifiedTreeNodes.push(new BinaryOpNode(left, op.Type, right));
+                    //         }
+                    //     }
+                    // }
                 }
                 case AND, OR -> {
                     WhereClassInterface right = whereTreeNodes.pop();
                     WhereClassInterface left = whereTreeNodes.pop();
                     whereTreeNodes.push(op.Type == AND ? new AndNode(left, right) : new OrNode(left, right));
 
-                    if (Indexing) {
-                        //both sides of have primary conditions 
-                        if (simplifiedTreeNodes.size() == 2) {
-                            WhereClassInterface rightMini = simplifiedTreeNodes.pop();
-                            WhereClassInterface leftMini = simplifiedTreeNodes.pop();
-                            simplifiedTreeNodes.push(op.Type == AND ? new AndNode(leftMini, rightMini) : new OrNode(leftMini, rightMini));
-                        }
-                    }
+                    // if (Indexing) {
+                    //     //both sides of have primary conditions 
+                    //     if (simplifiedTreeNodes.size() == 2) {
+                    //         WhereClassInterface rightMini = simplifiedTreeNodes.pop();
+                    //         WhereClassInterface leftMini = simplifiedTreeNodes.pop();
+                    //         simplifiedTreeNodes.push(op.Type == AND ? new AndNode(leftMini, rightMini) : new OrNode(leftMini, rightMini));
+                    //     }
+                    // }
                 }
                 default -> {
                     throw new Exception("Unexpected token: " + op.Type.toString() + " expected literal value");

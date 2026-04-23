@@ -5,13 +5,19 @@ import Common.Type;
 import java.util.ArrayList;
 import Catalog.Schema;
 
+import static Common.TokenType.EQUAL;
+import static Common.TokenType.GREATER;
+import static Common.TokenType.GREATER_EQUAL;
+import static Common.TokenType.LESS;
+import static Common.TokenType.LESS_EQUAL;
+import static Common.TokenType.NOT_EQUAL;
 import static Common.Type.*;
 
 public class BinaryOpNode implements WhereClassInterface {
 
-    InterfaceOperandNode Left;
-    InterfaceOperandNode Right;
-    TokenType Operator;
+    public InterfaceOperandNode Left;
+    public InterfaceOperandNode Right;
+    public TokenType Operator;
     public BinaryOpNode(InterfaceOperandNode left, TokenType Operator, InterfaceOperandNode right) {
         this.Left = left;
         this.Operator = Operator;
