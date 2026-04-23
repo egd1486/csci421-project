@@ -150,7 +150,7 @@ public class Schema {
         
         Attribute A = new Attribute(Name, T, Size, isPrimary, isNullable, isUnique, Default);
         // Attribute A = new Attribute(Name, T, Size, Primary, Nullable, Unique, Default);
-        if(!isPrimary && isUnique && Parser.Indexing) {
+        if(isPrimary && isUnique && Parser.Indexing) {
             A.BPlusTree = new BPlus(this, A, null);
             A.bTree = A.BPlusTree.Root;  
         }
