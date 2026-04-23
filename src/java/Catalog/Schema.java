@@ -108,6 +108,8 @@ public class Schema {
             if (newSchema.Index != null) {
                 newSchema.Index.Clear();
             }
+            for (Attribute Attr : newSchema.Attributes)
+                if (Attr.BPlusTree != null) Attr.BPlusTree.Clear();
             // Clean up pages
             int currPageId = newSchema.PageId;
             while (currPageId != -1) {
