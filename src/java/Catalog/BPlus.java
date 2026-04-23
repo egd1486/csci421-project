@@ -83,7 +83,7 @@ public class BPlus {
                 }
             }
 
-            if (!NotNext) Current = BufferManager.getPage(Current.get_next_pageid(), this.Schema);
+            if (!NotNext) Current = BufferManager.getBNode(Current.get_next_pageid(), Attribute);
         }
 
         // Now that Current is on the relevant leaf node,

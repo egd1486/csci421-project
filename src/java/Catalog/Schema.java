@@ -303,7 +303,7 @@ public class Schema {
                 int dashes = 1;
                 for(int width : columnWidths) dashes += width + 3;
                 // page # time
-                String Title = " [Page " + PageCount++ + "]";
+                String Title = " [Page " + PageCount++ + "] (Page " + currPageId +")";
                 for(int i = 0; i < dashes; i++) System.out.print("-");
                 System.out.print(Title);
                 System.out.println();
@@ -361,12 +361,12 @@ public class Schema {
         // Define row size for insertion validation,
         int RowSize = this.GetRowByteSize(Row);
 
-        // Define indices that must be unique
-        boolean[] Uniques = new boolean[Attributes.size()];
-        boolean HasUnique = false;
-        // Loop through and mark uniques, sets HasUnique to true if any are unique
-        for (int i = 0; i < Attributes.size(); HasUnique |= Uniques[i++])
-        Uniques[i] = Attributes.get(i).unique;
+        // // Define indices that must be unique
+        // boolean[] Uniques = new boolean[Attributes.size()];
+        // boolean HasUnique = false;
+        // // Loop through and mark uniques, sets HasUnique to true if any are unique
+        // for (int i = 0; i < Attributes.size(); HasUnique |= Uniques[i++])
+        // Uniques[i] = Attributes.get(i).unique;
 
         // Now the crux of inserting here is first finding the proper page to insert into
         // If there is a unique attribute, we must check its uniqueness.
@@ -374,17 +374,17 @@ public class Schema {
 
         // Grab start page,
         Page P = BufferManager.getPage(this.PageId, this);
-        // Iterate until we validate all uniques, or until we just find a goal page without any complication.
-        while ( (HasUnique && P != null) || (!HasUnique && Goal < 0) ) {
+
+        // Iterate until a goal.
+        while (Goal < 0) {
             ArrayList<ArrayList<Object>> Data = P.get_data();
             int Next = P.get_next_pageid();
-            // If there's a pkey, pages are sorted, so let's evaluate if this is the right page.
             if (Primary != null) {
                 Object PKey = Row.get(Primary), PagePKey;
                 Attribute PAttr = Attributes.get(Primary);
 
                 // If empty, we at the tail. all other previous options were invalid.
-                if (Data.size() == 0 && Goal < 0) Goal = P.get_pageid();
+                if (Data.size() == 0) {Goal = P.get_pageid(); break;}
                 // Otherwise, we have other values to consider:
                 else {
                     // Grab the primary key of the last row to validate 
@@ -395,9 +395,9 @@ public class Schema {
                     // If PKey is the greatest in the page, either we need to place this row at the end, or move to the next page.
                     if (Greatest)
                     // If there is no next page, we are at the end.
-                    if (Next == -1 && Goal < 0) Goal = P.get_pageid();
+                    if (Next == -1) {Goal = P.get_pageid(); break;}
                     // Otherwise we gotta look at next instead.
-                    else P = BufferManager.getPage(Next, this);
+                    else {P = BufferManager.getPage(Next, this); continue;}
 
                     // If pkey is equal then quit, that's not allowed. (if no duplicates allowed.)
                     if (!DuplicateKeys && C == 0) throw new Exception("Primary Key already in use.");
@@ -405,10 +405,9 @@ public class Schema {
                     // Otherwise, we are at the goal since duplicates are allowed, or we are less than.
                     // If the pkey is less than page's last pkey is greater than the row's pkey, we are in the right place.
                     // if (C < 0) 
-                    if (Goal < 0) Goal = P.get_pageid();
+                    Goal = P.get_pageid();
                 }
             }
-
             // If there's no primary key, we just find a page with an opening.
             // If there's room here, we got a goal.
             else if (P.freebytes >= RowSize) Goal = P.get_pageid();
@@ -427,26 +426,6 @@ public class Schema {
                 
                 P = newPage;
             }
-
-            // And after all cases of deciding where to insert, we need to check uniqueness if necessary
-            if (HasUnique) {
-                // Get the data,
-                Data = P.get_data();
-                // For each unique attribute,
-                for (int i=0; i<Attributes.size(); i++)
-                if (Uniques[i])
-                for (ArrayList<Object> row : Data)
-                // Given that the attributes are not null,
-                if (row.get(i) != null && Row.get(i) != null)
-                // If an equivalent value is found,
-                if (row.get(i).equals(Row.get(i)))
-                // raise hell
-                throw new Exception(Attributes.get(i).name + " must be unique.");
-
-                // If no exceptions are thrown, we are good to proceed
-                P = (Next > 0) ? BufferManager.getPage(Next, this) : null;
-            }       
-            
         }
 
         if (Goal == -1) throw new Exception("Could not find a page to insert into?");
