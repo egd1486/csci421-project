@@ -26,6 +26,7 @@ public class Catalog {
             AttributeTable.AddAttribute("Unique", Type.BOOLEAN, 0, false, false, false, null,false);
             AttributeTable.AddAttribute("Primary", Type.BOOLEAN, 0, false, false, false, null, false);
             AttributeTable.AddAttribute("DefaultValue", Type.VARCHAR, 50, false, false, false, null, false);
+            AttributeTable.AddAttribute("bTree", Type.INT, 50, false, false, false, null, false);
             
         } catch (Exception e) {
             throw new ExceptionInInitializerError(e);

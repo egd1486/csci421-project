@@ -1,6 +1,7 @@
 package Common;
 import BufferManager.BufferManager;
 import Catalog.*;
+import Catalog.BPlus;
 import static Common.TokenType.*;
 import Common.WhereTree.*;
 import java.util.*;
@@ -106,6 +107,15 @@ public class Parser {
         // Loop through and call through AddAttribute for validation,
         for (Attribute A : Attributes) 
         S.AddAttribute(A.name, A.type, A.typeLength, A.notNull, A.primaryKey, A.unique, A.defaultVal, false);
+
+        // Configure a BTree for the primary key of this table.
+        if (S.Primary != null) {
+            Attribute PrimaryA = S.Attributes.get(S.Primary);
+
+            // Set the bTree for the primary key.
+            BPlus B = new BPlus(S, PrimaryA, null);
+            PrimaryA.bTree = B.Root;
+        }
 
         // Return start of next command, which is past semicolon.
         return ++Index;

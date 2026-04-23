@@ -198,6 +198,7 @@ public class BufferManager {
                     newRow.add(attr.unique); //Unique
                     newRow.add(attr.primaryKey); //Primary
                     newRow.add(attr.defaultVal); //DefaultValue
+                    newRow.add(attr.bTree); // bTree node
                     newTable.add(newRow);
                 }
             }

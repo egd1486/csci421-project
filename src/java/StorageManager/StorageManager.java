@@ -182,9 +182,11 @@ public class StorageManager {
             Type T = Type.values()[(Integer) Row.get(3)];
             Boolean NotNull = (Boolean)Row.get(5), Primary = (Boolean)Row.get(7), Unique = (Boolean)Row.get(6);
             String AName = Row.get(2).toString();
+            Integer bTree = (Integer) Row.get(9);
 
             // Recreate attributes
-            S.AddAttribute(AName, T, Size, NotNull, Primary, Unique, Row.get(8), false);
+            Attribute A = S.AddAttribute(AName, T, Size, NotNull, Primary, Unique, Row.get(8), false);
+            A.bTree = bTree;
         }
     }
 

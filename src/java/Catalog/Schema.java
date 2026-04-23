@@ -340,6 +340,16 @@ public class Schema {
             System.out.println("Error: " + e);
         }
         System.out.println("Displaying " + RowCount + " rows.");
+
+        if (Primary != null) {
+            Attribute Prime = this.Attributes.get(this.Primary);
+            try {
+                BPlus B = new BPlus(this, Prime, Prime.bTree);
+                B.PrintTree();
+            } catch (Exception e) {
+                System.out.println("Error: " + e);
+            }
+        }
     }
 
 
@@ -374,7 +384,7 @@ public class Schema {
                 Attribute PAttr = Attributes.get(Primary);
 
                 // If empty, we at the tail. all other previous options were invalid.
-                if (Data.size() == 0) Goal = P.get_pageid();
+                if (Data.size() == 0 && Goal < 0) Goal = P.get_pageid();
                 // Otherwise, we have other values to consider:
                 else {
                     // Grab the primary key of the last row to validate 
@@ -385,7 +395,7 @@ public class Schema {
                     // If PKey is the greatest in the page, either we need to place this row at the end, or move to the next page.
                     if (Greatest)
                     // If there is no next page, we are at the end.
-                    if (Next == -1) Goal = P.get_pageid();
+                    if (Next == -1 && Goal < 0) Goal = P.get_pageid();
                     // Otherwise we gotta look at next instead.
                     else P = BufferManager.getPage(Next, this);
 
@@ -395,7 +405,7 @@ public class Schema {
                     // Otherwise, we are at the goal since duplicates are allowed, or we are less than.
                     // If the pkey is less than page's last pkey is greater than the row's pkey, we are in the right place.
                     // if (C < 0) 
-                    Goal = P.get_pageid();
+                    if (Goal < 0) Goal = P.get_pageid();
                 }
             }
 
@@ -451,6 +461,12 @@ public class Schema {
             Data.add(Row);
             P.set_isdirty(true);
             P.freebytes -= RowSize;
+
+            if (Primary != null) {
+                Attribute Prime = this.Attributes.get(this.Primary);
+                BPlus B = new BPlus(this, Prime, Prime.bTree);
+                B.Insert((Comparable<Object>) Row.get(this.Primary), P.pageId);
+            }
             return;
         }
 
@@ -501,6 +517,11 @@ public class Schema {
             if (P.freebytes < RowSize) P.split_page(true);
             // Otherwise, decrement freebytes as you should be doing.
             else P.freebytes -= RowSize;
+
+            Attribute Prime = this.Attributes.get(this.Primary);
+            BPlus B = new BPlus(this, Prime, Prime.bTree);
+            B.Insert((Comparable<Object>) PKey, P.pageId);
+
             return;
         }
 

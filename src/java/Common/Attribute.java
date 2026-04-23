@@ -8,6 +8,7 @@ public class Attribute { //for one column
     public String name;
     public Type type; 
     public Integer typeLength; 
+    public Integer bTree;
     public boolean primaryKey; //is publicKey
     public boolean notNull; //is not null
     public boolean unique; //is unique

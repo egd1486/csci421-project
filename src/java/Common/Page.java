@@ -107,6 +107,11 @@ public class Page {
         // Add the values to the page.
         for (i=0; i<HalfData.length; i++) NewPage.data.add(HalfData[i]);
 
+        // Copy bnode state:
+        NewPage.bnode = this.bnode;
+        NewPage.leafnode = this.leafnode;
+        NewPage.attr = this.attr;
+
         // Set its next value to the old next,
         NewPage.set_nextpageid(OldNext);
 
