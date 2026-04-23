@@ -148,7 +148,7 @@ public class Schema {
         
         Attribute A = new Attribute(Name, T, Size, isPrimary, isNullable, isUnique, Default);
         // Attribute A = new Attribute(Name, T, Size, Primary, Nullable, Unique, Default);
-        if(!Primary && Unique && Parser.Indexing) {
+        if(!isPrimary && isUnique && Parser.Indexing) {
             A.BPlusTree = new BPlus(this, A, null);
             A.bTree = A.BPlusTree.Root;  
         }
@@ -546,8 +546,10 @@ public class Schema {
 
             // We just inserted above, so an existing Btree would need it as well.
             if (B != null) B.Insert((Comparable<Object>) PKey, P.pageId);
-            for (Attribute Attr : this.Attributes)
-                if (Attr.BPlusTree != null) Attr.BPlusTree.Insert((Comparable<Object>) A, P.pageId);
+            for (int i = 0; i < Attributes.size(); i++){
+                Attribute Attr = Attributes.get(i);
+                if (Attr.BPlusTree != null) Attr.BPlusTree.Insert((Comparable<Object>) Row.get(i), P.pageId);
+            }
 
             // Mark page dirty,
             P.set_isdirty(true);
