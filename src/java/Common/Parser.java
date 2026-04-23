@@ -1,10 +1,11 @@
 package Common;
+
 import BufferManager.BufferManager;
-import Catalog.*;
-import Catalog.BPlus;
 import static Common.TokenType.*;
 import Common.WhereTree.*;
+import Catalog.BPlus;
 import java.util.*;
+import Catalog.*;
 
 
 public class Parser {

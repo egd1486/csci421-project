@@ -1,15 +1,10 @@
 package Common;
 
-import java.nio.Buffer;
-import java.nio.ByteBuffer;
+import StorageManager.StorageManager;
+import BufferManager.BufferManager;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-
-import BufferManager.BufferManager;
 import Catalog.Schema;
-import StorageManager.StorageManager;
-
 
 /**
  * Page:
@@ -125,6 +120,26 @@ public class Page {
         }
 
         return NewPage;
+    }
+
+    public int bsearch_page(Object Key, int Index) throws Exception {
+        Attribute A = (this.attr != null) ? this.attr : this.schema.Attributes.get(Index);
+        int L=0, R=data.size(), M=0, C=0;
+        while (L < R)
+        // Get middle index, defining M when getting the entry.
+        // Compare the keys, defining C when running Compare
+        // If C is 0, then the keys are equivalent, which is not allowed.
+        if ((C = A.Compare(Key, data.get(M =(L+R)/2).get(Index))) == 0) return M;
+
+        // If the pkey is less than the middle pkey
+        // Move the right bound down past it, as the true spot is left of it.
+        else if (C < 0) R = M;
+
+        // Otherwise, we need to shift the left edge up, as the spot is right of it.
+        else L = M+1;
+        
+        // We reach here if the loop terminates, which would leave L on our desired position.
+        return L;
     }
 
     public void recalculate_freebytes() throws Exception {

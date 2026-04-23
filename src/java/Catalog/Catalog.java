@@ -1,9 +1,9 @@
 package Catalog;
 
-import java.util.ArrayList;
-import BufferManager.BufferManager;
-import Common.*;
 import StorageManager.StorageManager;
+import BufferManager.BufferManager;
+import java.util.ArrayList;
+import Common.*;
 
 public class Catalog {
     public static ArrayList<Schema> Schemas = new ArrayList<Schema>();

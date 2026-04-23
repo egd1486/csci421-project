@@ -1,8 +1,9 @@
-import Common.Parser;
-import Common.Tokenizer;
 import StorageManager.StorageManager;
 import java.io.IOException;
 import java.util.Scanner;
+import Common.Tokenizer;
+import Common.Parser;
+
 
 public class JottQL{
 

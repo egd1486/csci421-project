@@ -1,17 +1,13 @@
 package Catalog;
 
-import Common.*;
-import BufferManager.BufferManager;
 import Common.WhereTree.InterfaceOperandNode;
 import Common.WhereTree.WhereClassInterface;
-import Common.WhereTree.WhereResult;
-import StorageManager.StorageManager;
-
-import static Common.TokenType.TRUE;
-
 import java.nio.charset.StandardCharsets;
+import StorageManager.StorageManager;
+import Common.WhereTree.WhereResult;
+import BufferManager.BufferManager;
 import java.util.ArrayList;
-import java.util.Collections;
+import Common.*;
 
 
 public class Schema {
@@ -377,9 +373,10 @@ public class Schema {
         int Goal = -1; // So let's find our goal (page to insert into)
 
         // If using indexing, and the schema has a primary, let's use B Tree's lookup.
+        BPlus B = null;
         if (Parser.Indexing && this.Primary != null) {
             Attribute Prime = this.Attributes.get(this.Primary);
-            BPlus B = new BPlus(this, Prime, Prime.bTree);
+            B = new BPlus(this, Prime, Prime.bTree);
             Integer Home = B.FindHome((Comparable<Object>) Row.get(this.Primary), DuplicateKeys);
             // If we found a home, set it to our goal.
             Goal = (Home != null) ? Home : Goal;
@@ -456,11 +453,9 @@ public class Schema {
             P.set_isdirty(true);
             P.freebytes -= RowSize;
 
-            if (Primary != null && Parser.Indexing) {
-                Attribute Prime = this.Attributes.get(this.Primary);
-                BPlus B = new BPlus(this, Prime, Prime.bTree);
-                B.Insert((Comparable<Object>) Row.get(this.Primary), P.pageId);
-            }
+            // IF Btree, insert as well.
+            if (B != null) B.Insert((Comparable<Object>) Row.get(Primary), P.pageId);
+
             return;
         }
 
@@ -484,38 +479,32 @@ public class Schema {
             if (C > 0) Data.add(Row); // If pkey is greater than the last pkey, we add it to the end.
             // Otherwise, we know its somewhere in the middle
             else {
-                // If we dont know where then we should...
-                // Binary search!
-                int L=0, R=Data.size(), M=0;
-                while (L < R) {
-                    // Get middle index,
-                    M = (L+R)/2;
-                    // Compare the keys,
-                    C = A.Compare(PKey, Data.get(M).get(Primary));
+                // So we run a binary search to check where it goes,
+                int Index = P.bsearch_page(PKey, Primary);
 
-                    // If C is 0, then the keys are equivalent, which is not allowed.
-                    if (!DuplicateKeys && C == 0) throw new Exception("Primary Key already in use.");
-                    // If the pkey is less than the middle pkey
-                    // Move the right bound down past it, as the true spot is left of it.
-                    if (C < 0) R = M;
-                    // Otherwise, we need to shift the left edge up, as the spot is right of it.
-                    else L = M+1;
-                }
-                // Insert at L, as it is now at the ideal index.
-                Data.add(L, Row);
+                // Validate we didn't collide with a duplicate :/
+                if (!DuplicateKeys && PKey.equals(Data.get(Index).get(Primary))) 
+                throw new Exception("Primary Key already in use."); 
+
+                // Otherwise we add it just fine.
+                Data.add(Index, Row);
             }
+
+            // We just inserted above, so an existing Btree would need it as well.
+            if (B != null) B.Insert((Comparable<Object>) PKey, P.pageId);
 
             // Mark page dirty,
             P.set_isdirty(true);
             // Split page if it is now overfull.
-            if (P.freebytes < RowSize) P.split_page(true);
-            // Otherwise, decrement freebytes as you should be doing.
-            else P.freebytes -= RowSize;
+            // If we have a btree we need to use its wrapper instead.
+            if (P.freebytes < RowSize) 
+            // We got one! split in the special way :)
+            if (B != null) B.Split(P, true); 
+            // We don't have a btree so we split normally.
+            else P.split_page(true);
 
-            Attribute Prime = this.Attributes.get(this.Primary);
-            //! do we need to do an if(Parser.Indexing && Primary != null)
-            BPlus B = new BPlus(this, Prime, Prime.bTree);
-            B.Insert((Comparable<Object>) PKey, P.pageId);
+            // Otherwise, decrement freebytes as you would normally be doing.
+            else P.freebytes -= RowSize;
 
             return;
         }
