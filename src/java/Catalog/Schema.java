@@ -35,55 +35,88 @@ public class Schema {
         newSchema.DuplicateKeys = this.DuplicateKeys;
         newSchema.PageId = BufferManager.getEmptyPage(newSchema, null).get_pageid();
 
-        
-
         for (Attribute A : this.Attributes) newSchema.Attributes.add(A);
+        
+        // Set up B+ tree
+        if (Parser.Indexing) {
+            Attribute PrimaryA = newSchema.Attributes.get(newSchema.Primary);
+            BPlus B = new BPlus(newSchema, PrimaryA, null);
+            PrimaryA.bTree = B.Root; //so attribute knows where tree is (location)
+            newSchema.Index = B;
+            for (Attribute A : newSchema.Attributes){
+                if(!A.primaryKey && A.unique) {
+                    BPlus tree = new BPlus(newSchema, A, null);
+                    A.bTree = tree.Root;
+                    A.BPlusTree = tree;
+                }
+                else {
+                    A.bTree = null;
+                    A.BPlusTree = null;
+                }
+            }
+        }
 
         // If a where clause was given, we are applying a filter to the existing data
         // If an Update parameter was given, we know we are updating specific columns if the condition is met,
         // If Update is not provided, we assume we are deleting, and not inserting rows that match the Where
         boolean Updating = Update != null;
         boolean Condition = Where != null;
-        if (Condition || Updating) {
-            // Let's grab what index we're updating first, (if we are updating)
-            int UpdateIndex = -1;
-            if (Updating) {
-                for (int i = 0; i < this.Attributes.size(); i++)
-                if (this.Attributes.get(i).name.equals(ColumnName.toUpperCase())) UpdateIndex = i;
+        try {
+            if (Condition || Updating) {
+                // Let's grab what index we're updating first, (if we are updating)
+                int UpdateIndex = -1;
+                if (Updating) {
+                    for (int i = 0; i < this.Attributes.size(); i++)
+                    if (this.Attributes.get(i).name.equals(ColumnName.toUpperCase())) UpdateIndex = i;
 
-                if (UpdateIndex == -1) throw new Exception("Schema does not have column named " + ColumnName);
-            }
-            // Getting first page where this schema's data is stored
-            int currPageId = this.PageId;
-            // Getting all row data from this schema starting from the first
-            // page and then any subsequent pages
-            while(currPageId != -1){
-                boolean Passes = false;
-                Page page = BufferManager.getPage(currPageId, this);
-                if(page == null) break;
-                // For each row on this page,
-                for (ArrayList<Object> row : page.get_data())
-                // If there is a condition, 
-                if (Condition) {
-                    // Define if the row passes the condition
-                    Passes = Where.WhereNode.evaluate(row, this);
-                    // And we are not updating, we know we delete. If not passing the condition, we wont delete it, so insert.
-                    if (!Updating && !Passes) 
-                    newSchema.Insert(row);
+                    if (UpdateIndex == -1) throw new Exception("Schema does not have column named " + ColumnName);
+                }
+                // Getting first page where this schema's data is stored
+                int currPageId = this.PageId;
+                // Getting all row data from this schema starting from the first
+                // page and then any subsequent pages
+                while(currPageId != -1){
+                    boolean Passes = false;
+                    Page page = BufferManager.getPage(currPageId, this);
+                    if(page == null) break;
+                    // For each row on this page,
+                    for (ArrayList<Object> row : page.get_data())
+                    // If there is a condition, 
+                    if (Condition) {
+                        // Define if the row passes the condition
+                        Passes = Where.WhereNode.evaluate(row, this);
+                        // And we are not updating, we know we delete. If not passing the condition, we wont delete it, so insert.
+                        if (!Updating && !Passes) 
+                        newSchema.Insert(row);
 
-                    else // Otherwise, when we are updating, and every row gets inserted, but those who pass get altered,
-                    if (Updating) {
-                        if (Passes) row.set(UpdateIndex, Update.evaluate(row));
+                        else // Otherwise, when we are updating, and every row gets inserted, but those who pass get altered,
+                        if (Updating) {
+                            if (Passes) row.set(UpdateIndex, Update.evaluate(row));
+                            newSchema.Insert(row);
+                        }
+                    } // We also need to consider updating with no condition,
+                    else if (Updating) {
+                        row.set(UpdateIndex, Update.evaluate(row)); // Everything gets altered.
                         newSchema.Insert(row);
                     }
-                } // We also need to consider updating with no condition,
-                else if (Updating) {
-                    row.set(UpdateIndex, Update.evaluate(row)); // Everything gets altered.
-                    newSchema.Insert(row);
-                }
 
-                currPageId = page.get_next_pageid();
+                    currPageId = page.get_next_pageid();
+                }
             }
+        } catch (Exception e) {
+            // Clean up B+ tree
+            if (newSchema.Index != null) {
+                newSchema.Index.Clear();
+            }
+            // Clean up pages
+            int currPageId = newSchema.PageId;
+            while (currPageId != -1) {
+                Page pageToFree = BufferManager.getPage(currPageId, newSchema);
+                int nextPageId = pageToFree.get_next_pageid();
+                currPageId = nextPageId;
+                StorageManager.FreePage(pageToFree);
+            }
+            throw new Exception("Copy failed");
         }
         return newSchema;
     }
@@ -94,7 +127,6 @@ public class Schema {
         if (this.Primary != null) throw new Exception("Schema already has a primary key");
         // Otherwise, handle it.
         else this.Primary = Attributes.size();
-
         // Force uppercase
         Name = Name.toUpperCase();
 
@@ -116,6 +148,8 @@ public class Schema {
         
         Attribute A = new Attribute(Name, T, Size, isPrimary, isNullable, isUnique, Default);
         // Attribute A = new Attribute(Name, T, Size, Primary, Nullable, Unique, Default);
+        if(!Primary && Unique) A.BPlusTree = new BPlus(this, A, null);
+        A.bTree = A.BPlusTree.Root;
         Attributes.add(A);
 
         return A;
@@ -381,6 +415,20 @@ public class Schema {
             // If we found a home, set it to our goal.
             Goal = (Home != null) ? Home : Goal;
         }
+        // Uniqueness checking
+        if (Parser.Indexing){
+            for (int i = 0; i < Attributes.size(); i++){
+                Attribute Attr = Attributes.get(i);
+                if (Attr.BPlusTree != null){
+                    try{
+                        Attr.BPlusTree.Insert((Comparable<Object>) Row.get(i), Goal);
+                    }
+                    catch(Exception e){
+                        throw new Exception("Values of " + Attr.name + " must be unique.");
+                    }
+                }
+            }
+        }
 
         // Grab start page,
         Page P = BufferManager.getPage(this.PageId, this);
@@ -492,6 +540,8 @@ public class Schema {
 
             // We just inserted above, so an existing Btree would need it as well.
             if (B != null) B.Insert((Comparable<Object>) PKey, P.pageId);
+            for (Attribute Attr : this.Attributes)
+                if (Attr.BPlusTree != null) Attr.BPlusTree.Insert((Comparable<Object>) A, P.pageId);
 
             // Mark page dirty,
             P.set_isdirty(true);
@@ -499,9 +549,16 @@ public class Schema {
             // If we have a btree we need to use its wrapper instead.
             if (P.freebytes < RowSize) 
             // We got one! split in the special way :)
-            if (B != null) B.Split(P, true); 
+            if (B != null) {
+                B.Split(P, true); 
+                for (Attribute Attr : this.Attributes){
+                    if (Attr.BPlusTree != null) Attr.BPlusTree.Split(P, true);
+                }
+            }
             // We don't have a btree so we split normally.
-            else P.split_page(true);
+            else {
+                P.split_page(true);
+            }
 
             // Otherwise, decrement freebytes as you would normally be doing.
             else P.freebytes -= RowSize;

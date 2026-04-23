@@ -1,6 +1,7 @@
 package Common;
 
 import static Common.TokenType.DOUBLE;
+import Catalog.BPlus;
 
 import StorageManager.StorageManager;
 
@@ -9,6 +10,7 @@ public class Attribute { //for one column
     public Type type; 
     public Integer typeLength; 
     public Integer bTree;
+    public BPlus BPlusTree;
     public boolean primaryKey; //is publicKey
     public boolean notNull; //is not null
     public boolean unique; //is unique
