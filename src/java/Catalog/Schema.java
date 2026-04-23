@@ -7,6 +7,11 @@ import StorageManager.StorageManager;
 import Common.WhereTree.WhereResult;
 import BufferManager.BufferManager;
 import java.util.ArrayList;
+
+import javax.xml.crypto.Data;
+
+import org.w3c.dom.Attr;
+
 import Common.*;
 
 
@@ -423,20 +428,6 @@ public class Schema {
             // If we found a home, set it to our goal.
             Goal = (Home != null) ? Home : Goal;
         }
-        // Uniqueness checking
-        if (Parser.Indexing){
-            for (int i = 0; i < Attributes.size(); i++){
-                Attribute Attr = Attributes.get(i);
-                if (Attr.BPlusTree != null){
-                    try{
-                        Attr.BPlusTree.Insert((Comparable<Object>) Row.get(i), Goal);
-                    }
-                    catch(Exception e){
-                        throw new Exception("Values of " + Attr.name + " must be unique.");
-                    }
-                }
-            }
-        }
 
         // Grab start page,
         Page P = BufferManager.getPage(this.PageId, this);
@@ -510,8 +501,24 @@ public class Schema {
             P.freebytes -= RowSize;
 
             // IF Btree, insert as well.
-            if (B != null) B.Insert((Comparable<Object>) Row.get(Primary), P.pageId);
-
+            int page = P.pageId;
+            if (B != null) B.Insert((Comparable<Object>) Row.get(Primary), page);
+            // Uniqueness checking
+            if (Parser.Indexing){
+                for (int i = 0; i < Attributes.size(); i++){
+                    Attribute Attr = Attributes.get(i);
+                    if (Attr.BPlusTree != null && Attr.primaryKey != true){
+                        BPlus Tree = new BPlus(this, Attr, Attr.bTree);
+                        try{
+                            System.out.print("B");
+                            Tree.Insert((Comparable<Object>) Row.get(i), page);
+                        }
+                        catch(Exception e){
+                            throw new Exception("Values of " + Attr.name + " must be unique.");
+                        }
+                    }
+                }
+            }
             return;
         }
 
@@ -536,25 +543,39 @@ public class Schema {
             // Otherwise, we know its somewhere in the middle
             else {
                 // So we run a binary search to check where it goes,
-                int Index = P.bsearch_page(PKey, Primary);
+                int Index2 = P.bsearch_page(PKey, Primary);
 
                 // Validate we didn't collide with a duplicate :/
-                if (!DuplicateKeys && PKey.equals(Data.get(Index).get(Primary))) 
+                if (!DuplicateKeys && PKey.equals(Data.get(Index2).get(Primary))) 
                 throw new Exception("Primary Key already in use."); 
 
                 // Otherwise we add it just fine.
-                Data.add(Index, Row);
+                Data.add(Index2, Row);
+                // Mark page dirty,
+                P.set_isdirty(true);
             }
-
+            int page = P.pageId;
             // We just inserted above, so an existing Btree would need it as well.
-            if (B != null) B.Insert((Comparable<Object>) PKey, P.pageId);
-            for (int i = 0; i < Attributes.size(); i++){
-                Attribute Attr = Attributes.get(i);
-                if (Attr.BPlusTree != null) Attr.BPlusTree.Insert((Comparable<Object>) Row.get(i), P.pageId);
+            if (B != null) B.Insert((Comparable<Object>) PKey, page);
+            P = BufferManager.getPage(page, this);
+            // Uniqueness checking
+            if (Parser.Indexing){
+                for (int i = 0; i < Attributes.size(); i++){
+                    Attribute Attr = Attributes.get(i);
+                    if (Attr.BPlusTree != null && Attr.primaryKey != true){
+                        BPlus Tree = new BPlus(this, Attr, Attr.bTree);
+                        try{
+                            System.out.print("A");
+                            Tree.Insert((Comparable<Object>) Row.get(i), page);
+                        }
+                        catch(Exception e){
+                            throw new Exception("Values of " + Attr.name + " must be unique.");
+                        }
+                    }
+                }
             }
-
-            // Mark page dirty,
-            P.set_isdirty(true);
+            P = BufferManager.getPage(page, this);
+            
             // Split page if it is now overfull.
             // If we have a btree we need to use its wrapper instead.
             if (P.freebytes < RowSize) 
