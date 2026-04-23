@@ -20,6 +20,7 @@ public class Schema {
     public Integer PageId;
     public Boolean DuplicateKeys = false;
     public ArrayList<Common.Attribute> Attributes;
+    public BPlus Index;
 
     public Schema(String Name) throws Exception {
         // Check if name is alphanumeric
@@ -28,6 +29,7 @@ public class Schema {
         // Otherwise, proceed.
         this.Attributes = new ArrayList<>();
         this.Name = Name;
+        this.Index = null;
     }
 
     // COPIES SCHEMA BUT NOT DATA
@@ -454,7 +456,7 @@ public class Schema {
             P.set_isdirty(true);
             P.freebytes -= RowSize;
 
-            if (Primary != null) {
+            if (Primary != null && Parser.Indexing) {
                 Attribute Prime = this.Attributes.get(this.Primary);
                 BPlus B = new BPlus(this, Prime, Prime.bTree);
                 B.Insert((Comparable<Object>) Row.get(this.Primary), P.pageId);
@@ -511,6 +513,7 @@ public class Schema {
             else P.freebytes -= RowSize;
 
             Attribute Prime = this.Attributes.get(this.Primary);
+            //! do we need to do an if(Parser.Indexing && Primary != null)
             BPlus B = new BPlus(this, Prime, Prime.bTree);
             B.Insert((Comparable<Object>) PKey, P.pageId);
 
