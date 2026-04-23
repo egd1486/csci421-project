@@ -108,8 +108,8 @@ public class Parser {
         for (Attribute A : Attributes) 
         S.AddAttribute(A.name, A.type, A.typeLength, A.notNull, A.primaryKey, A.unique, A.defaultVal, false);
 
-        // Configure a BTree for the primary key of this table.
-        if (S.Primary != null) {
+        // Configure a BTree for the primary key of this table, and all of its uniques.
+        if (Indexing && S.Primary != null) {
             Attribute PrimaryA = S.Attributes.get(S.Primary);
 
             // Set the bTree for the primary key.

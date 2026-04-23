@@ -1,12 +1,16 @@
 package Catalog;
 
 import Common.Page;
+import java.util.Set;
 import java.util.List;
 import java.util.Stack;
 import Common.Attribute;
 import java.util.ArrayList;
+import java.util.HashSet;
+
 import BufferManager.BufferManager;
 import StorageManager.StorageManager;
+import java.lang.reflect.Array;
 
 // NOTE: BNODES ARE INTERPRETTED DIFFERENT BY TYPE
 // Despite all being in the structure of rows of (ptr,key), ptr for a leaf node points to the page a key appears on.
@@ -60,6 +64,69 @@ public class BPlus {
         }
 
         return Current;
+    }
+
+    // Returns the page a key would be inserted into.
+    public Integer FindHome(Comparable<Object> Key, boolean AllowDuplicate) throws Exception {
+        // Find the leaf node where this key should be, and search for your page within it.
+        Page Leaf = FindLeaf(Key);
+
+        ArrayList<ArrayList<Object>> Rows = Leaf.get_data();
+
+        if (Rows.isEmpty()) return null; // If there are no entries, return null.
+        // let insert handle the rest there, since this table is empty in that case.
+
+        // Otherwise, we need to find the right page for this key.
+        for (ArrayList<Object> Row : Rows) {
+            int C = Key.compareTo(Row.get(1));
+
+            if (!AllowDuplicate && C == 0) throw new Exception("Duplicate entry in B+ Tree.");
+
+            if (C <= 0) return (Integer) Row.get(0);
+        }
+
+        // If the loop above didn't return, then we know no page we can look at is sufficient.
+        return null;
+    }
+
+    public Page Split(Page P, boolean count_freebytes) throws Exception {
+        // Split the page.
+        Page NewPage = P.split_page(count_freebytes);
+
+        // Update the pointers of all the rows in the new page to point to it.
+        // Build set so we can track which page ids we have to update.
+        Set<Object> PageIds = new HashSet<>();
+
+        int Prime = P.get_schema().Primary, Ptr = P.get_pageid();
+        // Add the primary keys to the set,
+        ArrayList<ArrayList<Object>> Rows = P.get_data();
+        for (ArrayList<Object> Row : Rows) 
+        PageIds.add(Row.get(Prime));
+
+        // Get least key to find left-most leaf.
+        Object Key = Rows.get(0).get(Prime);
+
+        // Get left-most leaf,
+        Page Leaf = FindLeaf((Comparable<Object>) Key);
+
+        // Now, we need to systematically update entries from the set until it's empty.
+        while (!PageIds.isEmpty() && Leaf != null) {
+            int Size = PageIds.size(), Next = Leaf.get_next_pageid();
+
+            for (ArrayList<Object> Row : Leaf.get_data())
+            if (PageIds.contains(Row.get(1))) {
+                PageIds.remove(Row.get(1));
+                Row.set(0, Ptr);
+                Leaf.set_isdirty(true);
+            }
+
+            // Mark leaf dirty if anything was removed (which updated leaf)
+            if (PageIds.size() != Size) Leaf.set_isdirty(true);
+            // Move to next leaf, if anything is remaining.
+            Leaf = (Next > 0) ? BufferManager.getBNode(Leaf.get_next_pageid(), Attribute) : null;
+        }
+
+        return NewPage;
     }
 
     public void Insert(Comparable<Object> Key, Integer Ptr) throws Exception {
@@ -204,67 +271,6 @@ public class BPlus {
         return null;
     }
 
-    // Direction: 0 for equal, -1 for less than, 1 for greater than.
-    public ArrayList<Integer> Filter(Comparable<Object> Key, int Direction) throws Exception {
-        ArrayList<Integer> Result = new ArrayList<Integer>(); //PageIds
-        // 0: The two values are equal.
-        // Positive Integer (>0): The first value is greater than the second.
-        // Negative Integer (<0): The first value is less than the second. 
-
-        // Handle first leaf that we land on.
-        Page Leaf = FindLeaf(Key);
-
-        for (ArrayList<Object> Row : Leaf.get_data()) {
-            Comparable<Object> CKey = (Comparable<Object>) Row.get(1);
-            int C = CKey.compareTo(Key);
-
-            if (C == Direction) Result.add((Integer) Row.get(0));
-        }
-
-        // Now that we filtered on this leaf, we need to traverse the others.
-        if (Direction > 0) {
-            int Next = Leaf.get_next_pageid();
-            Leaf = (Next > 0) ? BufferManager.getBNode(Next, Attribute) : null;
-            while (Leaf != null) {
-                // Add all the pages of this leaf.
-                for (ArrayList<Object> Row : Leaf.get_data()) 
-                Result.add((Integer) Row.get(0));
-                // Determine if next leaf exists.
-                Next = Leaf.get_next_pageid();
-                Leaf = (Next > 0) ? BufferManager.getBNode(Next, Attribute) : null;
-            }
-        } else if (Direction < 0) {
-            // We need to find the leftmost leaf and traverse right until we hit the original leaf.
-            int Target = Leaf.get_pageid();
-
-            Leaf = BufferManager.getBNode(Root, Attribute);
-            while (!Leaf.leafnode) {
-                int Leftmost = (Integer) Leaf.get_data().get(0).get(0);
-                
-                // If the leftmost page is the target, we already did the bottomleft leaf, and can quit ahead.
-                if (Leftmost == Target) return Result; 
-
-                // Otherwise keep moving down.
-                Leaf = BufferManager.getBNode(Leftmost, Attribute);
-            }
-
-            // Now that we are the bottomleft leaf, we scan right, adding pages until we hit the original leaf.
-            int Next;
-            while (true) {
-                // Add all pages.
-                for (ArrayList<Object> Row : Leaf.get_data())
-                Result.add((Integer) Row.get(0));
-
-                Next = Leaf.get_next_pageid();
-                if (Next == Target) break; // Break if we are about to move into the original leaf.
-                // Otherwise, advance.
-                
-                Leaf = BufferManager.getBNode(Next, Attribute);
-            }
-        }
-
-        return Result;
-    }
 
     public void Clear() throws Exception {
         Stack<Integer> PageStack = new Stack<>();

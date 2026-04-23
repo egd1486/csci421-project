@@ -37,6 +37,8 @@ public class Schema {
         newSchema.DuplicateKeys = this.DuplicateKeys;
         newSchema.PageId = BufferManager.getEmptyPage(newSchema, null).get_pageid();
 
+        
+
         for (Attribute A : this.Attributes) newSchema.Attributes.add(A);
 
         // If a where clause was given, we are applying a filter to the existing data
@@ -361,20 +363,31 @@ public class Schema {
         // Define row size for insertion validation,
         int RowSize = this.GetRowByteSize(Row);
 
-        // // Define indices that must be unique
-        // boolean[] Uniques = new boolean[Attributes.size()];
-        // boolean HasUnique = false;
-        // // Loop through and mark uniques, sets HasUnique to true if any are unique
-        // for (int i = 0; i < Attributes.size(); HasUnique |= Uniques[i++])
-        // Uniques[i] = Attributes.get(i).unique;
+        // Define indices that must be unique
+        boolean[] Uniques = new boolean[Attributes.size()];
+        boolean HasUnique = false;
+        // Loop through and mark uniques, sets HasUnique to true if any are unique
+        for (int i = 0; i < Attributes.size(); HasUnique |= Uniques[i++])
+        Uniques[i] = Attributes.get(i).unique;
 
         // Now the crux of inserting here is first finding the proper page to insert into
         // If there is a unique attribute, we must check its uniqueness.
         int Goal = -1; // So let's find our goal (page to insert into)
 
+        // If using indexing, and the schema has a primary, let's use B Tree's lookup.
+        if (Parser.Indexing && this.Primary != null) {
+            Attribute Prime = this.Attributes.get(this.Primary);
+            BPlus B = new BPlus(this, Prime, Prime.bTree);
+            Integer Home = B.FindHome((Comparable<Object>) Row.get(this.Primary), DuplicateKeys);
+            // If we found a home, set it to our goal.
+            Goal = (Home != null) ? Home : Goal;
+        }
+
         // Grab start page,
         Page P = BufferManager.getPage(this.PageId, this);
 
+        // If not using indexing, or indexing didn't find a proper result, we would have to iterate.
+        if (!Parser.Indexing || Goal < 1)
         // Iterate until a goal.
         while (Goal < 0) {
             ArrayList<ArrayList<Object>> Data = P.get_data();
@@ -384,7 +397,7 @@ public class Schema {
                 Attribute PAttr = Attributes.get(Primary);
 
                 // If empty, we at the tail. all other previous options were invalid.
-                if (Data.size() == 0) {Goal = P.get_pageid(); break;}
+                if (Data.isEmpty()) {Goal = P.get_pageid(); break;}
                 // Otherwise, we have other values to consider:
                 else {
                     // Grab the primary key of the last row to validate 
@@ -436,7 +449,7 @@ public class Schema {
         ArrayList<ArrayList<Object>> Data = P.get_data();
 
         // Regardless of sorted or not, inserting in an empty page always has the same approach:
-        if (Data.size() == 0) {
+        if (Data.isEmpty()) {
             Data.add(Row);
             P.set_isdirty(true);
             P.freebytes -= RowSize;
