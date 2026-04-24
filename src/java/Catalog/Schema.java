@@ -567,20 +567,16 @@ public class Schema {
             P = BufferManager.getPage(page, this);
             
             // Split page if it is now overfull.
-            // If we have a btree we need to use its wrapper instead.
-            if (P.freebytes < RowSize) 
-            // We got one! split in the special way :)
-            if (B != null) {
-                B.Split(P, true); 
-                for (Attribute Attr : this.Attributes){
-                    if (Attr.BPlusTree != null) Attr.BPlusTree.Split(P, true);
-                }
-            }
-            // We don't have a btree so we split normally.
-            else {
-                P.split_page(true);
-            }
+            // Also update btrees where possible, if existing.
+            if (P.freebytes < RowSize) {
+                Page NewPage = P.split_page(true);
 
+                // For each attribute with a btree,
+                for (Attribute Attr : this.Attributes)
+                if (Attr.BPlusTree != null) 
+                // Update the entries on this new split page.
+                Attr.BPlusTree.UpdateFromSplit(NewPage);
+            }
             // Otherwise, decrement freebytes as you would normally be doing.
             else P.freebytes -= RowSize;
 

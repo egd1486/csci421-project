@@ -116,6 +116,7 @@ public class Parser {
             // Set the bTree for the primary key.
             BPlus B = new BPlus(S, PrimaryA, null);
             PrimaryA.bTree = B.Root;
+            PrimaryA.BPlusTree = B;
             S.Index = B;
         }
 
