@@ -116,6 +116,10 @@ public class Schema {
         
         Attribute A = new Attribute(Name, T, Size, isPrimary, isNullable, isUnique, Default);
         // Attribute A = new Attribute(Name, T, Size, Primary, Nullable, Unique, Default);
+        if(isUnique) {
+            BPlus B = new BPlus(this, A, null);
+            A.bTree = B.Root;
+        }
         Attributes.add(A);
 
         return A;
@@ -372,6 +376,9 @@ public class Schema {
             Goal = (Home != null) ? Home : Goal;
         }
 
+        BPlus B2 = null;
+
+
         // Grab start page,
         Page P = BufferManager.getPage(this.PageId, this);
 
@@ -439,6 +446,15 @@ public class Schema {
 
         // Regardless of sorted or not, inserting in an empty page always has the same approach:
         if (Data.isEmpty()) {
+            if(HasUnique){
+                for(int i = 0; i < Uniques.length; i++){
+                    if(Uniques[i]){
+                        Attribute u = this.Attributes.get(i);
+                        B2 = new BPlus(this, u, u.bTree);
+                        B2.Insert((Comparable<Object>) Row.get(i), P.pageId);
+                    }
+                }
+            }
             Data.add(Row);
             P.set_isdirty(true);
             P.freebytes -= RowSize;
@@ -466,6 +482,16 @@ public class Schema {
             // If pkey is equal then quit, that's not allowed.
             if (!DuplicateKeys && C == 0) throw new Exception("Primary Key already in use.");
 
+            if(HasUnique){
+                for(int i = 0; i < Uniques.length; i++){
+                    if(Uniques[i]){
+                        Attribute u = this.Attributes.get(i);
+                        B2 = new BPlus(this, u, u.bTree);
+                        B2.Insert((Comparable<Object>) Row.get(i), P.pageId);
+                    }
+                }
+            }
+
             if (C > 0) Data.add(Row); // If pkey is greater than the last pkey, we add it to the end.
             // Otherwise, we know its somewhere in the middle
             else {
@@ -487,12 +513,13 @@ public class Schema {
             P.set_isdirty(true);
             // Split page if it is now overfull.
             // If we have a btree we need to use its wrapper instead.
-            if (P.freebytes < RowSize) 
-            // We got one! split in the special way :)
-            if (B != null) B.UpdateOnSplit(P, true); 
-            // We don't have a btree so we split normally.
-            else P.split_page(true);
-
+            if (P.freebytes < RowSize) {
+                Page NewPage = P.split_page(true);
+                for(Attribute a : this.Attributes){
+                    B2 = new BPlus(this, a, a.bTree);
+                    B2.UpdateOnSplit(NewPage);
+                }
+            }
             // Otherwise, decrement freebytes as you would normally be doing.
             else P.freebytes -= RowSize;
 
@@ -501,6 +528,15 @@ public class Schema {
 
         // The final case is that our table is unsorted and we found a page with enough room.
         // so... we just add it the normal way.
+        if(HasUnique){
+            for(int i = 0; i < Uniques.length; i++){
+                if(Uniques[i]){
+                    Attribute u = this.Attributes.get(i);
+                    B2 = new BPlus(this, u, u.bTree);
+                    B2.Insert((Comparable<Object>) Row.get(i), P.pageId);
+                }
+            }
+        }
         Data.add(Row);
 
         P.freebytes -= RowSize;

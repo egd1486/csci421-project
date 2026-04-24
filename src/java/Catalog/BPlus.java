@@ -188,22 +188,21 @@ public class BPlus {
         return (Integer) Entry.get(0);
     }
 
-    public Page UpdateOnSplit(Page P, boolean count_freebytes) throws Exception {
-        // Split the page.
-        Page NewPage = P.split_page(count_freebytes);
+    // Method for updating entries from a split page WITHOUT directly splitting.
+    public void UpdateOnSplit(Page P) throws Exception {
+        int Index = this.Schema.Attributes.indexOf(this.Attribute), Ptr = P.get_pageid();
 
         // Update the pointers of all the rows in the new page to point to it.
         // Build set so we can track which page ids we have to update.
         Set<Object> PageIds = new HashSet<>();
 
-        int Prime = P.get_schema().Primary, Ptr = NewPage.get_pageid();
-        // Add the primary keys to the set,
-        ArrayList<ArrayList<Object>> Rows = NewPage.get_data();
-        for (ArrayList<Object> Row : Rows) 
-        PageIds.add(Row.get(Prime));
+        // Add the the keys to the set,
+        ArrayList<ArrayList<Object>> Rows = P.get_data();
+        for (ArrayList<Object> Row : Rows)
+            PageIds.add(Row.get(Index));
 
         // Get least key to find left-most leaf.
-        Object Key = Rows.get(0).get(Prime);
+        Object Key = Rows.get(0).get(Index);
 
         // Get left-most leaf,
         Page Leaf = FindLeaf((Comparable<Object>) Key);
@@ -214,19 +213,19 @@ public class BPlus {
 
             // For each ptr,key
             for (ArrayList<Object> Row : Leaf.get_data())
-            // Try removing it from the set, if succeeds,
-            if (PageIds.remove(Row.get(1)))
-            // Then we need to update it to ptr.
-            Row.set(0, Ptr);
+                // Try removing it from the set, if succeeds,
+                if (PageIds.remove(Row.get(1)))
+                    // Then we need to update it to ptr.
+                    Row.set(0, Ptr);
 
             // Mark leaf dirty if anything was removed (which updated leaf)
             if (PageIds.size() != Size) Leaf.set_isdirty(true);
-            
+
             // Move to next leaf, if anything is remaining.
             Leaf = (Next > 0) ? BufferManager.getBNode(Leaf.get_next_pageid(), Attribute) : null;
         }
 
-        return NewPage;
+        if (!PageIds.isEmpty()) throw new Exception("Not all page ids were updated?");
     }
 
     public void Insert(Comparable<Object> Key, Integer Ptr) throws Exception {
