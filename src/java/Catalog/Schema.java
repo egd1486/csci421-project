@@ -499,7 +499,7 @@ public class Schema {
             // If we have a btree we need to use its wrapper instead.
             if (P.freebytes < RowSize) 
             // We got one! split in the special way :)
-            if (B != null) B.Split(P, true); 
+            if (B != null) B.UpdateOnSplit(P, true); 
             // We don't have a btree so we split normally.
             else P.split_page(true);
 

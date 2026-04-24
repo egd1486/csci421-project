@@ -25,6 +25,7 @@ public class Page {
     public boolean bnode;
     public boolean leafnode;
     public Attribute attr;
+    public boolean evicted = false;
     private boolean is_dirty;
     private long time;
     private Schema schema;
@@ -156,6 +157,12 @@ public class Page {
 
     public void set_isdirty(boolean type){
         is_dirty = type;
+
+        // If this page is evicted, but we are marking it dirty, we care about it.
+        // Let's remediate it.
+        if (evicted && type) 
+        try {BufferManager.remediate_evicted(this);}
+        catch (Exception e) {System.out.println("Failed to remediate evicted page");}
     }
 
     public void set_freebytes(int num){
