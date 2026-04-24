@@ -345,7 +345,7 @@ public class Schema {
             Attribute Prime = this.Attributes.get(this.Primary);
             try {
                 BPlus B = new BPlus(this, Prime, Prime.bTree);
-                B.PrintTree();
+                // B.PrintTree();
             } catch (Exception e) {
                 System.out.println("Error: " + e);
             }
