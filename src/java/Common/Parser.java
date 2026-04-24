@@ -307,7 +307,6 @@ public class Parser {
         }
 
         S.DisplayTable(WhereTree, (All) ? new ArrayList<>() : Columns);
-
         return ++Index;
     }
 
