@@ -3,7 +3,7 @@ package Common;
 import BufferManager.BufferManager;
 import static Common.TokenType.*;
 import Common.WhereTree.*;
-import Catalog.BPlus;
+
 import java.util.*;
 import Catalog.*;
 
@@ -211,11 +211,11 @@ public class Parser {
         if(Input[Index].Type == WHERE){
             WhereResult WhereRS = Where(++Index, Input, Tables);
             WhereTree = WhereRS.WhereNode;
-            if (Indexing) {
-                System.out.println("Simplified Tree: " + WhereRS.Simplified.print());
-            } else {
-                System.out.println("Where Tree: " + WhereTree.print());
-            }
+            // if (Indexing) {
+                // System.out.println("Simplified Tree: " + WhereRS.Simplified.print());
+            // } else {
+            System.out.println("Where Tree: " + WhereTree.print());
+            // }
             Index = WhereRS.Index;
         }
 
@@ -502,14 +502,27 @@ public class Parser {
         Validate(Input[Index], SEMICOLON);
         // Make new table using schema of old table
 
-        newSchema = oldSchema.Copy(WhereRS, null, null);
-        // Drop old schema,
+        newSchema = null;
+        try {
+            newSchema = oldSchema.Copy(WhereRS, null, null);
+         } catch (Exception e) {
+            System.out.println("Error: copy failed in delete - " +  e.getMessage());
+        }
+        if (newSchema == null) return ++Index;
+        // Drop old schema, and free B+ tree
+        try {
+            if (oldSchema.Index != null) { 
+                oldSchema.Index.Clear();
+            }
+        } catch (Exception e) {
+            throw new Exception("Delete: B+ cleaning failed");
+        } 
         Catalog.RemoveSchema(Name);
         // Swap with the new one.
         Catalog.Schemas.add(newSchema);
  
         return ++Index;
-    }
+    } 
 
     // make copy of OG table schema
     // make new table, loop through everything in original table, if it makes the where tree false add to table
@@ -599,8 +612,21 @@ public class Parser {
         }
         Validate(Input[Index], SEMICOLON);
 
-        Schema newSchema = oldSchema.Copy(WhereRS, valueNode, Column.Literal);
-        // Remove old table and pages,
+        Schema newSchema = null;
+        try {
+            newSchema = oldSchema.Copy(WhereRS, valueNode, Column.Literal);
+         } catch (Exception e) {
+            System.out.println("Error: copy failed in update - " +  e.getMessage());
+        }
+        if (newSchema == null) return ++Index;
+        // Remove old table and pages, and B+ tree
+        try {
+            if (oldSchema.Index != null) {
+                oldSchema.Index.Clear();
+            }
+        } catch (Exception e) {
+            throw new Exception("Update: B+ cleaning failed");
+        }
         Catalog.RemoveSchema(tableName);
         // Swap it with our new copy.
         Catalog.Schemas.add(newSchema);
@@ -817,11 +843,11 @@ public class Parser {
         // All nodes should be a part of one main node at this point
         if(whereTreeNodes.size() != 1)
         throw new Exception("Error in parsing Where Tree, final size should be 1");
-        if (Indexing) {
-            return new WhereResult(whereTreeNodes.pop(), Index, simplifiedTreeNodes.pop());
-        } else {
-            return new WhereResult(whereTreeNodes.pop(), Index);
-        }
+        // if (Indexing) {
+            // return new WhereResult(whereTreeNodes.pop(), Index, simplifiedTreeNodes.pop());
+        // } else {
+        return new WhereResult(whereTreeNodes.pop(), Index);
+        // }
     }
 
     // NOTE: Any parse functions must return the index position AFTER their semicolon.
