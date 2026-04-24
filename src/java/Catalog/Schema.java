@@ -340,16 +340,6 @@ public class Schema {
             System.out.println("Error: " + e);
         }
         System.out.println("Displaying " + RowCount + " rows.");
-
-        if (Primary != null) {
-            Attribute Prime = this.Attributes.get(this.Primary);
-            try {
-                BPlus B = new BPlus(this, Prime, Prime.bTree);
-                // B.PrintTree();
-            } catch (Exception e) {
-                System.out.println("Error: " + e);
-            }
-        }
     }
 
 
