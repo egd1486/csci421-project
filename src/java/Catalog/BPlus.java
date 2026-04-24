@@ -15,6 +15,7 @@ import Common.Page;
 // Despite all being in the structure of rows of (ptr,key), ptr for a leaf node points to the page a key appears on.
 // For internal nodes, a left ptr functions as normal.
 
+
 public class BPlus {
     public Schema Schema;
     public Integer Root;
@@ -38,6 +39,108 @@ public class BPlus {
         }
 
         this.Root = Root;
+    }
+
+    // For handling splitting in Insert.
+    public class SplitResult {
+        public Comparable<Object> PromotedKey;
+        public Page RightPage;
+
+        public SplitResult(Comparable<Object> PromotedKey, Page RightPage) {
+            this.PromotedKey = PromotedKey;
+            this.RightPage = RightPage;
+        }
+    }
+
+    private SplitResult SplitInternal(Page Left) throws Exception {
+        if (Left.leafnode) throw new Exception("Cannot internal split a leaf.");
+
+        // Get the index of the new page, and of the current next page.
+        int OldNext = Left.get_next_pageid(), Next = StorageManager.CreatePage();
+
+        // Get the new page,
+        Page Right = BufferManager.getEmptyPage(this.Schema, Next);
+
+        // Grab data and its size,
+        ArrayList<ArrayList<Object>> Data = Left.get_data(), RightData, LeftData;
+        RightData = Right.get_data();
+        LeftData = new ArrayList<>();
+        int Size = Data.size();
+
+        // Grab index of key to promote,
+        int Mid = Size / 2;
+
+        // Set promoted key,
+        Comparable<Object> PromotedKey = (Comparable<Object>) Data.get(Mid).get(1);
+
+        // Match type of new page to older page.
+        Right.attr = this.Attribute;
+        Right.bnode = true;
+        Right.leafnode = false;
+
+        // Copy over rightmost ptr,
+        Right.set_nextpageid(OldNext);
+
+        // Copy past divider 
+        for (int i=Mid+1; i<Size; i++) RightData.add(Data.get(i));
+        // Copy before divider
+        for (int i=0; i<Mid; i++) LeftData.add(Data.get(i));
+
+        // Left page's rightmost ptr becomes middle ptr
+        Left.set_nextpageid((int) Data.get(Mid).get(0));
+        // Update left's data
+        Left.set_data(LeftData);
+
+        // Mark dirty
+        Left.set_isdirty(true);
+        Right.set_isdirty(true);
+
+        return new SplitResult(PromotedKey, Right);
+    }
+
+    private SplitResult SplitLeaf(Page Left) throws Exception {
+        if (!Left.leafnode) throw new Exception("Cannot leaf split a non leaf.");
+
+        int OldNext = Left.get_next_pageid(), Next = StorageManager.CreatePage();
+
+        // Get the new page,
+        Page Right = BufferManager.getEmptyPage(this.Schema, Next);
+
+        // Set up right's properties
+        Right.bnode = true;
+        Right.leafnode = true;
+        Right.attr = this.Attribute;
+
+        // Grab the data, size, and midpoint
+        ArrayList<ArrayList<Object>> Data = Left.get_data();
+        int Size = Data.size();
+        int Mid = Size / 2;
+
+        // Prepare left and right halves
+        ArrayList<ArrayList<Object>> LeftData = new ArrayList<>(), RightData = Right.get_data();
+
+        // Add before mid point to left,
+        for (int i = 0; i < Mid; i++) LeftData.add(Data.get(i));
+            
+        // Add at and after mid point to right
+        for (int i = Mid; i < Size; i++) RightData.add(Data.get(i));
+            
+
+        // Maintain the leaf chain
+        Left.set_nextpageid(Next);
+        Right.set_nextpageid(OldNext);
+
+        // Replace left data
+        Left.set_data(LeftData);
+
+        // Promoted key = first key of right leaf
+        Comparable<Object> PromotedKey = (Comparable<Object>) RightData.get(0).get(1);
+
+        // Mark dirty,
+        Left.set_isdirty(true);
+        Right.set_isdirty(true);
+
+        return new SplitResult(PromotedKey, Right);
     }
 
     // Returns the Leaf node that should contain a given key.
@@ -85,7 +188,7 @@ public class BPlus {
         return (Integer) Entry.get(0);
     }
 
-    public Page Split(Page P, boolean count_freebytes) throws Exception {
+    public Page UpdateOnSplit(Page P, boolean count_freebytes) throws Exception {
         // Split the page.
         Page NewPage = P.split_page(count_freebytes);
 
@@ -189,48 +292,53 @@ public class BPlus {
                 Rows.add(Index, NewRow);
             }
 
+            // Mark current page dirty.
+            Current.set_isdirty(true);
+
             // If the node is now overfull, we need to determine splitting logic.
             if (Rows.size() >= N)
             // If working on the root,
             if (Current.get_pageid() == this.Root) {
-                // We then need to split the contents of the root into two new leaves.
-                Page Right = Current.split_page(false); // Make right leaf.
-                // Grab the key the root turns into:
-                Key = (Comparable<Object>) Right.get_data().get(0).get(1); // Get middle key,
-                Ptr = Right.get_pageid(); // Get right page id,
-                // Create a left page so we can repurpose the root without replacing our number.
+                // Split according to node type,
+                SplitResult split = (Current.leafnode) ? SplitLeaf(Current) : SplitInternal(Current);
+
+                Comparable<Object> Promoted = split.PromotedKey;
+                Page Right = split.RightPage;
+
+                // Create left child (copy of old root)
                 Page Left = BufferManager.getEmptyPage(null, null);
-                Left.bnode = true; // mark bnode
-                Left.attr = Current.attr; // Copy attribute,
-                Left.leafnode = Current.leafnode; // mark leaf
-                Left.set_data(Rows); // Set left to the split page's remaining entries on the left,
+                Left.bnode = true;
+                Left.leafnode = Current.leafnode;
+                Left.attr = this.Attribute;
+                Left.set_data(Current.get_data());
+                Left.set_nextpageid(Current.get_next_pageid());
+                Left.set_isdirty(true);
 
-                NewRow = new ArrayList<>(List.of(Left.get_pageid(), Key)); // Make a new row, and toss it in
-                Rows = new ArrayList<>(List.of(NewRow)); // Create new arraylist for root
+                // Repurpose root as new internal node
+                ArrayList<ArrayList<Object>> rootRows = new ArrayList<>();
+                rootRows.add(new ArrayList<>(List.of(Left.get_pageid(), Promoted)));
 
-                Current.set_data(Rows);
-                Current.set_nextpageid(Right.get_pageid()); // Set next page id to right page
-                Current.leafnode = false; // mark internal/root.
+                // Fix the current node to be the proper root again.
+                Current.set_data(rootRows);
+                Current.set_nextpageid(Right.get_pageid());
+                Current.leafnode = false;
+                Current.bnode = true;
+                Current.set_isdirty(true);
 
-                break; // Break as we successfully split the root.
+                break;
             }
             // Otherwise, we are on leaf or internal.
             else {
                 // If working with a leaf node or internal node and breaking maximum,
+                SplitResult Split = (Current.leafnode) ? SplitLeaf(Current) : SplitInternal(Current); // Split leaf or internal node.
 
-                // Leaf splits into two, then we must insert middle value with ptr on right page.
-                Page Left = Current, Right = Current.split_page(false);
-                Right.bnode = true; // mark bnode
-                Right.leafnode = Left.leafnode; // mark leaf if applicable,
+                // Update key and ptr.
+                Key = Split.PromotedKey;
+                Ptr = Split.RightPage.get_pageid();
 
-                Key = (Comparable<Object>) Right.get_data().get(0).get(1); // Get middle key,
+                // Set current to parent page for promotion,
+                Current = BufferManager.getBNode(PageStack.pop(), this.Attribute); 
 
-                // If working with an internal node, we need to remove the key thats about to be "pushed up".
-                if (!Current.leafnode) Right.get_data().remove(0);
-
-                Ptr = Right.get_pageid(); // Get right page id,
-
-                Current = BufferManager.getBNode(PageStack.pop(), this.Attribute); // Set current to parent page,
                 continue; // Repeat loop to insert this into parent.
             } 
 
@@ -281,56 +389,6 @@ public class BPlus {
 
             // Add rightmost for internal nodes only
             if (!Current.leafnode) PageStack.push(Current.get_next_pageid());
-        }
-    }
-
-    public void PrintTree() throws Exception {
-        System.out.println("==== B+ Tree Structure ====");
-        PrintNode(Root, 0);
-    }
-
-    private void PrintNode(Integer pageId, int level) throws Exception {
-        Page node = BufferManager.getBNode(pageId, Attribute);
-
-        // Indentation for tree structure
-        String indent = "  ".repeat(level);
-
-        // Print node header
-        System.out.println(indent + (node.leafnode ? "[LEAF]" : "[INTERNAL]") 
-                        + " PageID=" + pageId);
-
-        ArrayList<ArrayList<Object>> rows = node.get_data();
-
-        // Print contents
-        System.out.print(indent + "Keys: ");
-        for (ArrayList<Object> row : rows) {
-            System.out.print(row.get(1) + " ");
-        }
-        System.out.println();
-
-        // Print pointers
-        System.out.print(indent + "Ptrs: ");
-        for (ArrayList<Object> row : rows) {
-            System.out.print(row.get(0) + " ");
-        }
-        if (!node.leafnode) {
-            System.out.print("| Next: " + node.get_next_pageid());
-        }
-        System.out.println();
-
-        // If internal node, recurse into children
-        if (!node.leafnode) {
-            // Traverse left children
-            for (ArrayList<Object> row : rows) {
-                Integer childId = (Integer) row.get(0);
-                PrintNode(childId, level + 1);
-            }
-
-            // Traverse rightmost child
-            Integer rightmost = node.get_next_pageid();
-            if (rightmost != null) {
-                PrintNode(rightmost, level + 1);
-            }
         }
     }
 }

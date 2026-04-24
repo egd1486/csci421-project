@@ -49,12 +49,19 @@ public class BufferManager {
             }
         }
         Page page_to_remove = buffer[removal_page];
+        page_to_remove.evicted = true;
 
         if(page_to_remove.check_dirty()) StorageManager.WritePage(page_to_remove);
 
         mapId.remove(page_to_remove.get_pageid());
         buffer[removal_page] = null;
         return removal_page;
+    }
+
+    public static void remediate_evicted(Page P) throws Exception {
+        buffer[lru()] = P;
+        P.set_newtime();
+        mapId.put(P.get_pageid(), P);
     }
 
     public static Page PageFromBuffer(int pageId) {
