@@ -502,7 +502,13 @@ public class Parser {
         Validate(Input[Index], SEMICOLON);
         // Make new table using schema of old table
 
-        newSchema = oldSchema.Copy(WhereRS, null, null);
+        newSchema = null;
+        try {
+            newSchema = oldSchema.Copy(WhereRS, null, null);
+         } catch (Exception e) {
+            System.out.println("Error: copy failed in delete - " +  e.getMessage());
+        }
+        if (newSchema == null) return ++Index;
         // Drop old schema, and free B+ tree
         try {
             if (oldSchema.Index != null) { 
@@ -606,14 +612,20 @@ public class Parser {
         }
         Validate(Input[Index], SEMICOLON);
 
-        Schema newSchema = oldSchema.Copy(WhereRS, valueNode, Column.Literal);
+        Schema newSchema = null;
+        try {
+            newSchema = oldSchema.Copy(WhereRS, valueNode, Column.Literal);
+         } catch (Exception e) {
+            System.out.println("Error: copy failed in update - " +  e.getMessage());
+        }
+        if (newSchema == null) return ++Index;
         // Remove old table and pages, and B+ tree
         try {
             if (oldSchema.Index != null) {
                 oldSchema.Index.Clear();
             }
         } catch (Exception e) {
-            throw new Exception("Delete: B+ cleaning failed");
+            throw new Exception("Update: B+ cleaning failed");
         }
         Catalog.RemoveSchema(tableName);
         // Swap it with our new copy.
