@@ -463,6 +463,7 @@ public class Schema {
             if (B != null) B.Insert((Comparable<Object>) Row.get(Primary), P.pageId);
 
             return;
+            //
         }
 
         // Otherwise, with existing entries, if this table has a primary key, the entries are required to be sorted,
