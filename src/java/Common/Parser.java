@@ -3,7 +3,7 @@ package Common;
 import BufferManager.BufferManager;
 import static Common.TokenType.*;
 import Common.WhereTree.*;
-import Catalog.BPlus;
+
 import java.util.*;
 import Catalog.*;
 
@@ -816,11 +816,8 @@ public class Parser {
         // All nodes should be a part of one main node at this point
         if(whereTreeNodes.size() != 1)
         throw new Exception("Error in parsing Where Tree, final size should be 1");
-        if (Indexing) {
-            return new WhereResult(whereTreeNodes.pop(), Index, simplifiedTreeNodes.pop());
-        } else {
-            return new WhereResult(whereTreeNodes.pop(), Index);
-        }
+
+        return new WhereResult(whereTreeNodes.pop(), Index);
     }
 
     // NOTE: Any parse functions must return the index position AFTER their semicolon.

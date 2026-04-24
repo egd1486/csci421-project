@@ -35,24 +35,31 @@ public class Schema {
         newSchema.DuplicateKeys = this.DuplicateKeys;
         newSchema.PageId = BufferManager.getEmptyPage(newSchema, null).get_pageid();
 
-        for (Attribute A : this.Attributes) newSchema.Attributes.add(A);
-
-        // Set up B+ tree
-        if (Parser.Indexing) {
-            Attribute PrimaryA = newSchema.Attributes.get(newSchema.Primary);
-            BPlus B = new BPlus(newSchema, PrimaryA, null);
-            PrimaryA.bTree = B.Root; //so attribute knows where tree is (location)
-            newSchema.Index = B;
-            for (Attribute A : newSchema.Attributes){
-                if(!A.primaryKey && A.unique) {
-                    BPlus tree = new BPlus(newSchema, A, null);
-                    A.bTree = tree.Root;
-                }
-                else {
-                    A.bTree = null;
-                }
+        for (Attribute A : this.Attributes) {
+            Attribute B = A.Copy();
+            if (A.bTree != null) {
+                BPlus Tree = new BPlus(newSchema, B, null);
+                B.bTree = Tree.Root;
             }
-        }
+            newSchema.Attributes.add(B);
+        } 
+
+        // // Set up B+ tree
+        // if (Parser.Indexing) {
+        //     Attribute PrimaryA = newSchema.Attributes.get(newSchema.Primary);
+        //     BPlus B = new BPlus(newSchema, PrimaryA, null);
+        //     PrimaryA.bTree = B.Root; //so attribute knows where tree is (location)
+        //     newSchema.Index = B;
+        //     for (Attribute A : newSchema.Attributes){
+        //         if(!A.primaryKey && A.unique) {
+        //             BPlus tree = new BPlus(newSchema, A, null);
+        //             A.bTree = tree.Root;
+        //         }
+        //         else {
+        //             A.bTree = null;
+        //         }
+        //     }
+        // }
 
         // If a where clause was given, we are applying a filter to the existing data
         // If an Update parameter was given, we know we are updating specific columns if the condition is met,

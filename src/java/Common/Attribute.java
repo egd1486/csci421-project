@@ -24,6 +24,12 @@ public class Attribute { //for one column
         this.defaultVal = this.Parse(defaultVal);
     }
 
+    public Attribute Copy() throws Exception {
+        Attribute A = new Attribute(this.name, this.type, this.typeLength, this.primaryKey, this.notNull, this.unique, this.defaultVal);
+        
+        return A;
+    }
+
     public Integer GetFixedSize() {
         switch (this.type) {
             case INT:
