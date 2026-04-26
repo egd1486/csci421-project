@@ -37,6 +37,10 @@ public class JottQL{
             return;
         }
 
+        // For logging purposes, running in a debug terminal.
+        for (String arg : args)System.out.print(arg+" ");
+        System.out.println();
+
         // Entering infinite loop and prompting for JottQL commands
         Scanner scanner = new Scanner(System.in);
         while(true){
@@ -54,8 +58,11 @@ public class JottQL{
             String command = builder.toString().trim();
             System.out.println("Command: " + command);
 
+            long t1 = System.currentTimeMillis();
             try {Parser.parse(Tokenizer.tokenize(command));}
             catch (Exception e) {System.out.println(e);}
+            System.out.println("Time: " + (System.currentTimeMillis() - t1) + "ms");
+            System.out.println("Indexing " + (indexing ? "ON" : "OFF"));
         }
 
         // Shutdown once the loop ends.

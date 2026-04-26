@@ -558,7 +558,7 @@ public class Schema {
                 Page NewPage = P.split_page(true);
                 if (B != null) B.Insert((Comparable<Object>) PKey, P.pageId);
                 for(Attribute a : this.Attributes){
-                    if(!a.unique && !a.primaryKey) continue;
+                    if(!a.unique && !a.primaryKey || a.bTree == null) continue;
                     B2 = new BPlus(this, a, a.bTree);
                     B2.UpdateOnSplit(NewPage);
                 }
